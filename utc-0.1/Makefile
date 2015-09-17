@@ -68,5 +68,7 @@ UtcMpi.o: UtcMpi.cc
 .PHONY: clean cleanall
 clean:
 	rm -f ./bin/*.o
+	rm -f ./lib/*.o
 cleanall:
-	rm -rf ./bin ./lib
+	rm -rf ./bin
+	rm -rf ./lib
