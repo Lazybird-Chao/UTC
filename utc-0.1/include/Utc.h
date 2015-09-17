@@ -3,6 +3,7 @@
 
 //TOP
 #include "UtcBasics.h"
+
 //A
 
 //B
@@ -38,12 +39,21 @@
 //Q
 
 //R
+#include "RankList.h"
+#include "RootTask.h"
 
 //S
 
 //T
+#include "TaskBase.h"
+#include "TaskInfo.h"
+#include "TaskManager.h"
 
 //U
+#include "UtcBase.h"
+#include "UtcContext.h"
+#include "UtcException.h"
+#include "UtcMpi.h"
 
 //V
 

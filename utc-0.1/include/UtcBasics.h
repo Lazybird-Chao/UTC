@@ -1,42 +1,46 @@
 #ifndef UTC_BASICS_H_
 #define UTC_BASICS_H_
 
-#include <pthread.h>
-#include <sys/types.h>
-
 
 //#define UTC_DEBUG
 //#define UTC_BAR_DEBUG
 //#define PRINT_EXCEPTION
 //#define UTC_DEVELOP
 //#define XFER_DEBUG
-
 //#define USE_RUN_FUNCTORS
 
+#define USE_CPLUS_THREAD_CREATION
+#if defined(USE_CPLUS_THREAD_CREATION)
+    #include <thread>
+#elif defined(USE_BOOST_THREAD_CREATION)
+    #include <boost/thread/thread.hpp>
+#elif defined(USE_POSIX_THREAD_CREATION)
+    #include <pthread.h>
+    #include <sys/types.h>
+#endif
 
 #define USE_MPI_BASE
-#define _STANDARD_MPI
-//#define MULTIPLE_MPI
+#ifdef USE_MPI_BASE
+    #include <mpi.h>
+#endif
+#define MULTIPLE_THREAD_MPI   //  MPI_THREAD_SINGLE",
+                              //  MPI_THREAD_FUNNELED",
+                              //  MPI_THREAD_SERIALIZED",
 
-//#define PTHREAD_IS_STRUCT
 
-#ifdef _STANDARD_MPI
-	#include <mpi.h>
+typedef  int RankId;
+typedef  int ProcRank;
+typedef  int ThreadRank;
+typedef  int TaskId;
+
+#if defined(USE_CPLUS_THREAD_CREATION)
+    typedef  std::thread::id ThreadId;
+#elif defined(USE_BOOST_THREAD_CREATION)
+    typedef boost::thread::id TreadId
+#elif defined(USE_POSIX_THREAD_CREATION)
+    typedef  pthread_t ThreadId;
 #endif
 
-
-typedef int RankId;
-typedef int ProcId;
-
-
-
-#ifdef PTHREAD_IS_STRUCT
-	typedef unsigned long TaskId;
-	typedef unsigned long ThreadId;
-#else
-	typedef pthread_t TaskId;
-	typedef pthread_t ThreadId;
-#endif
 
 
 const int MAX_PROCS=128;
