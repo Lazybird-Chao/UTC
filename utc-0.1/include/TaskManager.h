@@ -24,12 +24,11 @@ namespace iUtc{
 
             static void unregisterTask(TaskBase* task);
 
+            static TaskId getNewTaskId();
 
             //
             static TaskInfo getTaskInfo(void);
             static void setTaskInfo(TaskInfo* InfoPtr);
-
-            static TaskId getNewTaskId();
 
             static TaskId getCurrentTaskId();
 

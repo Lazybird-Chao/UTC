@@ -1,2 +1,62 @@
 -Version 0.1
-  
+	0.1-1
+	[Update]
+	    none
+	[New]
+		-Ranklist     a int vector like list, used for mapping task to different processes, used
+		              when creating a user task.
+			     eg. (1 1 1) means task have 3 threads, both on process1
+				     (1 2 3 3) means task have 4 threads, thread1 on process1, thread2 on 
+				     process2, thread3/4 on process3
+		
+		-RootTask     a class derived from TaskBase. Created by system at initialization, not user. 
+		              Eash process has one and only one RootTask obj, all other tasks are children of 
+		              this roottask. root task has one thread, actually is the main thread of the 
+		              process. Other task will run on other threads created on this process.
+		
+		-TaskBase     the base class for task. Define some common functions and data for task.
+		          eg.  m_TaskId  a logical number create for this task.
+		               m_numProcesses  how many processes this task would use for run.
+		               m_numLocalThreads  how many threads this task has on current process.
+		               m_LocalThreadRegistry  a map from threadid to thread rank of task at current
+		                                      process.
+		                                      
+        -TaskInfo       a struct define several basic infomation about a task. every thread will
+                        create a TaskInfo struct, it was implemented as TSS(thread specifice storage).
+                        roottask also has this in main thread of a process.
+                       
+        -TaskManager   a singlton class create by system at initialization. Supply some static 
+                       methods to get task realated info in a process. A thread of a task can call
+                       these methods to identify himselt. Each process has one and only
+                       one TaskManager object during whole program. It has a map to record taskid 
+                       and coresponded task object. Each task will be registed by taskmanager. 
+                       Also TaskInfo struct is defied in it. 
+                       TODO: improving the singleton implemention      
+                        	                                      
+        -Utc.h          a main header file that user shoudl include in his program to use this system
+        
+        -UtcBase        a base interface class, which will be implemented by UtcMpi.
+        
+        -UtcBasics.h    a main header file that has some global definations or declartions or 
+                        configurations that our system will use.
+        
+        -UtcContext     the enterpoint class that will initialize system at beginning and close 
+                        system at program end. Startup the UTC runtime environment, create necessory
+                        processes, create root task, task manager on each process.
+                        Use should define an object of this class at beginning of program, and only 
+                        onece. 
+                        TODO: considering implement this class as singleton
+                        
+        -UtcException   the error/exception processing class, not used in system now.
+                        TODO:  add error/exception process mechanism in our system.
+                        
+        -UtcMpi         the actual UTC runtime initialize/finalize class. We use MPI as system's 
+                        base runtime environment. Realizing the multi-processes runtime for 
+                        computation, also network runtime for communication. 
+                        Within process, for multi-threads runtime, we can use POSIX thread, 
+                        boost thread or c++11 thread, right now we use c++11 thread together with
+                        boost thread. Prefering c++11 thread first, this may have portable problem 
+                        depending on how much the compiler supports c++11.  
+                        
+                        
+                                                               
