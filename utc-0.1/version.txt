@@ -1,29 +1,29 @@
 -Version 0.1
-	0.1-1
-	[Update]
-	    none
-	[New]
-		-Ranklist     a int vector like list, used for mapping task to different processes, used
+    0.1-1
+    [Update]
+        none
+    [New]
+        -Ranklist     a int vector like list, used for mapping task to different processes, used
 		              when creating a user task.
 			     eg. (1 1 1) means task have 3 threads, both on process1
 				     (1 2 3 3) means task have 4 threads, thread1 on process1, thread2 on 
 				     process2, thread3/4 on process3
 		
-		-RootTask     a class derived from TaskBase. Created by system at initialization, not user. 
+        -RootTask     a class derived from TaskBase. Created by system at initialization, not user. 
 		              Eash process has one and only one RootTask obj, all other tasks are children of 
 		              this roottask. root task has one thread, actually is the main thread of the 
 		              process. Other task will run on other threads created on this process.
 		
-		-TaskBase     the base class for task. Define some common functions and data for task.
+        -TaskBase      the base class for task. Define some common functions and data for task.
 		          eg.  m_TaskId  a logical number create for this task.
 		               m_numProcesses  how many processes this task would use for run.
 		               m_numLocalThreads  how many threads this task has on current process.
 		               m_LocalThreadRegistry  a map from threadid to thread rank of task at current
 		                                      process.
 		                                      
-        -TaskInfo       a struct define several basic infomation about a task. every thread will
-                        create a TaskInfo struct, it was implemented as TSS(thread specifice storage).
-                        roottask also has this in main thread of a process.
+        -TaskInfo      a struct define several basic infomation about a task. every thread will
+                       create a TaskInfo struct, it was implemented as TSS(thread specifice storage).
+                       roottask also has this in main thread of a process.
                        
         -TaskManager   a singlton class create by system at initialization. Supply some static 
                        methods to get task realated info in a process. A thread of a task can call
