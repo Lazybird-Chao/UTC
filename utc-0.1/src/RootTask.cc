@@ -17,15 +17,17 @@ RootTask::RootTask(int WorldSize, int currentProcess)
     m_Name = "RootTask";
     ThreadRank tRank = 0;
     ProcRank pRank = currentProcess;
-    m_TaskId = TaskManager::getNewTaskId();
+    m_TaskId = TaskManager::getNewTaskId();      // should get 0 for root
     ThreadId tid = TaskManager::getThreadId();   // main thread of current process,
                                                  // no other threads have been created yet
     m_LocalThreadList.push_back(tid);
     m_LocalThreadRegistry.insert(std::pair<ThreadId, ThreadRank>(tid, tRank));
     m_ParentTaskId= m_TaskId; //only for root
     m_processRank= pRank;
-    RankList rlist(WorldSize);
-    rlist.getRankListVector(m_TaskMapList);
+    for(int i=0; i<WorldSize; i++)
+    {
+    	m_TaskRankList.push_back(i);
+    }
 
 
     TaskInfo* taskInfoPtr = new TaskInfo();

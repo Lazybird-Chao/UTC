@@ -20,7 +20,7 @@ public:
     TaskId getParentTaskId();
 
     //
-    std::vector<ProcRank> getTaskMapList();
+    std::vector<ProcRank> getTaskRankList();
 
     int getNumProcesses();
 
@@ -48,13 +48,15 @@ protected:
 
     int    m_numProcesses;
 
+    // process related, for a task obj, in different process it may get
+    // different value, depends on the ranklist of the task
     int    m_numLocalThreads;
 
     int    m_numTotalThreads;
 
-    ProcRank m_processRank;
+    ProcRank m_processRank;    // the current running process's rank value
 
-    std::vector<ProcRank> m_TaskMapList;
+    std::vector<ProcRank> m_TaskRankList;
 
     std::vector<ThreadId> m_LocalThreadList;
 
@@ -63,6 +65,7 @@ protected:
     //
     TaskId RegisterTask();
 
+    // can't use taskbase obj directly
     TaskBase();
 
 

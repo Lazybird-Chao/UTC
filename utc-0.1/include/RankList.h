@@ -21,6 +21,7 @@ namespace iUtc{
         /// Construct a RankList, a number of ranks.  A ThreadRankList containing
         /// 0 to size-1 will be constructed.
         RankList(int size);
+        RankList(int size, int rank);
 
         /// \brief Constructor
         /// Construct a ThreadRankList, given a size and C-style array of RankIds.

@@ -26,7 +26,8 @@ namespace iUtc{
 
             static TaskId getNewTaskId();
 
-            //
+            // these calls are TSS data related, when calling in main thread(or
+            // process), it's actually root task's TSS info
             static TaskInfo getTaskInfo(void);
             static void setTaskInfo(TaskInfo* InfoPtr);
 
@@ -38,12 +39,16 @@ namespace iUtc{
 
             static TaskBase* getParentTask();
 
+            //
             static ThreadId getThreadId();
 
             static ThreadRank getCurrentThreadRankinTask();
 
             static ProcRank getCurrentProcessRankinTask();
 
+            static void setRootTask(TaskBase *root);
+
+            static TaskBase* getRootTask();
 
             ~TaskManager();
 
@@ -70,6 +75,7 @@ namespace iUtc{
 
             static boost::thread_specific_ptr<TaskInfo> m_taskInfo;
 
+            static TaskBase *m_root;
 
     };//class TaskManager
 }// namespace iUtc

@@ -2,6 +2,8 @@
 #include "UtcBasics.h"
 #include <string>
 #include <cstring>
+#include <sys/types.h>
+#include <unistd.h>
 
 namespace iUtc{
     namespace UtcMpi{
@@ -48,10 +50,9 @@ namespace iUtc{
             int length;
             MPI_Get_processor_name(m_name, &length);
             m_name[length]='\0';
-            //std::cout<< "MPI mode="<<mpi_mode<<", "<<"MPI provided thread support level="<<provided<<std::endl;
             std::cout<< "MPI ThreadMode="<<m_mode[provided]<<", "
                     <<"Total processes="<<m_size<<", "
-                    <<"Current proc rank="<<m_rank<<std::endl;
+                    <<"Current proc rank="<<m_rank<<"("<<getpid()<<")"<<std::endl;
 
 
         }
@@ -63,7 +64,7 @@ namespace iUtc{
 
             //MPI_Finalize();
             MPI::Finalize();
-            std::cout<<"Proc "<<m_rank<<" exit"<<std::endl;
+            std::cout<<"MPI Proc "<<m_rank<<" exit!"<<std::endl;
         }
 
         int Utc::rank()

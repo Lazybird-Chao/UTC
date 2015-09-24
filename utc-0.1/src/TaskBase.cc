@@ -26,9 +26,9 @@ TaskBase* TaskBase::getParentTask()
     return mgr->getParentTask();
 }
 
-std::vector<ProcRank> TaskBase::getTaskMapList()
+std::vector<ProcRank> TaskBase::getTaskRankList()
 {
-    return m_TaskMapList;
+    return m_TaskRankList;
 }
 
 int TaskBase::getNumProcesses()
@@ -58,7 +58,7 @@ ProcRank TaskBase::getCurrentProcRank()
 
 bool TaskBase::isLocal(ThreadRank tRank)
 {
-    return m_TaskMapList[tRank]==m_processRank;
+    return m_TaskRankList[tRank]==m_processRank;
 }
 
 ThreadRank TaskBase::getThreadRankById(ThreadId tid)
@@ -68,7 +68,7 @@ ThreadRank TaskBase::getThreadRankById(ThreadId tid)
 
 ///
 TaskBase::TaskBase()
-:m_Name("NotSet"),
+:m_Name(""),
 m_TaskId(-1),
 m_ParentTaskId(-1),
 m_numProcesses(0),
@@ -77,14 +77,14 @@ m_numTotalThreads(0),
 m_processRank(-1)
 {
 
-    m_TaskMapList.clear();
+    m_TaskRankList.clear();
     m_LocalThreadList.clear();
     m_LocalThreadRegistry.clear();
 }
 
 TaskBase::~TaskBase()
 {
-    m_TaskMapList.clear();
+    m_TaskRankList.clear();
     m_LocalThreadList.clear();
     m_LocalThreadRegistry.clear();
 }

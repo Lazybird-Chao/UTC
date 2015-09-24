@@ -48,6 +48,7 @@
 #include "TaskBase.h"
 #include "TaskInfo.h"
 #include "TaskManager.h"
+#include "Task.h"
 
 //U
 #include "UtcBase.h"
