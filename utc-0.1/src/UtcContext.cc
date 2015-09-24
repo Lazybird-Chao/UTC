@@ -76,6 +76,7 @@ void UtcContext::initialize(int& argc, char** argv)
                                                 // RootTask instance in current process.
     m_rootTaskId= taskMgr->registerTask(root);
 
+    taskMgr->setRootTask(root);
 }
 
 void UtcContext::finalize()

@@ -33,7 +33,7 @@ default: test
 ### test target
 obj:= RankList.o RootTask.o \
 	  TaskBase.o TaskManager.o \
-	  UtcContext.o  UtcMpi.o  
+	  UtcContext.o  UtcMpi.o  Task.o
 LIB_UTC := libutc.a
 
 	  
@@ -41,8 +41,8 @@ test: $(LIB_UTC) main.o
 	$(G++)	-o test main.o $(CCFLAG) -lutc $(LIB)
 	mkdir -p bin; cd bin; mv ../test ./; mv ../main.o ./
 	@echo "make successful !!!"  
-main.o: test_main.cc
-	$(G++)	-o main.o -c test_main.cc $(CCFLAG) $(INCLUDE) 	
+main.o: test_task.cc
+	$(G++)	-o main.o -c test_task.cc $(CCFLAG) $(INCLUDE) 	
 
 
 
@@ -62,7 +62,8 @@ UtcContext.o:UtcContext.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 UtcMpi.o: UtcMpi.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)  
-
+Task.o: Task.cc
+	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 
 ###
 .PHONY: clean cleanall

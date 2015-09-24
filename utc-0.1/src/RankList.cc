@@ -12,14 +12,22 @@ namespace iUtc{
 
     // \brief Constructor
     // Construct a RankList, a number of ranks.  A RankList containing
-    // 0 to size-1 will be constructed.
+    // 0 will be constructed.
     RankList::RankList(int size)
     {
         for(int i = 0; i < size; i++)
         {
-            m_rankList.push_back(static_cast<RankId>(i));
+            m_rankList.push_back(0);
         }
     }
+
+    RankList::RankList(int size, int rank)
+	{
+		for(int i = 0; i < size; i++)
+		{
+			m_rankList.push_back(static_cast<RankId>(rank));
+		}
+	}
 
     // \brief Constructor
     // Construct a RankList, given a size and C-style array of RankIds.
@@ -121,6 +129,7 @@ namespace iUtc{
     // \brief Destructor
     RankList::~RankList()
     {
+    	m_rankList.clear();
     }
 }// namespace iUtc
 

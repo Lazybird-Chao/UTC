@@ -11,6 +11,8 @@ std::map<TaskId, TaskBase*> TaskManager::m_TaskRegistry;
 
 TaskId TaskManager::m_TaskIdDealer = 0;
 
+TaskBase* TaskManager::m_root = nullptr;
+
 std::mutex TaskManager::m_mutexTaskRegistry;
 std::mutex TaskManager::m_mutexTaskIdDealer;
 
@@ -135,7 +137,15 @@ ProcRank TaskManager::getCurrentProcessRankinTask()
     return taskInfo->pRank;
 }
 
+void TaskManager::setRootTask(TaskBase* root)
+{
+	m_root = root;
+}
 
+TaskBase* TaskManager::getRootTask()
+{
+	return m_root;
+}
 
 
 } // namespace iUtc
