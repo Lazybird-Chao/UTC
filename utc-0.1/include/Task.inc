@@ -32,7 +32,11 @@ Task<T>::~Task()
 		run();
 	}
 	TaskManager::unregisterTask(this);
-	delete m_userTaskObjPtr;
+	if(!m_userTaskObjPtr)
+	{   // will call user task class's destructor
+	    delete m_userTaskObjPtr;
+	}
+
 	for(auto& th : m_taskThreads)
 	{
 		if(th.joinable())
@@ -45,12 +49,18 @@ Task<T>::~Task()
 	m_taskThreads.clear();
 
 	if(m_numLocalThreads !=0)
-		std::cout<<"["<<m_Name<<"] complete!!!"<<std::endl;
+		std::cout<<"["<<m_Name<<"] destroyed on proc "<<m_processRank<<" !!!"<<std::endl;
 }
 
 template<class T>
 void Task<T>::init()
 {
+    // no task threads on this process, just return
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
 	m_calledInit = 1;
 	// ask all threads to do task.init
 	initImpl();
@@ -64,6 +74,12 @@ void Task<T>::init()
 template<class T>
 void Task<T>::run()
 {
+    // no task threads on this process, just return
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
 	m_calledRun = 1;
 	// ask all thread to do task.run
 	runImpl();
@@ -74,6 +90,12 @@ void Task<T>::run()
 template<class T>
 void Task<T>::waitTillDone()
 {
+    // no task threads on this process, just return
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
 	if(m_calledRun != 1)
 	{
 		return;
@@ -82,8 +104,10 @@ void Task<T>::waitTillDone()
 	while(m_threadFinishRunCounter != m_numLocalThreads)
 	{
 		m_threadFinishRunCond.wait(LCK);
+
 	}
 	// m_threadFinishRunCounter =0;
+	std::cout<<"["<<m_Name<<"] complete!"<<std::endl;
 }
 
 template<class T>
@@ -164,10 +188,10 @@ void Task<T>::threadImpl(ThreadRank trank)
 	m_userTaskObjPtr->run();
 
 	// notify this thread finish run
-	std::unique_lock<std::mutex> LCK5(m_threadFinishRunMutex);
+	std::unique_lock<std::mutex> LCK3(m_threadFinishRunMutex);
 	m_threadFinishRunCounter++;
 	m_threadFinishRunCond.notify_one();
-	LCK5.unlock();
+	LCK3.unlock();
 
 	return;
 }
@@ -193,7 +217,7 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 	{
 		if(m_TaskRankList[i]>nProcWorld-1)
 		{
-			std::cout<<"Task ["<<m_Name<<"] mapped to non-existed processes!\n";
+			std::cout<<"\n*****Task ["<<m_Name<<"] mapped to non-existed processes!*****\n\n";
 			std::exit(1);
 		}
 		plist[m_TaskRankList[i]].push_back(i);
@@ -214,7 +238,12 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 	// one process will share this user taskobj, the data members of the this obj
 	// will be accessed by all threads. Also each processes will has a same copy
 	// of this user taskobj.
-	m_userTaskObjPtr = new T;
+	assert(m_userTaskObjPtr == nullptr);
+	if(m_numLocalThreads !=0)
+	{
+	    // will call user task class's constructor
+	    m_userTaskObjPtr = new T;
+	}
 
 	if(m_numLocalThreads!=0)  // there are threads need to be created on current process
 	{
