@@ -5,22 +5,42 @@
 
 using namespace iUtc;
 
-class user_task{
+class user_taskA{
 public:
-	user_task()
+	user_taskA()
 	{
-		std::cout<<"hello user task!"<<std::endl;
+		std::cout<<"hello user taskA!"<<std::endl;
 	}
 
 	void init()
 	{
-		std::cout<<"doing init..."<<std::endl;
+		std::cout<<"doing init taskA..."<<std::endl;
 	}
 
 	void run()
 	{
-		std::cout<<"doing run..."<<std::endl;
+		std::cout<<"doing run taskA..."<<std::endl;
 	}
+
+};
+
+
+class user_taskB{
+public:
+    user_taskB()
+    {
+        std::cout<<"hello user taskB!"<<std::endl;
+    }
+
+    void init()
+    {
+        std::cout<<"doing init taskB..."<<std::endl;
+    }
+
+    void run()
+    {
+        std::cout<<"doing run taskB..."<<std::endl;
+    }
 
 };
 
@@ -37,14 +57,21 @@ int main(int argc, char*argv[])
 
     int t_list[2]={0,0};
     RankList r_list(2, t_list);
-    Task<user_task> task1("First-task", r_list);
-    int t_list2[2]={1,1};
-    RankList r_list2(2,t_list2);
-    Task<user_task> task2("Second-task", r_list2);
+    Task<user_taskA> task1("First-task", r_list);
+    int t_list2[4]={1, 1, 2, 2};
+    RankList r_list2(4,t_list2);
+    Task<user_taskB> task2("Second-task", r_list2);
+
+
     task1.init();
 
     task1.run();
 
+    task2.init();
+
+    task2.run();
+
+    task1.waitTillDone();
 
 
     return 0;

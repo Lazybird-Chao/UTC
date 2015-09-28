@@ -69,7 +69,6 @@ private:
 	int m_calledRun;
 	int m_calledInit;
 
-	//
 	std::mutex m_threadReady2InitMutex;
 	std::condition_variable m_threadReady2InitCond;
 	int m_threadReady2InitCounter;
@@ -79,11 +78,11 @@ private:
 	std::condition_variable m_threadReady2RunCond;
 	int m_threadReady2RunCounter;
 
-	//
+
 	std::mutex m_threadFinishRunMutex;
 	std::condition_variable m_threadFinishRunCond;
 	int m_threadFinishRunCounter;
-
+	//
 
 };
 
