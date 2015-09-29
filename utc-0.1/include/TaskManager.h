@@ -4,6 +4,7 @@
 #include "UtcBasics.h"
 #include "TaskBase.h"
 #include "TaskInfo.h"
+#include "RootTask.h"
 #include <map>
 #include <mutex>
 #include <thread>
@@ -26,6 +27,8 @@ namespace iUtc{
 
             static TaskId getNewTaskId();
 
+            static int getNumTasks();
+
             // these calls are TSS data related, when calling in main thread(or
             // process), it's actually root task's TSS info
             static TaskInfo getTaskInfo(void);
@@ -46,9 +49,9 @@ namespace iUtc{
 
             static ProcRank getCurrentProcessRankinTask();
 
-            static void setRootTask(TaskBase *root);
+            static void setRootTask(RootTask *root);
+            static RootTask* getRootTask();
 
-            static TaskBase* getRootTask();
 
             ~TaskManager();
 
@@ -75,7 +78,7 @@ namespace iUtc{
 
             static boost::thread_specific_ptr<TaskInfo> m_taskInfo;
 
-            static TaskBase *m_root;
+            static RootTask *m_root;
 
     };//class TaskManager
 }// namespace iUtc

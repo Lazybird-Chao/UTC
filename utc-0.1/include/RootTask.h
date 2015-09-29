@@ -4,6 +4,7 @@
 #include "TaskBase.h"
 
 #include <vector>
+#include <fstream>
 
 namespace iUtc{
 
@@ -20,9 +21,13 @@ namespace iUtc{
 
         ~RootTask();
 
+        std::ofstream* getProcOstream();
+        void setProcOstream(std::ofstream& procOstream);
+
     protected:
         RootTask(); //default constructor is disabled
 
+        //std::ofstream *m_procOstream;  move to taskbase
 
     };//class RootTask
 

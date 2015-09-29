@@ -22,6 +22,7 @@ RootTask::RootTask(int WorldSize, int currentProcess)
                                                  // no other threads have been created yet
     m_LocalThreadList.push_back(tid);
     m_LocalThreadRegistry.insert(std::pair<ThreadId, ThreadRank>(tid, tRank));
+    m_ThreadRank2Local.insert(std::pair<ThreadRank, int>(tRank, 0));
     m_ParentTaskId= m_TaskId; //only for root
     m_processRank= pRank;
     for(int i=0; i<WorldSize; i++)
@@ -29,6 +30,14 @@ RootTask::RootTask(int WorldSize, int currentProcess)
     	m_TaskRankList.push_back(i);
     }
 
+#ifdef USE_DEBUG_LOG
+    std::string filename= "Proc";
+    filename.append(std::to_string(currentProcess));
+    filename.append(".log");
+    m_procOstream = new std::ofstream(filename);
+#else
+    m_procOstream = nullptr;
+#endif
 
     TaskInfo* taskInfoPtr = new TaskInfo();
     taskInfoPtr->pRank = pRank;
@@ -47,9 +56,24 @@ RootTask::RootTask(int WorldSize, int currentProcess)
 
 RootTask::~RootTask()
 {
+	if(m_procOstream)
+	{
+		if(m_procOstream->is_open())
+		{
+			m_procOstream->close();
+		}
+	}
     return;
 }
 
+std::ofstream* RootTask::getProcOstream()
+{
+	return m_procOstream;
+}
 
+void RootTask::setProcOstream(std::ofstream& procOstream)
+{
+	m_procOstream = &procOstream;
+}
 
 } //namespace iUtc

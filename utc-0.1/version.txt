@@ -56,7 +56,63 @@
                         Within process, for multi-threads runtime, we can use POSIX thread, 
                         boost thread or c++11 thread, right now we use c++11 thread together with
                         boost thread. Prefering c++11 thread first, this may have portable problem 
-                        depending on how much the compiler supports c++11.  
+                        depending on how much the compiler supports c++11. 
+                        
+    
+    0.1-2
+    [Update]
+        RootTask        Initialize m_threadPrivateData, creating and opening a file for output for current
+                        process.
+        
+        TaskBase        Add m_procOstream, m_threadPrivateData.  m_procOstream is a std::ofstream, for each
+                        process, we will create an file for output. If define "USE_DEBUG_LOG", this obj will
+                        be created in roottask, else it will be create when firt time call getProcOstream()
+                        in main program.
+                        m_threadPrivateData is a structure to include some thread specific data, that will 
+                        stored in TSS using boost::thread_specific_ptr. If define "USE_DEBUG_LOG", it will
+                        be created in task::ThreadImpl() for each runing thread, else will be create at
+                        first time call getThreadOstream() in user's task classes.
+                        
+        TaskInfo        Add ThreadPrivateData structue to include some thread specific data.
+        
+    [New]
+        Task            Implemented Task class.
+                        Task class use Template to refering user defined task(user-task class)
+                        When define a Task, a Task obj will be created on each process, but only mapped 
+                        processes will launch threads for that task. In Task obj, we will create a user-task
+                        obj, which will be shared by all task threads in a process.
+                        As we use Template, so all Task member functions are defined in Task.inc, and will 
+                        be included in Task.h. Separate compiling is not allowed when using Template.
+                        Right now when a task thread launched, it will wait for calling init(), run(), waitTillDone()
+                        function from main program. init()/run() do not accept arguments.
+                        TODO:  overload these functions with Tempalte to acctept various number of arguments.
+                        We construct user-task obj with "new T", so we use user-task's default constructor, it's 
+                        suggest that user-task class do not define default constructor\destructor, do all initialization in
+                        init() method.
+                        TODO:  allow user define user-class obj in main program, and use this obj as a argument
+                               when defining a task. And will use this user-class obj to invoke user-task's init()
+                               run() function in our inner task obj.
+                        Now, a task using flow is like:
+                                define a task using user-task class;
+                                call init()
+                                call run()
+                                call waitTillDone()
+                        a task obj can only be used for once with this flow.
+                        TODO:  change thread running mechnism, allowing a task obj can be used for several times, 
+                               means, we can init() and run() again with same task obj.
+                        In our Task design, a Task obj involve two objects:
+                            one is system-task obj(the Task class);
+                            one is user-task obj(the Template class, supplied by user)
+                            system-task obj has init(), run(), waitTillDone() and many other methods;
+                            user-task obj should only have init(), run() methods, which realizing user's specific algorithm.
+                            user-task's methods will be called in system-task's methods to complete execution.
+                        Remembering in one process, for a task, all threads share same system-task obj and same user-task obj.
+                        
+                                         
+        
+                               
+                    
+                      
                         
                         
                                                                

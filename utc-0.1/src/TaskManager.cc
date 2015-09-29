@@ -11,7 +11,7 @@ std::map<TaskId, TaskBase*> TaskManager::m_TaskRegistry;
 
 TaskId TaskManager::m_TaskIdDealer = 0;
 
-TaskBase* TaskManager::m_root = nullptr;
+RootTask* TaskManager::m_root = nullptr;
 
 std::mutex TaskManager::m_mutexTaskRegistry;
 std::mutex TaskManager::m_mutexTaskIdDealer;
@@ -71,6 +71,11 @@ TaskId TaskManager::getNewTaskId()
     return id;
 }
 
+int TaskManager::getNumTasks()
+{
+	return m_TaskRegistry.size();
+}
+
 
 TaskInfo TaskManager::getTaskInfo(void)
 {
@@ -82,12 +87,15 @@ TaskInfo TaskManager::getTaskInfo(void)
 
 void TaskManager::setTaskInfo(TaskInfo* InfoPtr)
 {
-    m_taskInfo.reset(InfoPtr);
+	if(!InfoPtr)
+		m_taskInfo.reset();
+	else
+		m_taskInfo.reset(InfoPtr);
 }
 
 TaskId TaskManager::getCurrentTaskId()
 {
-    TaskId taskId = 0;
+    TaskId taskId = -1;
     TaskInfo* taskInfo = m_taskInfo.get();
     if(taskInfo)
     {
@@ -99,7 +107,7 @@ TaskId TaskManager::getCurrentTaskId()
 
 TaskId TaskManager::getParentTaskId()
 {
-    TaskId taskId = 0;
+    TaskId taskId = -1;
     TaskInfo* taskInfo = m_taskInfo.get();
     if(taskInfo)
     {
@@ -137,12 +145,12 @@ ProcRank TaskManager::getCurrentProcessRankinTask()
     return taskInfo->pRank;
 }
 
-void TaskManager::setRootTask(TaskBase* root)
+void TaskManager::setRootTask(RootTask* root)
 {
 	m_root = root;
 }
 
-TaskBase* TaskManager::getRootTask()
+RootTask* TaskManager::getRootTask()
 {
 	return m_root;
 }

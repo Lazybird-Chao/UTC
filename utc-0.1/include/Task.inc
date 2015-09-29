@@ -1,11 +1,12 @@
 namespace iUtc{
 
 template<class T>
-Task<T>::Task( std::string name,  RankList rList)
+Task<T>::Task()
 :TaskBase()
  {
 	m_taskThreads.clear();
 	m_userTaskObjPtr = nullptr;
+	m_procOstream = nullptr;
 
 	m_threadTerminateSignal = 0;
 	m_calledRun = 0;
@@ -15,6 +16,49 @@ Task<T>::Task( std::string name,  RankList rList)
 	m_threadReady2RunCounter =0;
 	m_threadFinishRunCounter =0;
 
+	int ntasks = TaskManager::getNumTasks();
+	std::string name = "Task";
+	name.append(std::to_string(ntasks));
+	CreateTask(name, RankList(1));
+ }
+
+template<class T>
+Task<T>::Task(RankList rList)
+:TaskBase()
+ {
+	m_taskThreads.clear();
+	m_userTaskObjPtr = nullptr;
+	m_procOstream = nullptr;
+
+	m_threadTerminateSignal = 0;
+	m_calledRun = 0;
+	m_calledInit = 0;
+
+	m_threadReady2InitCounter =0;
+	m_threadReady2RunCounter =0;
+	m_threadFinishRunCounter =0;
+
+	int ntasks = TaskManager::getNumTasks();
+	std::string name = "Task";
+	name.append(std::to_string(ntasks));
+	CreateTask(name, rList);
+ }
+
+template<class T>
+Task<T>::Task( std::string name,  RankList rList)
+:TaskBase()
+ {
+	m_taskThreads.clear();
+	m_userTaskObjPtr = nullptr;
+	m_procOstream = nullptr;
+
+	m_threadTerminateSignal = 0;
+	m_calledRun = 0;
+	m_calledInit = 0;
+
+	m_threadReady2InitCounter =0;
+	m_threadReady2RunCounter =0;
+	m_threadFinishRunCounter =0;
 	CreateTask(name, rList);
  }
 
@@ -43,13 +87,18 @@ Task<T>::~Task()
 		{
 			ThreadId id = th.get_id();
 			th.join();
-			std::cout<<"thread "<<id<<" join on "<<getpid()<<std::endl;
+#ifdef USE_DEBUG_LOG
+			(*m_procOstream)<<"thread "<<id<<" join on "<<getpid()
+					<<" for ["<<m_Name<<"]"<<std::endl;
+#endif
 		}
 	}
 	m_taskThreads.clear();
 
-	if(m_numLocalThreads !=0)
-		std::cout<<"["<<m_Name<<"] destroyed on proc "<<m_processRank<<" !!!"<<std::endl;
+	//if(m_numLocalThreads !=0)
+#ifdef USE_DEBUG_LOG
+		(*m_procOstream)<<"["<<m_Name<<"] destroyed on proc "<<m_processRank<<" !!!"<<std::endl;
+#endif
 }
 
 template<class T>
@@ -107,8 +156,11 @@ void Task<T>::waitTillDone()
 
 	}
 	// m_threadFinishRunCounter =0;
-	std::cout<<"["<<m_Name<<"] complete!"<<std::endl;
+#ifdef USE_DEBUG_LOG
+	(*m_procOstream)<<"["<<m_Name<<"] complete!"<<std::endl;
+#endif
 }
+
 
 template<class T>
 int Task<T>::initImpl()
@@ -138,10 +190,14 @@ int Task<T>::runImpl()
 }
 
 template<class T>
-void Task<T>::threadImpl(ThreadRank trank)
+void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 {
-	std::cout<<"thread("<<trank<<") "<<std::this_thread::get_id()<<" start up on "
+	//
+	std::ofstream *m_threadOstream = output;
+#ifdef USE_DEBUG_LOG
+	(*m_threadOstream)<<"thread("<<trank<<") "<<std::this_thread::get_id()<<" start up on "
 			<<getpid()<<"...\n";
+#endif
 
 	// create task info in this thread TSS
 	TaskInfo* taskInfoPtr = new TaskInfo();
@@ -149,8 +205,12 @@ void Task<T>::threadImpl(ThreadRank trank)
 	taskInfoPtr->parentTaskId = m_ParentTaskId;
 	taskInfoPtr->tRank = trank;
 	taskInfoPtr->taskId = m_TaskId;
-	taskInfoPtr->threadId = std::this_thread::get_id();
+	taskInfoPtr->threadId = std::this_thread::get_id(); //same as m_LocalThreadList(local_rank)
 	TaskManager::setTaskInfo(taskInfoPtr);
+
+	ThreadPrivateData *threadPrivateData = new ThreadPrivateData();
+	threadPrivateData->threadOstream = output;
+	m_threadPrivateData.reset(threadPrivateData);
 
 	//
 	// do task.init
@@ -159,8 +219,10 @@ void Task<T>::threadImpl(ThreadRank trank)
 			[=](){return m_threadReady2InitCounter ==1;});
 	if(m_threadTerminateSignal == 1)
 	{	// wake up by terminate call, just end this thread
-		std::cout<<"thread "<<std::this_thread::get_id()<<" get terminated on "
+#ifdef USE_DEBUG_LOG
+		(*m_threadOstream)<<"thread "<<std::this_thread::get_id()<<" get terminated on "
 				<<getpid()<<"!\n";
+#endif
 		return;
 	}
 	LCK1.unlock();
@@ -177,8 +239,10 @@ void Task<T>::threadImpl(ThreadRank trank)
 				[=](){return m_threadReady2RunCounter ==1;});
 	if(m_threadTerminateSignal == 1)
 	{	// wake up by terminate call, just end this thread
-		std::cout<<"thread "<<std::this_thread::get_id()<<" get terminated on"
+#ifdef USE_DEBUG_LOG
+		(*m_threadOstream)<<"thread "<<std::this_thread::get_id()<<" get terminated on"
 						<<getpid()<<"\n";
+#endif
 		return;
 	}
 	// wake up by task.run call
@@ -193,13 +257,40 @@ void Task<T>::threadImpl(ThreadRank trank)
 	m_threadFinishRunCond.notify_one();
 	LCK3.unlock();
 
+
+	// thread exit
+	threadExit(trank);
 	return;
+}
+
+template<class T>
+void Task<T>::threadExit(ThreadRank trank)
+{
+	// clear TSS data in a thread
+	TaskManager::setTaskInfo(nullptr);
+	ThreadPrivateData *threadPrivateData = m_threadPrivateData.get();
+	std::ofstream* output = threadPrivateData->threadOstream;
+	if(output)
+	{
+		if(output->is_open())
+		{
+#ifdef USE_DEBUG_LOG
+			(*output)<<"thread("<<trank<<") "<<std::this_thread::get_id()<<" exit!\n";
+#endif
+			output->close();
+		}
+	}
+	m_threadPrivateData.reset();
 }
 
 template<class T>
 void Task<T>::CreateTask(const std::string name, const RankList rList)
 {
-	//std::cout<<"start creating ["<<name<<"] ..."<<std::endl;
+	RootTask *root = TaskManager::getRootTask();
+	m_procOstream = root->getProcOstream();
+#ifdef USE_DEBUG_LOG
+	(*m_procOstream)<<"start creating ["<<name<<"] ..."<<std::endl;
+#endif
 	// init this new task obj's info, be careful this task obj is not root task,
 	// but current program still running in main thread(or root task thread)
 	m_Name = name;
@@ -207,7 +298,6 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 	m_ParentTaskId = TaskManager::getCurrentTaskId();  // will get root task's id
 	rList.getRankListVector(m_TaskRankList);
 	m_numTotalThreads = m_TaskRankList.size();
-	TaskBase *root = TaskManager::getRootTask();
 	int currentProcRank = root->getCurrentProcRank();
 	m_processRank = currentProcRank;
 	int nProcWorld = root->getNumProcesses();
@@ -217,7 +307,7 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 	{
 		if(m_TaskRankList[i]>nProcWorld-1)
 		{
-			std::cout<<"\n*****Task ["<<m_Name<<"] mapped to non-existed processes!*****\n\n";
+			std::cout<<"\n*****Error, Task ["<<m_Name<<"] mapped to non-existed processes!*****\n\n";
 			std::exit(1);
 		}
 		plist[m_TaskRankList[i]].push_back(i);
@@ -253,27 +343,45 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 	// all task threads have launched, finish task creation
 	// register current task obj in taskmanager
 	RegisterTask();
-	//std::cout<<"finish creating ["<<name<<"]"<<std::endl;
+#ifdef USE_DEBUG_LOG
+	(*m_procOstream)<<"finish creating ["<<name<<"]"<<std::endl;
+#endif
 
 }
 
 template<class T>
 void Task<T>::LaunchThreads(std::vector<ThreadRank> &tRankList)
 {
-	std::cout<<"start launching threads for ["<<m_Name<<"] on proc "<<m_processRank
+#ifdef USE_DEBUG_LOG
+	(*m_procOstream)<<"start launching threads for ["<<m_Name<<"] on proc "<<m_processRank
 			<<"..."<<std::endl;
+#endif
 	int trank=0;
 	ThreadId id;
 	for(int i=0; i<m_numLocalThreads; i++)
 	{
 		trank=tRankList[i];
-		m_taskThreads.push_back(std::thread(&Task<T>::threadImpl, this, trank));
+#ifdef USE_DEBUG_LOG
+		std::string filename = m_Name;
+		filename.append("-thread");
+		filename.append(std::to_string(trank));
+		filename.append(".log");
+		std::ofstream *output = new std::ofstream(filename);
+		filename.clear();
+#else
+		std::ofstream *output = nullptr;
+#endif
+
+		m_ThreadRank2Local.insert(std::pair<ThreadRank, int>(trank, i));
+		m_taskThreads.push_back(std::thread(&Task<T>::threadImpl, this, trank, output));
 		id = m_taskThreads.back().get_id();
 		m_LocalThreadList.push_back(id);
 		m_LocalThreadRegistry.insert(std::pair<ThreadId, ThreadRank>(id, trank));
 	}
-	std::cout<<m_numLocalThreads<<" threads for ["<<m_Name<<"] launched on proc "<<m_processRank
+#ifdef USE_DEBUG_LOG
+	(*m_procOstream)<<m_numLocalThreads<<" threads for ["<<m_Name<<"] launched on proc "<<m_processRank
 			<<std::endl;
+#endif
 }
 
 } //namespace iUtc

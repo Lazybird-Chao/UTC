@@ -3,10 +3,14 @@
 
 #include "RankList.h"
 #include "UtcBasics.h"
+#include "TaskInfo.h"
+
 
 #include <map>
 #include <vector>
 #include <string>
+#include <boost/thread/tss.hpp>
+#include <boost/thread/thread.hpp>
 
 namespace iUtc{
 
@@ -24,6 +28,7 @@ public:
 
     int getNumProcesses();
 
+    int toLocal(ThreadRank trank);
 
     //
     int getNumLocalThreads();
@@ -36,6 +41,10 @@ public:
     bool isLocal(ThreadRank tRank);
 
     ThreadRank getThreadRankById(ThreadId tid);
+
+    static ThreadPrivateData* getThreadPrivateData();
+    static void setThreadPrivateData(ThreadPrivateData* tpd);
+
     //
     virtual ~TaskBase();
 
@@ -56,11 +65,17 @@ protected:
 
     ProcRank m_processRank;    // the current running process's rank value
 
-    std::vector<ProcRank> m_TaskRankList;
+    std::vector<ProcRank> m_TaskRankList;  //how task threads map to proc
 
     std::vector<ThreadId> m_LocalThreadList;
 
     std::map<ThreadId, ThreadRank> m_LocalThreadRegistry;
+
+    std::map<ThreadRank, int> m_ThreadRank2Local;
+
+    // output stream obj
+    std::ofstream *m_procOstream;
+    static boost::thread_specific_ptr<ThreadPrivateData> m_threadPrivateData;
 
     //
     TaskId RegisterTask();

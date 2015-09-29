@@ -15,6 +15,7 @@
 #include <vector>
 #include <map>
 #include <iostream>
+#include <fstream>
 #include <cstdlib>
 #include <cassert>
 #include <sys/types.h>
@@ -28,8 +29,9 @@ class Task: public TaskBase
 public:
 	typedef T FunctionObjectType;
 
-	Task( std::string name = "Task",
-			 RankList rList= RankList(1));
+	Task();
+	Task(RankList rList);
+	Task( std::string name , RankList rList=RankList(1));
 
 	~Task();
 
@@ -40,6 +42,10 @@ public:
 	void run();
 
 	void waitTillDone();
+
+
+	//
+
 
 protected:
 	int initImpl();
@@ -52,12 +58,16 @@ private:
 	Task(const Task&);
 	Task& operator=(const Task&);
 
-	void threadImpl(ThreadRank trank);
+	void threadImpl(ThreadRank trank, std::ofstream* output);
+
+	void threadExit(ThreadRank trank);
 
 	void CreateTask(const std::string name,
 			const RankList rList);
 
 	void LaunchThreads(std::vector<ThreadRank> &tRankList);
+
+
 
 	//
 	std::vector<std::thread> m_taskThreads;
@@ -82,9 +92,20 @@ private:
 	std::mutex m_threadFinishRunMutex;
 	std::condition_variable m_threadFinishRunCond;
 	int m_threadFinishRunCounter;
+
+
 	//
 
+
+
+
 };
+
+
+// some utility functions
+std::ofstream& getProcOstream();
+
+std::ofstream& getThreadOstream();
 
 
 } //namespace iUtc

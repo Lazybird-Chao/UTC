@@ -9,6 +9,8 @@
 //#define XFER_DEBUG
 //#define USE_RUN_FUNCTORS
 
+#define USE_DEBUG_LOG
+
 #define USE_CPLUS_THREAD_CREATION
 #if defined(USE_CPLUS_THREAD_CREATION)
     #include <thread>

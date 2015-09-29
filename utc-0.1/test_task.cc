@@ -1,5 +1,6 @@
 #include "Utc.h"
 #include <iostream>
+#include <fstream>
 #include <string>
 
 
@@ -9,17 +10,20 @@ class user_taskA{
 public:
 	user_taskA()
 	{
-		std::cout<<"hello user taskA!"<<std::endl;
+
 	}
 
 	void init()
 	{
-		std::cout<<"doing init taskA..."<<std::endl;
+		std::ofstream& output = getThreadOstream();
+		output<<"hello user taskA!"<<std::endl;
+		output<<"doing init taskA..."<<std::endl;
 	}
 
 	void run()
 	{
-		std::cout<<"doing run taskA..."<<std::endl;
+		std::ofstream& output = getThreadOstream();
+		output<<"doing run taskA..."<<std::endl;
 	}
 
 };
@@ -29,17 +33,20 @@ class user_taskB{
 public:
     user_taskB()
     {
-        std::cout<<"hello user taskB!"<<std::endl;
+
     }
 
     void init()
     {
-        std::cout<<"doing init taskB..."<<std::endl;
+    	std::ofstream& output = getThreadOstream();
+    	output<<"hello user taskB!"<<std::endl;
+        output<<"doing init taskB..."<<std::endl;
     }
 
     void run()
     {
-        std::cout<<"doing run taskB..."<<std::endl;
+    	std::ofstream& output = getThreadOstream();
+        output<<"doing run taskB..."<<std::endl;
     }
 
 };
@@ -53,7 +60,8 @@ int main(int argc, char*argv[])
     //std::cout<<"number of procs:"<<ctx.numProcs()<<std::endl;
     std::string pname;
     ctx.getProcessorName(pname);
-    std::cout<<"proc rank:"<<ctx.getProcRank()<<" processor name:"<<pname.c_str()<<std::endl;
+    std::ofstream & pout= getProcOstream();
+    pout<<"proc rank:"<<ctx.getProcRank()<<" processor name:"<<pname.c_str()<<std::endl;
 
     int t_list[2]={0,0};
     RankList r_list(2, t_list);

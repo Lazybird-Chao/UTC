@@ -22,13 +22,17 @@ namespace iUtc{
     //thread id of current thread
     ThreadId   threadId;
 
-    ThreadRank tRank;  // localRank
+    ThreadRank tRank;  // thread rank in all threads that running for a task
 
-    ProcRank pRank;    // globalRank
+    ProcRank pRank;    // process rank in all processes that a task mapped to
 
  };
 
-//std::ostream& operator<< (std::ostream& output, const TaskInfo& taskInfo);
+struct ThreadPrivateData
+{
+	 //
+	 std::ofstream *threadOstream;
+};
 
 }//namespace iUtc
 
