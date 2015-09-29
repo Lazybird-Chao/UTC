@@ -40,6 +40,7 @@ LIB_UTC := libutc.a
 test: $(LIB_UTC) main.o
 	$(G++)	-o test main.o $(CCFLAG) -lutc $(LIB)
 	mkdir -p bin; cd bin; mv ../test ./; mv ../main.o ./
+	mkdir -p log
 	@echo "make successful !!!"  
 main.o: test_task.cc
 	$(G++)	-o main.o -c test_task.cc $(CCFLAG) $(INCLUDE) 	
@@ -66,10 +67,13 @@ Task.o: Task.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 
 ###
-.PHONY: clean cleanall
+.PHONY: clean cleanall cleanlog
 clean:
 	rm -f ./bin/*.o
 	rm -f ./lib/*.o
 cleanall:
 	rm -rf ./bin
 	rm -rf ./lib
+	rm -rf ./log
+cleanlog:
+	rm -rf ./log/*.log

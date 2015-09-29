@@ -31,7 +31,7 @@ RootTask::RootTask(int WorldSize, int currentProcess)
     }
 
 #ifdef USE_DEBUG_LOG
-    std::string filename= "Proc";
+    std::string filename= "./log/Proc";
     filename.append(std::to_string(currentProcess));
     filename.append(".log");
     m_procOstream = new std::ofstream(filename);

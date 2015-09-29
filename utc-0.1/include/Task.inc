@@ -362,7 +362,8 @@ void Task<T>::LaunchThreads(std::vector<ThreadRank> &tRankList)
 	{
 		trank=tRankList[i];
 #ifdef USE_DEBUG_LOG
-		std::string filename = m_Name;
+		std::string filename = "./log/";
+		filename.append(m_Name);
 		filename.append("-thread");
 		filename.append(std::to_string(trank));
 		filename.append(".log");

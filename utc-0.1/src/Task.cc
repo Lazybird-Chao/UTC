@@ -19,7 +19,7 @@ std::ofstream& getProcOstream()
 	std::ofstream *procOstream = root->getProcOstream();
 	if(!procOstream)
 	{
-		std::string filename = "Proc";
+		std::string filename = "./log/Proc";
 		filename.append(std::to_string(root->getCurrentProcRank()));
 		filename.append(".log");
 		procOstream = new std::ofstream(filename);
@@ -41,7 +41,8 @@ std::ofstream& getThreadOstream()
 	ThreadPrivateData *tpd = TaskBase::getThreadPrivateData();
 	if(!tpd->threadOstream)
 	{
-		std::string filename = (TaskManager::getCurrentTask())->getName();
+		std::string filename = "./log/";
+		filename.append((TaskManager::getCurrentTask())->getName());
 		filename.append("-thread");
 		filename.append(std::to_string(TaskManager::getCurrentThreadRankinTask()));
 		filename.append(".log");
