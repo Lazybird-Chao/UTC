@@ -29,7 +29,7 @@ namespace iUtc{
 
             static int getNumTasks();
 
-            // these calls are TSS data related, when calling in main thread(or
+            // these methods are TSS data related, when calling in main thread(or
             // process), it's actually root task's TSS info
             static TaskInfo getTaskInfo(void);
             static void setTaskInfo(TaskInfo* InfoPtr);
@@ -49,6 +49,7 @@ namespace iUtc{
 
             static ProcRank getCurrentProcessRankinTask();
 
+            //
             static void setRootTask(RootTask *root);
             static RootTask* getRootTask();
 

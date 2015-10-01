@@ -295,7 +295,7 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 	// but current program still running in main thread(or root task thread)
 	m_Name = name;
 	m_TaskId = TaskManager::getNewTaskId();
-	m_ParentTaskId = TaskManager::getCurrentTaskId();  // will get root task's id
+	m_ParentTaskId = TaskManager::getCurrentTaskId();  // here we will get root task's id
 	rList.getRankListVector(m_TaskRankList);
 	m_numTotalThreads = m_TaskRankList.size();
 	int currentProcRank = root->getCurrentProcRank();

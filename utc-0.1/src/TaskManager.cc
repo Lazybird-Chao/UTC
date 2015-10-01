@@ -58,7 +58,7 @@ void TaskManager::unregisterTask(TaskBase* task)
     std::lock_guard<std::mutex> lock(m_mutexTaskRegistry);
     TaskId id = task->getTaskId();
     if(id)
-    {
+    {	// root will not be erased, root task id is 0
         m_TaskRegistry.erase(id);
     }
     return;
@@ -73,6 +73,7 @@ TaskId TaskManager::getNewTaskId()
 
 int TaskManager::getNumTasks()
 {
+	// will include the root task on each process
 	return m_TaskRegistry.size();
 }
 
