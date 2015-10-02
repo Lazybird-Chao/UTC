@@ -35,7 +35,7 @@ typedef  int ProcRank;
 typedef  int ThreadRank;
 typedef  int TaskId;
 typedef  int ConduitId;
-typedef  int MessageKey;
+typedef  int MessageTag;
 
 #if defined(USE_CPLUS_THREAD_CREATION)
     typedef  std::thread::id ThreadId;
@@ -50,6 +50,9 @@ typedef  int MessageKey;
 const int MAX_PROCS=32;
 const int MAX_TASKS=512;
 const int MAX_THREADS=256;
+const int MAX_CONDUIT = 1024;
+const int CONDUIT_CAPACITY_DEFAULT = 16;
+const int CONDUIT_CAPACITY_MAX = 128;
 
 
 

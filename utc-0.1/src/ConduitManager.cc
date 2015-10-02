@@ -30,7 +30,8 @@ ConduitManager::getInstance()
 		// as we only call this function at very beginning, at context startup
 		// there should not be multi-thread issue
 		// also, with c++11, the "static" local var would ensure only one thread define the obj
-		static ConduitManager cdtMgr;
+		// means there's only one var, all threads shared this,
+	    static ConduitManager cdtMgr;
 		m_InstancePtr = &cdtMgr;
 		m_ConduitIdDealer = 1;   // conduit id starts from 1
 	}
@@ -44,6 +45,12 @@ ConduitId ConduitManager::registerConduit(Conduit* cdt)
 	m_ConduitRegistry.insert(std::pair<ConduitId, Conduit*>(id, cdt));
 	return id;
 }
+void ConduitManager::registerConduit(Conduit* cdt, int id)
+{
+    std::lock_guard<std::mutex> lock(m_mutexConduitRegistry);
+    m_ConduitRegistry.insert(std::pair<ConduitId, Conduit*>(id, cdt));
+    return id;
+}
 
 void ConduitManager::unregisterConduit(Conduit* cdt)
 {
@@ -51,9 +58,16 @@ void ConduitManager::unregisterConduit(Conduit* cdt)
 	ConduitId id = cdt->getConduitId();
 	if(id)
 	{
-		m_TaskRegistry.erase(id);
+		m_TaskRegistry.erase(id);   // should check if in the map
 	}
 	return;
+
+}
+void ConduitManager::unregisterConduit(Conduit* cdt, int id)
+{
+    std::lock_guard<std::mutex> lock(m_mutexConduitRegistry);
+    m_TaskRegistry.erase(id);     // should check if in the map
+    return;
 
 }
 

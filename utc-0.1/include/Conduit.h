@@ -24,8 +24,13 @@ public:
 
 	Conduit(TaskBase* srctask, TaskBase* dsttask);
 
-	void setCapacity();
+	void setCapacity(int capacity);
 	int getCapacity();
+
+	TaskBase* getSrcTask();
+    TaskBase* getDstTask();
+    void Connect(TaskBase* src, TaskBase* dst);
+    ConduitId getConduitId();
 
 	int Write(void* DataPtr, int DataSize, int DataTag);
 	int WriteBy(ThreadRank wthread, void* DataPtr, int DataSize, int DataTag);
@@ -37,21 +42,32 @@ public:
 
 
 
+
+
 private:
-	Task<T1>* m_srcTask;
-	Task<T2>* m_dstTask;
+	//
+	TaskBase* m_srcTask;
+	TaskBase* m_dstTask;
 	TaskId m_srcId;
 	TaskId m_dstId;
 
 	int m_conduitId;
 	int m_capacity;
 
-	int m_availableMsgBuffHead;
-	int m_availableMsgBuffTail;
+	//
+	int m_srcAvailableMsgBuffHead;
+	int m_srcAvailableMsgBuffTail;
 
-	std::map<MessageKey, void*> m_msgBuffPool;
-	std::mutex m_hasMsgBuffMutex;
-	std::condition_variable m_hasMsgBuffCond;
+	std::map<MessageTag, void*> m_srcMsgBuffPool;
+	std::mutex m_srcHasMsgBuffMutex;
+	std::condition_variable m_srcHasMsgBuffCond;
+
+	int m_dstAvailableMsgBuffHead;
+    int m_dstAvailableMsgBuffTail;
+
+    std::map<MessageTag, void*> m_dstMsgBuffPool;
+    std::mutex m_dstHasMsgBuffMutex;
+    std::condition_variable m_dstHasMsgBuffCond;
 
 
 

@@ -78,7 +78,7 @@ protected:
     static boost::thread_specific_ptr<ThreadPrivateData> m_threadPrivateData;
 
     //
-    TaskId RegisterTask();
+    void RegisterTask();
 
     // can't use taskbase obj directly
     TaskBase();

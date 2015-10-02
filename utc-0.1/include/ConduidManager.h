@@ -16,8 +16,10 @@ public:
 	static ConduitManager* getInstance();
 
 	static ConduitId registerConduit(Conduit* cdt);
+	static void registerConduit(Conduit* cdt, int id);
 
 	static void unregisterConduit(Conduit* cdt);
+	static void unregisterConduit(Conduit* cdt, int id);
 
 	static ConduitId getNewConduitId();
 

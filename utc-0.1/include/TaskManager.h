@@ -22,8 +22,10 @@ namespace iUtc{
             static TaskManager* getInstance();
 
             static TaskId registerTask(TaskBase* task);
+            static void registerTask(TaskBase* task, int id);
 
             static void unregisterTask(TaskBase* task);
+            static void unregisterTask(TaskBase* task, int id);
 
             static TaskId getNewTaskId();
 

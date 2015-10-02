@@ -52,6 +52,12 @@ TaskId TaskManager::registerTask(TaskBase* task)
     m_TaskRegistry.insert(std::pair<TaskId, TaskBase*>(id, task));
     return id;
 }
+void TaskManager::registerTask(TaskBase* task, int id)
+{
+    std::lock_guard<std::mutex> lock(m_mutexTaskRegistry);
+    m_TaskRegistry.insert(std::pair<TaskId, TaskBase*>(id, task));
+    return id;
+}
 
 void TaskManager::unregisterTask(TaskBase* task)
 {
@@ -59,10 +65,19 @@ void TaskManager::unregisterTask(TaskBase* task)
     TaskId id = task->getTaskId();
     if(id)
     {	// root will not be erased, root task id is 0
-        m_TaskRegistry.erase(id);
+        m_TaskRegistry.erase(id);     // should check if in the map
     }
     return;
 }
+void TaskManager::unregisterTask(TaskBase* task, int id)
+{
+    std::lock_guard<std::mutex> lock(m_mutexTaskRegistry);
+
+    // root will not be erased, root task id is 0
+    m_TaskRegistry.erase(id);        // should check if in the map
+    return;
+}
+
 
 TaskId TaskManager::getNewTaskId()
 {

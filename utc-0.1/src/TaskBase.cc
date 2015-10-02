@@ -123,11 +123,12 @@ TaskBase::~TaskBase()
     m_ThreadRank2Local.clear();
 }
 
-TaskId TaskBase::RegisterTask()
+void TaskBase::RegisterTask()
 {
     TaskManager* mgr = UtcContext::getTaskManager();  //TaskManager::getInstance()
-    TaskId id = mgr->registerTask(this);
-    return id;
+    //TaskId id = mgr->registerTask(this);
+    mgr->registerTask(this, m_TaskId);
+    return;
 }
 
 } //namespace iUtc
