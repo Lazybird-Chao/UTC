@@ -1,5 +1,6 @@
 #include "UtcContext.h"
 #include "RootTask.h"
+#include "ConduitManager.h"
 
 namespace iUtc{
 
@@ -77,6 +78,9 @@ void UtcContext::initialize(int& argc, char** argv)
     m_rootTaskId= taskMgr->registerTask(root);
 
     taskMgr->setRootTask(root);
+
+    ConduitManager* cdtMgr = ConduitManager::getInstance(); // The very first time and only this
+    														// time to create a ConduitManager obj
 }
 
 void UtcContext::finalize()

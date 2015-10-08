@@ -12,6 +12,7 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <functional>
 #include <vector>
 #include <map>
 #include <iostream>
@@ -39,6 +40,13 @@ public:
 	//
 	void init();
 
+	template<typename T1>
+	void init(T1 arg1);
+
+	template<typename T1, typename T2>
+	void init(T1 arg1, T2 arg2);
+
+	//
 	void run();
 
 	void waitTillDone();
@@ -79,9 +87,15 @@ private:
 	int m_calledRun;
 	int m_calledInit;
 
+	//
 	std::mutex m_threadReady2InitMutex;
 	std::condition_variable m_threadReady2InitCond;
 	int m_threadReady2InitCounter;
+
+	std::mutex m_threadSyncInitMutex;
+	std::condition_variable m_threadSyncInitCond;
+	int m_threadSyncInitCounter;
+	int m_threadSyncInitCounterBar; //a pair of counter used for synch among threads
 
 	//
 	std::mutex m_threadReady2RunMutex;
@@ -95,7 +109,7 @@ private:
 
 
 	//
-
+	std::function<void()> m_userTaskInitFunctionHandle;
 
 
 
@@ -103,10 +117,15 @@ private:
 
 
 // some utility functions
-std::ofstream& getProcOstream();
+std::ofstream* getProcOstream();
 
-std::ofstream& getThreadOstream();
+std::ofstream* getThreadOstream();
 
+int getTid();
+int getTrank();
+int getPrank();
+int getLsize();
+int getGsize();
 
 } //namespace iUtc
 

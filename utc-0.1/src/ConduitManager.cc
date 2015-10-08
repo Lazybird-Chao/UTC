@@ -1,5 +1,6 @@
 #include "ConduitManager.h"
 #include "UtcBasics.h"
+#include "Conduit.h"
 
 
 namespace iUtc{
@@ -8,9 +9,9 @@ ConduitManager* ConduitManager::m_InstancePtr = nullptr;
 ConduitId ConduitManager::m_ConduitIdDealer = 0;
 std::mutex ConduitManager::m_mutexConduitRegistry;
 std::mutex ConduitManager::m_mutexConduitIdDealer;
-std::map<Conduit*, ConduitId> ConduitManager::m_ConduitRegistry;
+std::map<ConduitId, Conduit*> ConduitManager::m_ConduitRegistry;
 
-ConduitManager::ConduitManger(){}
+ConduitManager::ConduitManager(){}
 
 ConduitManager::~ConduitManager()
 {
@@ -22,7 +23,7 @@ ConduitManager::~ConduitManager()
 	}
 }
 
-ConduitManager::getInstance()
+ConduitManager* ConduitManager::getInstance()
 {
 	// Singleton instance
 	if(!m_InstancePtr)
@@ -49,7 +50,7 @@ void ConduitManager::registerConduit(Conduit* cdt, int id)
 {
     std::lock_guard<std::mutex> lock(m_mutexConduitRegistry);
     m_ConduitRegistry.insert(std::pair<ConduitId, Conduit*>(id, cdt));
-    return id;
+    return;
 }
 
 void ConduitManager::unregisterConduit(Conduit* cdt)
@@ -58,7 +59,7 @@ void ConduitManager::unregisterConduit(Conduit* cdt)
 	ConduitId id = cdt->getConduitId();
 	if(id)
 	{
-		m_TaskRegistry.erase(id);   // should check if in the map
+		m_ConduitRegistry.erase(id);   // should check if in the map
 	}
 	return;
 
@@ -66,7 +67,7 @@ void ConduitManager::unregisterConduit(Conduit* cdt)
 void ConduitManager::unregisterConduit(Conduit* cdt, int id)
 {
     std::lock_guard<std::mutex> lock(m_mutexConduitRegistry);
-    m_TaskRegistry.erase(id);     // should check if in the map
+    m_ConduitRegistry.erase(id);     // should check if in the map
     return;
 
 }
@@ -81,7 +82,7 @@ ConduitId ConduitManager::getNewConduitId()
 
 int ConduitManager::getNumConduits()
 {
-	return m_TaskRegistry.size();
+	return m_ConduitRegistry.size();
 }
 
 

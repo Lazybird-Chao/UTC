@@ -97,6 +97,13 @@ void TaskBase::setThreadPrivateData(ThreadPrivateData * tpd)
 	m_threadPrivateData.reset();
 }
 
+bool TaskBase::isActiveOnCurrentProcess()
+{
+	// return true if task has threads mapped on current process
+	return m_numLocalThreads!=0;
+}
+
+
 ///
 TaskBase::TaskBase()
 :m_Name(""),

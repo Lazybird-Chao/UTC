@@ -2,7 +2,7 @@
 #define UTC_CONDUIT_MANAGER_H_
 
 #include "UtcBasics.h"
-#include "Conduit.h"
+//#include "Conduit.h"
 
 #include <map>
 #include <mutex>
@@ -10,6 +10,9 @@
 
 
 namespace iUtc{
+
+// pre declaration
+class Conduit;
 
 class ConduitManager{
 public:

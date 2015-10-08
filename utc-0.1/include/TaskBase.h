@@ -45,6 +45,7 @@ public:
     static ThreadPrivateData* getThreadPrivateData();
     static void setThreadPrivateData(ThreadPrivateData* tpd);
 
+    bool isActiveOnCurrentProcess();
     //
     virtual ~TaskBase();
 

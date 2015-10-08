@@ -30,10 +30,11 @@ vpath %.cc ./src
 .PHONY: default
 default: test
 
-### test target
+### utc targets
 obj:= RankList.o RootTask.o \
 	  TaskBase.o TaskManager.o \
-	  UtcContext.o  UtcMpi.o  Task.o
+	  UtcContext.o  UtcMpi.o  Task.o\
+	  ConduitManager.o Conduit.o
 LIB_UTC := libutc.a
 
 	  
@@ -42,8 +43,10 @@ test: $(LIB_UTC) main.o
 	mkdir -p bin; cd bin; mv ../test ./; mv ../main.o ./
 	mkdir -p log
 	@echo "make successful !!!"  
-main.o: test_task.cc
-	$(G++)	-o main.o -c test_task.cc $(CCFLAG) $(INCLUDE) 	
+	
+## test target	
+main.o: test_conduit.cc
+	$(G++)	-o main.o -c test_conduit.cc $(CCFLAG) $(INCLUDE) 	
 
 
 
@@ -64,6 +67,10 @@ UtcContext.o:UtcContext.cc
 UtcMpi.o: UtcMpi.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)  
 Task.o: Task.cc
+	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+ConduitManager.o: ConduitManager.cc
+	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+Conduit.o: Conduit.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 
 ###

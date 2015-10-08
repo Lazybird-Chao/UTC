@@ -56,7 +56,7 @@ void TaskManager::registerTask(TaskBase* task, int id)
 {
     std::lock_guard<std::mutex> lock(m_mutexTaskRegistry);
     m_TaskRegistry.insert(std::pair<TaskId, TaskBase*>(id, task));
-    return id;
+    return;
 }
 
 void TaskManager::unregisterTask(TaskBase* task)

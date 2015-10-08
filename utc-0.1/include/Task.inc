@@ -13,6 +13,8 @@ Task<T>::Task()
 	m_calledInit = 0;
 
 	m_threadReady2InitCounter =0;
+	m_threadSyncInitCounter =0;
+	m_threadSyncInitCounterBar =0;
 	m_threadReady2RunCounter =0;
 	m_threadFinishRunCounter =0;
 
@@ -35,6 +37,8 @@ Task<T>::Task(RankList rList)
 	m_calledInit = 0;
 
 	m_threadReady2InitCounter =0;
+	m_threadSyncInitCounter =0;
+	m_threadSyncInitCounterBar =0;
 	m_threadReady2RunCounter =0;
 	m_threadFinishRunCounter =0;
 
@@ -57,6 +61,8 @@ Task<T>::Task( std::string name,  RankList rList)
 	m_calledInit = 0;
 
 	m_threadReady2InitCounter =0;
+	m_threadSyncInitCounter =0;
+	m_threadSyncInitCounterBar =0;
 	m_threadReady2RunCounter =0;
 	m_threadFinishRunCounter =0;
 	CreateTask(name, rList);
@@ -65,15 +71,18 @@ Task<T>::Task( std::string name,  RankList rList)
 template<class T>
 Task<T>::~Task()
 {
-	if(m_calledInit != 1)
+	if(m_numLocalThreads !=0)
 	{
-		m_threadTerminateSignal = 1;
-		init();
-	}
-	else if(m_calledRun != 1)
-	{
-		m_threadTerminateSignal =1 ;
-		run();
+		if(m_calledInit != 1)
+		{
+			m_threadTerminateSignal = 1;
+			initImpl();
+		}
+		else if(m_calledRun != 1)
+		{
+			m_threadTerminateSignal =1 ;
+			runImpl();
+		}
 	}
 	TaskManager::unregisterTask(this);
 	if(!m_userTaskObjPtr)
@@ -111,11 +120,46 @@ void Task<T>::init()
         return;
     }
 	m_calledInit = 1;
+	//set up user task's init function
+	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr);
 	// ask all threads to do task.init
 	initImpl();
 
-	// TODO: whether need to wait for all thread finishing task.init
-	// wait for finish and return
+	return;
+}
+template<class T>
+template<typename T1>
+void Task<T>::init(T1 arg1)
+{
+    // no task threads on this process, just return
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
+	m_calledInit = 1;
+	//set up user task's init function
+	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1);
+	// ask all threads to do task.init
+	initImpl();
+
+	return;
+}
+template<class T>
+template<typename T1, typename T2>
+void Task<T>::init(T1 arg1, T2 arg2)
+{
+    // no task threads on this process, just return
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
+	m_calledInit = 1;
+	//set up user task's init function
+	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2);
+	// ask all threads to do task.init
+	initImpl();
 
 	return;
 }
@@ -133,7 +177,6 @@ void Task<T>::run()
 	// ask all thread to do task.run
 	runImpl();
 
-	// TODO: whether need to wait for all thread finishing task.run
 }
 
 template<class T>
@@ -172,6 +215,9 @@ int Task<T>::initImpl()
 	// if there are waiting threads, notify them to do task.init
 	m_threadReady2InitCond.notify_all();
 
+	// TODO: whether need to wait for all thread finishing task.init
+	// wait for finish and return
+
 	return 0;
 }
 
@@ -186,7 +232,9 @@ int Task<T>::runImpl()
 	// notify waiting threads to do task.run
 	m_threadReady2RunCond.notify_all();
 
+	// TODO: whether need to wait for all thread finishing task.run
 
+	return 0;
 }
 
 template<class T>
@@ -196,7 +244,7 @@ void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 	std::ofstream *m_threadOstream = output;
 #ifdef USE_DEBUG_LOG
 	(*m_threadOstream)<<"thread("<<trank<<") "<<std::this_thread::get_id()<<" start up on "
-			<<getpid()<<"...\n";
+			<<getpid()<<"..."<<std::endl;
 #endif
 
 	// create task info in this thread TSS
@@ -221,17 +269,44 @@ void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 	{	// wake up by terminate call, just end this thread
 #ifdef USE_DEBUG_LOG
 		(*m_threadOstream)<<"thread "<<std::this_thread::get_id()<<" get terminated on "
-				<<getpid()<<"!\n";
+				<<getpid()<<"!"<<std::endl;
 #endif
+		threadExit(trank);
 		return;
 	}
 	LCK1.unlock();
 
+	// TODO: notifying main thread that this user task.init is finished
 
 	// call user's task.init() with user task obj
-	m_userTaskObjPtr->init();
+	// m_userTaskObjPtr->init();
+	m_userTaskInitFunctionHandle();
 
-	// TODO: notifying main thread that this user task.init is finished
+	// wait for all threads finishing init() call
+	// here is an synchronization point for task threads
+	std::unique_lock<std::mutex> LCK_initsync(m_threadSyncInitMutex);
+	while(m_threadSyncInitCounter < m_numLocalThreads)
+	{
+		m_threadSyncInitCounter++;
+		if(m_threadSyncInitCounter != m_numLocalThreads)
+		{
+			// not the last coming here thread, increase counter and wait
+			m_threadSyncInitCond.wait(LCK_initsync);
+
+		}
+		else
+		{	// last coming here thread
+			m_threadSyncInitCond.notify_all();
+		}
+	}
+	m_threadSyncInitCounterBar++;   // record one thread leave the sync point
+	if(m_threadSyncInitCounterBar==m_numLocalThreads)
+	{
+		// the last thread that finish sync, reset sync counter pair
+		m_threadSyncInitCounter=0;
+		m_threadSyncInitCounterBar =0;
+	}
+	LCK_initsync.unlock();
 
 	// do task.run
 	std::unique_lock<std::mutex> LCK2(m_threadReady2RunMutex);
@@ -241,7 +316,7 @@ void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 	{	// wake up by terminate call, just end this thread
 #ifdef USE_DEBUG_LOG
 		(*m_threadOstream)<<"thread "<<std::this_thread::get_id()<<" get terminated on"
-						<<getpid()<<"\n";
+						<<getpid()<<std::endl;
 #endif
 		return;
 	}
@@ -275,7 +350,7 @@ void Task<T>::threadExit(ThreadRank trank)
 		if(output->is_open())
 		{
 #ifdef USE_DEBUG_LOG
-			(*output)<<"thread("<<trank<<") "<<std::this_thread::get_id()<<" exit!\n";
+			(*output)<<"thread("<<trank<<") "<<std::this_thread::get_id()<<" exit!"<<std::endl;
 #endif
 			output->close();
 		}
@@ -307,7 +382,7 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 	{
 		if(m_TaskRankList[i]>nProcWorld-1)
 		{
-			std::cout<<"\n*****Error, Task ["<<m_Name<<"] mapped to non-existed processes!*****\n\n";
+			std::cout<<"\n*****Error, Task ["<<m_Name<<"] mapped to non-existed processes!*****\n"<<std::endl;
 			std::exit(1);
 		}
 		plist[m_TaskRankList[i]].push_back(i);
