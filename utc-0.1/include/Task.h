@@ -75,7 +75,7 @@ private:
 
 	void LaunchThreads(std::vector<ThreadRank> &tRankList);
 
-
+	bool hasActiveLocalThread();
 
 	//
 	std::vector<std::thread> m_taskThreads;
@@ -110,6 +110,11 @@ private:
 
 	//
 	std::function<void()> m_userTaskInitFunctionHandle;
+
+	// used for conduit to check all reated task thread finish,
+	// and can destroy the conduit
+	int m_activeLocalThreadCount;
+	std::mutex m_activeLocalThreadMutex;
 
 
 

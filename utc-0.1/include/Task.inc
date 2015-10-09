@@ -356,6 +356,8 @@ void Task<T>::threadExit(ThreadRank trank)
 		}
 	}
 	m_threadPrivateData.reset();
+	std::lock_guard<std::mutex> lock(m_activeLocalThreadMutex);
+	m_activeLocalThreadCount--;
 }
 
 template<class T>
@@ -449,15 +451,29 @@ void Task<T>::LaunchThreads(std::vector<ThreadRank> &tRankList)
 #endif
 
 		m_ThreadRank2Local.insert(std::pair<ThreadRank, int>(trank, i));
+		// crteate a thread
 		m_taskThreads.push_back(std::thread(&Task<T>::threadImpl, this, trank, output));
+		// record some info
 		id = m_taskThreads.back().get_id();
 		m_LocalThreadList.push_back(id);
 		m_LocalThreadRegistry.insert(std::pair<ThreadId, ThreadRank>(id, trank));
 	}
+	m_activeLocalThreadCount = m_numLocalThreads;
 #ifdef USE_DEBUG_LOG
 	(*m_procOstream)<<m_numLocalThreads<<" threads for ["<<m_Name<<"] launched on proc "<<m_processRank
 			<<std::endl;
 #endif
 }
+
+template<class T>
+bool Task<T>::hasActiveLocalThread()
+{
+    std::lock_guard<std::mutex> lock(m_activeLocalThreadMutex);
+    if(m_activeLocalThreadCount > 0)
+        return true;
+    else
+        return false;
+}
+
 
 } //namespace iUtc

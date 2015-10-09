@@ -128,6 +128,7 @@ void Conduit::initConduit()
 
 Conduit::~Conduit()
 {
+
 	m_cdtMgr->unregisterConduit(this, m_conduitId);
 	m_srcBuffIdx.clear();
 	m_srcBuffAccessMutex.clear();
