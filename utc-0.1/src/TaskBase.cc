@@ -2,6 +2,8 @@
 #include "TaskManager.h"
 #include "UtcContext.h"
 #include <map>
+#include <mutex>
+#include <condition_variable>
 
 namespace iUtc{
 
@@ -113,7 +115,8 @@ m_numProcesses(0),
 m_numLocalThreads(0),
 m_numTotalThreads(0),
 m_processRank(-1),
-m_procOstream(nullptr)
+m_procOstream(nullptr),
+m_activeLocalThreadCount(0)
 {
     m_TaskRankList.clear();
     m_LocalThreadList.clear();
@@ -128,6 +131,7 @@ TaskBase::~TaskBase()
     m_LocalThreadList.clear();
     m_LocalThreadRegistry.clear();
     m_ThreadRank2Local.clear();
+    m_procOstream=nullptr;
 }
 
 void TaskBase::RegisterTask()
@@ -136,6 +140,24 @@ void TaskBase::RegisterTask()
     //TaskId id = mgr->registerTask(this);
     mgr->registerTask(this, m_TaskId);
     return;
+}
+
+bool TaskBase::hasActiveLocalThread()
+{
+    std::lock_guard<std::mutex> lock(m_activeLocalThreadMutex);
+    if(m_activeLocalThreadCount > 0)
+        return true;
+    else
+        return false;
+}
+
+void TaskBase::waitLocalThreadFinish()
+{
+    std::unique_lock<std::mutex> LCK(m_activeLocalThreadMutex);
+    while(m_activeLocalThreadCount!=0)
+    {
+        m_activeLocalThreadCond.wait(LCK);
+    }
 }
 
 } //namespace iUtc

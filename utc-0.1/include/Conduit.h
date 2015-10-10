@@ -29,6 +29,7 @@ class Conduit{
 		int buffIdx = 0;
 		int callingWriteThreadCount =0;
 		int callingReadThreadCount = 0;
+		bool safeReleaseAfterRead = false;
 	};
 
 public:
@@ -70,6 +71,7 @@ public:
 
 
 	~Conduit();
+	void clear();
 
 private:
 	//
@@ -100,10 +102,10 @@ private:
 	 */
 	int m_srcAvailableBuffCount;
 	std::map<MessageTag, BuffInfo*> m_srcBuffPool;
-	// use this id to refer one buffer's access mutex and buffwritten flag
+	// use this idx to refer each buffer's access mutex and buffwritten flag
 	std::vector<int> m_srcBuffIdx;
 	std::vector<std::mutex> m_srcBuffAccessMutex;
-	/*std::vector<std::condition_variable> m_srcBuffAccessCond;*/
+	std::vector<std::condition_variable> m_srcBuffWcallbyAllCond;
 	std::vector<int> m_srcBuffWrittenFlag;
 	// used to control buffer allocate and release
 	std::mutex m_srcBuffManagerMutex;
@@ -122,7 +124,7 @@ private:
     std::map<MessageTag, BuffInfo*> m_dstBuffPool;
     std::vector<int> m_dstBuffIdx;
     std::vector<std::mutex> m_dstBuffAccessMutex;
-    /*std::vector<std::condition_varialbe> m_dstBuffAccessCond;*/
+    std::vector<std::condition_variable> m_dstBuffWcallbyAllCond;
     std::vector<int> m_dstBuffWrittenFlag;
     std::mutex m_dstBuffManagerMutex;
     std::condition_variable m_dstBuffAvailableCond;

@@ -1,6 +1,7 @@
 #include "ConduitManager.h"
 #include "UtcBasics.h"
 #include "Conduit.h"
+#include <map>
 
 
 namespace iUtc{
@@ -11,16 +12,22 @@ std::mutex ConduitManager::m_mutexConduitRegistry;
 std::mutex ConduitManager::m_mutexConduitIdDealer;
 std::map<ConduitId, Conduit*> ConduitManager::m_ConduitRegistry;
 
+std::ofstream* getProcOstream();
+
 ConduitManager::ConduitManager(){}
 
 ConduitManager::~ConduitManager()
 {
 	if(m_InstancePtr)
 	{
+	    assert(m_ConduitRegistry.size() == 0);
 		m_ConduitRegistry.clear();
 		m_InstancePtr = nullptr;
 		m_ConduitIdDealer = 0;
 	}
+#ifdef USE_DEBUG_LOG
+
+#endif
 }
 
 ConduitManager* ConduitManager::getInstance()

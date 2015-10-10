@@ -39,10 +39,14 @@ public:
 			*output<<"conduit capacity: "<<cdt_ptr->getCapacity()<<std::endl;
 
 		cdt_ptr->Write((void*)message, 100, 1);
+		cdt_ptr->Read(message2, 100,2);
+		if(!mytrank)
+		    *output<<"Received back: "<<message2<<std::endl;
 	}
 
 	Conduit *cdt_ptr;
 	char message[100] = "This is the first message I send to you!";
+	char message2[100];
 
 };
 
@@ -69,10 +73,12 @@ public:
 
         cdt_ptr->Read(message, 100, 1);
         *output<<"Received message: "<<message<<std::endl;
+        cdt_ptr->Write(message2, 100, 2);
     }
 
     Conduit *cdt_ptr;
     char message[100];
+    char message2[100]= "Hi, I got that!";
 };
 
 
@@ -80,8 +86,7 @@ int main(int argc, char*argv[])
 {
 
     UtcContext  ctx;
-    //std::cout<<"proc rank:"<<ctx.getProcRank()<<std::endl;
-    //std::cout<<"number of procs:"<<ctx.numProcs()<<std::endl;
+
     std::string pname;
     ctx.getProcessorName(pname);
     std::ofstream* pout= getProcOstream();

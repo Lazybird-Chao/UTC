@@ -1,7 +1,9 @@
 #include "Conduit.h"
 #include "ConduitManager.h"
+#include "TaskManager.h"
 #include "Task.h"
 
+#include <map>
 #include <cstdlib>
 #include <cstring>
 #include <chrono>
@@ -92,6 +94,8 @@ void Conduit::initConduit()
 	//m_srcBuffAccessMutex.clear();
 	std::vector<std::mutex> *tmp1_mutexlist = new std::vector<std::mutex>(m_capacity);
 	m_srcBuffAccessMutex.swap(*tmp1_mutexlist);
+	std::vector<std::condition_variable> *tmp1_condlist = new std::vector<std::condition_variable>(m_capacity);
+	m_srcBuffWcallbyAllCond.swap(*tmp1_condlist);
 	m_srcBuffWrittenFlag.clear();
 	for(int i = 0; i< m_capacity; i++)
 	{
@@ -106,6 +110,8 @@ void Conduit::initConduit()
 	//m_dstBuffAccessMutex.clear();
 	std::vector<std::mutex> *tmp2_mutexlist= new std::vector<std::mutex>(m_capacity);
 	m_dstBuffAccessMutex.swap(*tmp2_mutexlist);
+	std::vector<std::condition_variable> *tmp2_condlist = new std::vector<std::condition_variable>(m_capacity);
+	m_dstBuffWcallbyAllCond.swap(*tmp2_condlist);
 	m_dstBuffWrittenFlag.clear();
 	for(int i = 0; i< m_capacity; i++)
 	{
@@ -128,41 +134,70 @@ void Conduit::initConduit()
 
 Conduit::~Conduit()
 {
-
+    if(m_srcTask)
+    {
+        if(TaskManager::hasTaskItem(m_srcId))
+        {   // task not destroyed
+            if(m_srcTask->hasActiveLocalThread())
+            {
+                // there are task threads still running
+                m_srcTask->waitLocalThreadFinish();
+            }
+        }
+    }
+    if(m_dstTask)
+    {
+        if(TaskManager::hasTaskItem(m_dstId))
+            if(m_dstTask->hasActiveLocalThread())
+                m_dstTask->waitLocalThreadFinish();
+    }
+    // delete this conduit item from conduit registry
 	m_cdtMgr->unregisterConduit(this, m_conduitId);
-	m_srcBuffIdx.clear();
-	m_srcBuffAccessMutex.clear();
-	m_srcBuffWrittenFlag.clear();
-	m_dstBuffIdx.clear();
-	m_dstBuffAccessMutex.clear();
-	m_dstBuffWrittenFlag.clear();
-	for(auto& it: m_srcBuffPool)
-	{
-		if(it.second->dataPtr)
-			free(it.second->dataPtr);
-		delete it.second;
-	}
-	m_srcBuffPool.clear();
-	for(auto& it: m_dstBuffPool)
-	{
-		if(it.second->dataPtr)
-			free(it.second->dataPtr);
-		delete it.second;
-	}
-	m_dstBuffPool.clear();
-#ifdef USE_DEBUG_LOG
-	std::ofstream* procOstream = getProcOstream();
-	if(m_srcTask && m_dstTask)
-	{
-		*procOstream<<"Conduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
-				<<"] destroyed on proc "<<m_srcTask->getCurrentProcRank()<<"!!!"<<std::endl;
-	}
-	else
-	{
-		*procOstream<<"Conduit: [dummy conduit] destroyed on proc "<<m_srcTask->getCurrentProcRank()<<"!!!"<<std::endl;
-	}
-#endif
 
+	clear();
+
+}
+
+void Conduit::clear()
+{
+
+    m_srcBuffIdx.clear();
+    m_srcBuffAccessMutex.clear();
+    m_srcBuffWcallbyAllCond.clear();
+    m_srcBuffWrittenFlag.clear();
+    m_dstBuffIdx.clear();
+    m_dstBuffAccessMutex.clear();
+    m_dstBuffWcallbyAllCond.clear();
+    m_dstBuffWrittenFlag.clear();
+
+    for(std::map<MessageTag, BuffInfo*>::iterator it = m_srcBuffPool.begin();
+            it != m_srcBuffPool.end(); ++it)
+    {
+        if((it->second)->dataPtr)
+            free((it->second)->dataPtr);
+        delete it->second;
+    }
+    m_srcBuffPool.clear();
+    for(std::map<MessageTag, BuffInfo*>::iterator it = m_dstBuffPool.begin();
+            it != m_dstBuffPool.end(); ++it)
+    {
+        if((it->second)->dataPtr)
+            free((it->second)->dataPtr);
+        delete it->second;
+    }
+    m_dstBuffPool.clear();
+#ifdef USE_DEBUG_LOG
+    std::ofstream* procOstream = getProcOstream();
+    if(m_srcTask && m_dstTask)
+    {
+        *procOstream<<"Conduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
+                <<"] destroyed on proc "<<m_srcTask->getCurrentProcRank()<<"!!!"<<std::endl;
+    }
+    else
+    {
+        *procOstream<<"Conduit: [dummy conduit] destroyed on proc "<<m_srcTask->getCurrentProcRank()<<"!!!"<<std::endl;
+    }
+#endif
 }
 
 // can't change capacity after conduit is created
@@ -253,8 +288,14 @@ int Conduit::Write(void* DataPtr, int DataSize, int tag)
 				// a late coming thread, increase the calling thread count
 				count++;
 				m_srcBuffPool[tag]->callingWriteThreadCount=count;
-				LCK1.unlock();
+				if(count==m_numSrcLocalThreads)
+				{
+				    // last writer thread, notify reader they can release this buff
+				    m_srcBuffPool[tag]->safeReleaseAfterRead = true;
+				    m_srcBuffWcallbyAllCond[m_srcBuffPool[tag]->buffIdx].notify_one();
+				}
 				LCK2.unlock();
+				LCK1.unlock();
 				return 0;
 			}
 			else
@@ -267,7 +308,7 @@ int Conduit::Write(void* DataPtr, int DataSize, int tag)
 				// get buff, recheck if tag still exist, maybe he was released
 				if(m_srcBuffPool.find(tag) != m_srcBuffPool.end())
 				{
-					// still exist, this would be an error
+					// still exist, this would be an tag reuse error
 					std::cout<<"Error, tag resued!"<<std::endl;
 					LCK2.unlock();
 					LCK1.unlock();
@@ -370,11 +411,18 @@ int Conduit::Write(void* DataPtr, int DataSize, int tag)
 			// tag exist in conduit
 			int count = m_dstBuffPool[tag]->callingWriteThreadCount;
 			assert(count >=1);
+			//*m_threadOstream<<count<<"  "<<m_numDstLocalThreads<<std::endl;
 			if(count != m_numDstLocalThreads)
 			{
 				// a late coming thread, increase the calling thread count
 				count++;
 				m_dstBuffPool[tag]->callingWriteThreadCount=count;
+				if(count==m_numSrcLocalThreads)
+                {
+                    // last writer thread, notify reader they can release this buff
+				    m_dstBuffPool[tag]->safeReleaseAfterRead = true;
+                    m_dstBuffWcallbyAllCond[m_dstBuffPool[tag]->buffIdx].notify_one();
+                }
 				LCK1.unlock();
 				LCK2.unlock();
 				return 0;
@@ -448,7 +496,6 @@ int Conduit::Write(void* DataPtr, int DataSize, int tag)
 #endif
 			// wake from wait, has buff for using
 			BuffInfo* tmp_buffinfo = new BuffInfo;
-			*m_threadOstream<<"here"<<std::endl;
 			// allocate space
 			tmp_buffinfo->dataPtr = malloc(DataSize);
 			// get buff id
@@ -530,7 +577,6 @@ int Conduit::Read(void* DataPtr, int DataSize, int tag)
 		// find the tag in the pool, the msg has come, but data may not finish transfer
 		BuffInfo* tmp_buff = m_dstBuffPool[tag];
 		assert(m_dstAvailableBuffCount < m_capacity);
-		assert(m_dstBuffWrittenFlag[tmp_buff->buffIdx] == 1);
 		int count = tmp_buff->callingReadThreadCount;
 		if(count != 0)
 		{
@@ -538,21 +584,32 @@ int Conduit::Read(void* DataPtr, int DataSize, int tag)
 			// lately coming thread
 			count++;
 			m_dstBuffPool[tag]->callingReadThreadCount = count;
-			// the last thread will auto release this buffer
+			// the last thread will release this buffer
 			if(count == m_numSrcLocalThreads)
 			{
+			    // wait in case that there are  writer threads not finish
+			    // check if is safe to release
+			    while(!tmp_buff->safeReleaseAfterRead)
+			    {
+			        // there are writer threads not finish, we cannot
+			        // release buffer now, wait for them
+			        m_dstBuffWcallbyAllCond[tmp_buff->buffIdx].wait(LCK2);
+			    }
 				// Here we do the "real" release
-				free(m_dstBuffPool[tag]->dataPtr);
+			    assert(tmp_buff->dataPtr != nullptr);
+				free(tmp_buff->dataPtr);
+				tmp_buff->dataPtr = nullptr;
 				m_dstBuffWrittenFlag[tmp_buff->buffIdx] =0;
 				m_dstBuffIdx.push_back(tmp_buff->buffIdx);
 				delete tmp_buff;
 				m_dstAvailableBuffCount++;
 				m_dstBuffPool.erase(tag);
+				// a buffer released, notify writer there are available buff now
+				m_dstBuffAvailableCond.notify_one();
 			}
 			LCK1.unlock();
 			LCK2.unlock();
-			// a buffer released, notify writer there are available buff now
-			m_dstBuffAvailableCond.notify_one();
+
 			return 0;
 		}
 		else
@@ -565,8 +622,9 @@ int Conduit::Read(void* DataPtr, int DataSize, int tag)
 			m_dstBuffPool[tag]->callingReadThreadCount = count;
 			// get access lock, will block for waiting writer transferring
 			std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buff->buffIdx]);
-			// release buff manager lock to allow other thread doing read
+			// release buff manager lock to allow other thread doing read or write
 			LCK2.unlock();
+			assert(m_dstBuffWrittenFlag[tmp_buff->buffIdx] == 1);
 			// real data transfer
 			memcpy(DataPtr,tmp_buff->dataPtr, DataSize);
 			LCK3.unlock();
@@ -579,7 +637,7 @@ int Conduit::Read(void* DataPtr, int DataSize, int tag)
 	} // end if srctask
 	else if(myTaskid == m_dstId)
 	{// dst task calling read()
-		*m_threadOstream<<"dst-here"<<std::endl;
+
 		// get hold lock to block other thread, as only one thread do real read, other threads
 		// just wait that thread
 		std::unique_lock<std::mutex> LCK1(m_dstHoldOtherthreadsReadMutex);
@@ -610,7 +668,6 @@ int Conduit::Read(void* DataPtr, int DataSize, int tag)
 			// find the tag in the pool, the msg has come, but data may not finish transfer
 			BuffInfo* tmp_buff = m_srcBuffPool[tag];
 			assert(m_srcAvailableBuffCount < m_capacity);
-			assert(m_srcBuffWrittenFlag[tmp_buff->buffIdx] == 1);
 			int count = tmp_buff->callingReadThreadCount;
 			if(count != 0)
 			{
@@ -621,18 +678,24 @@ int Conduit::Read(void* DataPtr, int DataSize, int tag)
 				// the last thread will auto release this buffer
 				if(count == m_numDstLocalThreads)
 				{
+				    // wait for writer threads finish
+				    m_srcBuffWcallbyAllCond[tmp_buff->buffIdx].wait(LCK2,
+				            [=](){return tmp_buff->safeReleaseAfterRead == true;});
 					// Here we do the "real" release
-					free(m_srcBuffPool[tag]->dataPtr);
+				    assert(tmp_buff->dataPtr!=nullptr);
+					free(tmp_buff->dataPtr);
+					tmp_buff->dataPtr = nullptr;
 					m_srcBuffWrittenFlag[tmp_buff->buffIdx] =0;
 					m_srcBuffIdx.push_back(tmp_buff->buffIdx);
 					delete tmp_buff;
 					m_srcAvailableBuffCount++;
 					m_srcBuffPool.erase(tag);
+					// a buffer released, notify writer there are available buff now
+					m_srcBuffAvailableCond.notify_one();
 				}
 				LCK1.unlock();
 				LCK2.unlock();
-				// a buffer released, notify writer there are available buff now
-				m_srcBuffAvailableCond.notify_one();
+
 				return 0;
 			}
 			else
@@ -647,6 +710,7 @@ int Conduit::Read(void* DataPtr, int DataSize, int tag)
 				std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buff->buffIdx]);
 				// release buff manager lock to allow other thread doing read
 				LCK2.unlock();
+				assert(m_srcBuffWrittenFlag[tmp_buff->buffIdx] == 1);
 				// real data transfer
 				memcpy(DataPtr,tmp_buff->dataPtr, DataSize);
 				LCK3.unlock();

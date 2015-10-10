@@ -27,6 +27,8 @@ namespace iUtc{
             static void unregisterTask(TaskBase* task);
             static void unregisterTask(TaskBase* task, int id);
 
+            static bool hasTaskItem(int taskid);
+
             static TaskId getNewTaskId();
 
             static int getNumTasks();

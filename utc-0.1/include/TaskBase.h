@@ -11,6 +11,8 @@
 #include <string>
 #include <boost/thread/tss.hpp>
 #include <boost/thread/thread.hpp>
+#include <mutex>
+#include <condition_variable>
 
 namespace iUtc{
 
@@ -46,6 +48,10 @@ public:
     static void setThreadPrivateData(ThreadPrivateData* tpd);
 
     bool isActiveOnCurrentProcess();
+
+    bool hasActiveLocalThread();
+    void waitLocalThreadFinish();
+
     //
     virtual ~TaskBase();
 
@@ -80,6 +86,12 @@ protected:
 
     //
     void RegisterTask();
+
+    // used for conduit to check all reated task thread finish,
+    // and can destroy the conduit
+    int m_activeLocalThreadCount;
+    std::mutex m_activeLocalThreadMutex;
+    std::condition_variable m_activeLocalThreadCond;
 
     // can't use taskbase obj directly
     TaskBase();

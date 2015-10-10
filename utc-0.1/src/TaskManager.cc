@@ -1,6 +1,7 @@
 #include "TaskManager.h"
 #include "UtcException.h"
 #include <iostream>
+#include <cassert>
 
 namespace iUtc{
 
@@ -18,17 +19,26 @@ std::mutex TaskManager::m_mutexTaskIdDealer;
 
 boost::thread_specific_ptr<TaskInfo> TaskManager::m_taskInfo;
 
+std::ofstream* getProcOstream();
+
 TaskManager::TaskManager(){}
 
 TaskManager::~TaskManager()
 {
     if(m_InstancePtr)
     {
+        assert(m_TaskRegistry.size() ==0);
         m_TaskRegistry.clear();
         m_InstancePtr = nullptr;
         m_TaskIdDealer = 0;
+#ifdef USE_DEBUG_LOG
+    std::ofstream* procOstream = getProcOstream();
+    *procOstream<<"TaskManager destroyed!!!"<<std::endl;
+#endif
+        m_root = nullptr;
         m_taskInfo.reset();      // Be carefull of this!
     }
+
 
 }
 
@@ -76,6 +86,17 @@ void TaskManager::unregisterTask(TaskBase* task, int id)
     // root will not be erased, root task id is 0
     m_TaskRegistry.erase(id);        // should check if in the map
     return;
+}
+
+bool TaskManager::hasTaskItem(int id)
+{
+    std::lock_guard<std::mutex> lock(m_mutexTaskRegistry);
+    if(m_TaskRegistry.find(id) == m_TaskRegistry.end())
+    {
+        return false;
+    }
+    else
+        return true;
 }
 
 

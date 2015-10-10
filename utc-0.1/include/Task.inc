@@ -16,7 +16,7 @@ Task<T>::Task()
 	m_threadSyncInitCounter =0;
 	m_threadSyncInitCounterBar =0;
 	m_threadReady2RunCounter =0;
-	m_threadFinishRunCounter =0;
+
 
 	int ntasks = TaskManager::getNumTasks();
 	std::string name = "Task";
@@ -40,7 +40,7 @@ Task<T>::Task(RankList rList)
 	m_threadSyncInitCounter =0;
 	m_threadSyncInitCounterBar =0;
 	m_threadReady2RunCounter =0;
-	m_threadFinishRunCounter =0;
+
 
 	int ntasks = TaskManager::getNumTasks();
 	std::string name = "Task";
@@ -64,7 +64,7 @@ Task<T>::Task( std::string name,  RankList rList)
 	m_threadSyncInitCounter =0;
 	m_threadSyncInitCounterBar =0;
 	m_threadReady2RunCounter =0;
-	m_threadFinishRunCounter =0;
+
 	CreateTask(name, rList);
  }
 
@@ -84,10 +84,11 @@ Task<T>::~Task()
 			runImpl();
 		}
 	}
-	TaskManager::unregisterTask(this);
+
 	if(!m_userTaskObjPtr)
 	{   // will call user task class's destructor
 	    delete m_userTaskObjPtr;
+	    m_userTaskObjPtr = nullptr;
 	}
 
 	for(auto& th : m_taskThreads)
@@ -103,6 +104,8 @@ Task<T>::~Task()
 		}
 	}
 	m_taskThreads.clear();
+
+	TaskManager::unregisterTask(this, m_TaskId);
 
 	//if(m_numLocalThreads !=0)
 #ifdef USE_DEBUG_LOG
@@ -188,19 +191,11 @@ void Task<T>::waitTillDone()
     {
         return;
     }
-	if(m_calledRun != 1)
-	{
-		return;
-	}
-	std::unique_lock<std::mutex> LCK(m_threadFinishRunMutex);
-	while(m_threadFinishRunCounter != m_numLocalThreads)
-	{
-		m_threadFinishRunCond.wait(LCK);
+	// will wait all thread calling thread exit
+    waitLocalThreadFinish();
 
-	}
-	// m_threadFinishRunCounter =0;
 #ifdef USE_DEBUG_LOG
-	(*m_procOstream)<<"["<<m_Name<<"] complete!"<<std::endl;
+	(*m_procOstream)<<"["<<m_Name<<"] finish run!"<<std::endl;
 #endif
 }
 
@@ -308,6 +303,7 @@ void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 	}
 	LCK_initsync.unlock();
 
+
 	// do task.run
 	std::unique_lock<std::mutex> LCK2(m_threadReady2RunMutex);
 	m_threadReady2RunCond.wait(LCK2,
@@ -326,11 +322,7 @@ void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 	//call user's task.run()
 	m_userTaskObjPtr->run();
 
-	// notify this thread finish run
-	std::unique_lock<std::mutex> LCK3(m_threadFinishRunMutex);
-	m_threadFinishRunCounter++;
-	m_threadFinishRunCond.notify_one();
-	LCK3.unlock();
+	// TODO: notify main thread that this thread finish run
 
 
 	// thread exit
@@ -341,8 +333,9 @@ void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 template<class T>
 void Task<T>::threadExit(ThreadRank trank)
 {
-	// clear TSS data in a thread
+	// clear TSS data "m_taskInfo" defined in TaskManager
 	TaskManager::setTaskInfo(nullptr);
+
 	ThreadPrivateData *threadPrivateData = m_threadPrivateData.get();
 	std::ofstream* output = threadPrivateData->threadOstream;
 	if(output)
@@ -355,9 +348,13 @@ void Task<T>::threadExit(ThreadRank trank)
 			output->close();
 		}
 	}
-	m_threadPrivateData.reset();
-	std::lock_guard<std::mutex> lock(m_activeLocalThreadMutex);
-	m_activeLocalThreadCount--;
+	m_threadPrivateData.reset();  // clear TSS data
+
+	// reduce active thread count
+    std::lock_guard<std::mutex> lock(m_activeLocalThreadMutex);
+    m_activeLocalThreadCount--;
+    // notify if main thread are waiting for finish
+    m_activeLocalThreadCond.notify_one();
 }
 
 template<class T>
@@ -458,6 +455,8 @@ void Task<T>::LaunchThreads(std::vector<ThreadRank> &tRankList)
 		m_LocalThreadList.push_back(id);
 		m_LocalThreadRegistry.insert(std::pair<ThreadId, ThreadRank>(id, trank));
 	}
+	//
+	std::lock_guard<std::mutex> lock(m_activeLocalThreadMutex);
 	m_activeLocalThreadCount = m_numLocalThreads;
 #ifdef USE_DEBUG_LOG
 	(*m_procOstream)<<m_numLocalThreads<<" threads for ["<<m_Name<<"] launched on proc "<<m_processRank
@@ -465,15 +464,7 @@ void Task<T>::LaunchThreads(std::vector<ThreadRank> &tRankList)
 #endif
 }
 
-template<class T>
-bool Task<T>::hasActiveLocalThread()
-{
-    std::lock_guard<std::mutex> lock(m_activeLocalThreadMutex);
-    if(m_activeLocalThreadCount > 0)
-        return true;
-    else
-        return false;
-}
+
 
 
 } //namespace iUtc

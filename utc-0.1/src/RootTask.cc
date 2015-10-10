@@ -6,6 +6,7 @@
 
 
 #include <vector>
+#include <cassert>
 
 namespace iUtc{
 
@@ -18,6 +19,7 @@ RootTask::RootTask(int WorldSize, int currentProcess)
     ThreadRank tRank = 0;
     ProcRank pRank = currentProcess;
     m_TaskId = TaskManager::getNewTaskId();      // should get 0 for root
+    assert(m_TaskId ==0);
     ThreadId tid = TaskManager::getThreadId();   // main thread of current process,
                                                  // no other threads have been created yet
     m_LocalThreadList.push_back(tid);
@@ -60,6 +62,9 @@ RootTask::~RootTask()
 	{
 		if(m_procOstream->is_open())
 		{
+#ifdef USE_DEBUG_LOG
+		    *m_procOstream<<"Root Task destroyed!!!"<<std::endl;
+#endif
 			m_procOstream->close();
 		}
 	}

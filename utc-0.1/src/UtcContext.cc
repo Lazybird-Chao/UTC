@@ -90,10 +90,24 @@ void UtcContext::finalize()
     if(--m_nCount != 0)
         return;
 
+    // we use static local var to creat singleton for cdtMgr, so system will
+    // destroy it automatically, we should not delete it here.
+    /*ConduitManager* cdtMgr = ConduitManager::getInstance();
+    delete cdtMgr;*/
+
+    // we explicitly destroy taskMgr singleton here
+    // as taskMgr singleton is create by new(), it need be destryed by delete()
+    // we didn't use define static obj member inside singleton to automatically
+    // do this delete, we do it here manually
     TaskManager* taskMgr= getTaskManager();
+    taskMgr->unregisterTask(root, 0);
     delete taskMgr;
+
     delete root;
+    root = nullptr;
+
     delete Utcbase_provider;
+    Utcbase_provider = nullptr;
 }
 
 }// namespace iUtc
