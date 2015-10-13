@@ -10,7 +10,8 @@ CCFLAG := -w -g -std=c++11
 MPI_LIB :=	-pthread -Wl,-rpath -Wl,/opt/openmpi/lib -Wl,--enable-new-dtags \
 				-L/opt/openmpi/lib -lmpi_cxx -lmpi
 BOOST_LIB := /opt/boost/lib/libboost_thread.a \
-				/opt/boost/lib/libboost_system.a
+				/opt/boost/lib/libboost_system.a \
+				/opt/boost/lib/libboost_filesystem.a
 
 INCLUDE := -I/opt/openmpi/include
 INCLUDE += -I/opt/boost/include
@@ -31,22 +32,22 @@ vpath %.cc ./src
 default: test
 
 ### utc targets
-obj:= RankList.o RootTask.o \
+obj:= UtcContext.o RankList.o RootTask.o \
 	  TaskBase.o TaskManager.o \
-	  UtcContext.o  UtcMpi.o  Task.o\
+	  UtcMpi.o  Task.o\
 	  ConduitManager.o Conduit.o
 LIB_UTC := libutc.a
 
 	  
 test: $(LIB_UTC) main.o
-	$(G++)	-o test main.o $(CCFLAG) -lutc $(LIB)
-	mkdir -p bin; cd bin; mv ../test ./; mv ../main.o ./
+	$(G++)	-o a.out main.o $(CCFLAG) -lutc $(LIB)
+	mkdir -p bin; cd bin; mv ../a.out ./; mv ../main.o ./
 	mkdir -p log
 	@echo "make successful !!!"  
 	
 ## test target	
-main.o: test_conduit.cc
-	$(G++)	-o main.o -c test_conduit.cc $(CCFLAG) $(INCLUDE) 	
+main.o: ./test/test_conduit.cc
+	$(G++)	-o main.o -c ./test/test_conduit.cc $(CCFLAG) $(INCLUDE) 	
 
 
 
@@ -76,7 +77,7 @@ Conduit.o: Conduit.cc
 ###
 .PHONY: clean cleanall cleanlog
 clean:
-	rm -f ./bin/*.o
+	rm -rf ./bin/*
 	rm -f ./lib/*.o
 cleanall:
 	rm -rf ./bin

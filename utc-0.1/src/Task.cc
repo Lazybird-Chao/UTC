@@ -1,6 +1,7 @@
 #include "Task.h"
 #include "RootTask.h"
 #include <functional>
+#include "boost/filesystem.hpp"
 
 namespace iUtc{
 
@@ -20,6 +21,9 @@ std::ofstream* getProcOstream()
 	std::ofstream *procOstream = root->getProcOstream();
 	if(!procOstream)
 	{
+		boost::filesystem::path log_path("./log");
+		if(!exists(log_path))
+			boost::filesystem::create_directory(log_path);
 		std::string filename = "./log/Proc";
 		filename.append(std::to_string(root->getCurrentProcRank()));
 		filename.append(".log");
@@ -44,6 +48,9 @@ std::ofstream* getThreadOstream()
 	ThreadPrivateData *tpd = TaskBase::getThreadPrivateData();
 	if(!tpd->threadOstream)
 	{
+		boost::filesystem::path log_path("./log");
+		if(!exists(log_path))
+			boost::filesystem::create_directory(log_path);
 		std::string filename = "./log/";
 		filename.append((TaskManager::getCurrentTask())->getName());
 		filename.append("-thread");

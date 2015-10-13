@@ -10,6 +10,21 @@
 //#define USE_RUN_FUNCTORS
 
 #define USE_DEBUG_LOG
+#ifdef USE_DEBUG_LOG
+#include <chrono>
+#include <ctime>
+extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
+#define PRINT_TIME_NOW(outstream) 	{ std::chrono::system_clock::time_point t_now=\
+											std::chrono::system_clock::now();\
+									time_t tt = std::chrono::system_clock::to_time_t(t_now);\
+									char time_str[100]; \
+									std::strftime(time_str, sizeof(time_str), "%F %T", \
+												std::localtime(&tt));\
+									std::chrono::system_clock::duration dtn =\
+												t_now-SYSTEM_START_TIME;\
+									outstream<<"[SYSTEM LOG]"<<time_str<<\
+											"("<<dtn.count()<<")"<<">>>>>>>>>>:    ";}
+#endif
 
 #define USE_CPLUS_THREAD_CREATION
 #if defined(USE_CPLUS_THREAD_CREATION)

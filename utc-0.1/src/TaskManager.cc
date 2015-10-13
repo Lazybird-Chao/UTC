@@ -33,6 +33,7 @@ TaskManager::~TaskManager()
         m_TaskIdDealer = 0;
 #ifdef USE_DEBUG_LOG
     std::ofstream* procOstream = getProcOstream();
+    PRINT_TIME_NOW(*procOstream)
     *procOstream<<"TaskManager destroyed!!!"<<std::endl;
 #endif
         m_root = nullptr;

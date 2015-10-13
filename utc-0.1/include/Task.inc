@@ -98,6 +98,7 @@ Task<T>::~Task()
 			ThreadId id = th.get_id();
 			th.join();
 #ifdef USE_DEBUG_LOG
+			PRINT_TIME_NOW(*m_procOstream)
 			(*m_procOstream)<<"thread "<<id<<" join on "<<getpid()
 					<<" for ["<<m_Name<<"]"<<std::endl;
 #endif
@@ -109,6 +110,7 @@ Task<T>::~Task()
 
 	//if(m_numLocalThreads !=0)
 #ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_procOstream)
 		(*m_procOstream)<<"["<<m_Name<<"] destroyed on proc "<<m_processRank<<" !!!"<<std::endl;
 #endif
 }
@@ -195,6 +197,7 @@ void Task<T>::waitTillDone()
     waitLocalThreadFinish();
 
 #ifdef USE_DEBUG_LOG
+    PRINT_TIME_NOW(*m_procOstream)
 	(*m_procOstream)<<"["<<m_Name<<"] finish run!"<<std::endl;
 #endif
 }
@@ -238,6 +241,7 @@ void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 	//
 	std::ofstream *m_threadOstream = output;
 #ifdef USE_DEBUG_LOG
+	PRINT_TIME_NOW(*m_threadOstream)
 	(*m_threadOstream)<<"thread("<<trank<<") "<<std::this_thread::get_id()<<" start up on "
 			<<getpid()<<"..."<<std::endl;
 #endif
@@ -263,6 +267,7 @@ void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 	if(m_threadTerminateSignal == 1)
 	{	// wake up by terminate call, just end this thread
 #ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
 		(*m_threadOstream)<<"thread "<<std::this_thread::get_id()<<" get terminated on "
 				<<getpid()<<"!"<<std::endl;
 #endif
@@ -311,6 +316,7 @@ void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 	if(m_threadTerminateSignal == 1)
 	{	// wake up by terminate call, just end this thread
 #ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
 		(*m_threadOstream)<<"thread "<<std::this_thread::get_id()<<" get terminated on"
 						<<getpid()<<std::endl;
 #endif
@@ -337,15 +343,16 @@ void Task<T>::threadExit(ThreadRank trank)
 	TaskManager::setTaskInfo(nullptr);
 
 	ThreadPrivateData *threadPrivateData = m_threadPrivateData.get();
-	std::ofstream* output = threadPrivateData->threadOstream;
-	if(output)
+	std::ofstream* m_threadOstream = threadPrivateData->threadOstream;
+	if(m_threadOstream)
 	{
-		if(output->is_open())
+		if(m_threadOstream->is_open())
 		{
 #ifdef USE_DEBUG_LOG
-			(*output)<<"thread("<<trank<<") "<<std::this_thread::get_id()<<" exit!"<<std::endl;
+			PRINT_TIME_NOW(*m_threadOstream)
+			(*m_threadOstream)<<"thread("<<trank<<") "<<std::this_thread::get_id()<<" exit!"<<std::endl;
 #endif
-			output->close();
+			m_threadOstream->close();
 		}
 	}
 	m_threadPrivateData.reset();  // clear TSS data
@@ -363,6 +370,7 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 	RootTask *root = TaskManager::getRootTask();
 	m_procOstream = root->getProcOstream();
 #ifdef USE_DEBUG_LOG
+	PRINT_TIME_NOW(*m_procOstream)
 	(*m_procOstream)<<"start creating ["<<name<<"] ..."<<std::endl;
 #endif
 	// init this new task obj's info, be careful this task obj is not root task,
@@ -418,6 +426,7 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 	// register current task obj in taskmanager
 	RegisterTask();
 #ifdef USE_DEBUG_LOG
+	PRINT_TIME_NOW(*m_procOstream)
 	(*m_procOstream)<<"finish creating ["<<name<<"]"<<std::endl;
 #endif
 
@@ -427,6 +436,7 @@ template<class T>
 void Task<T>::LaunchThreads(std::vector<ThreadRank> &tRankList)
 {
 #ifdef USE_DEBUG_LOG
+	PRINT_TIME_NOW(*m_procOstream)
 	(*m_procOstream)<<"start launching threads for ["<<m_Name<<"] on proc "<<m_processRank
 			<<"..."<<std::endl;
 #endif
@@ -436,6 +446,9 @@ void Task<T>::LaunchThreads(std::vector<ThreadRank> &tRankList)
 	{
 		trank=tRankList[i];
 #ifdef USE_DEBUG_LOG
+		boost::filesystem::path log_path("./log");
+		if(!exists(log_path))
+			boost::filesystem::create_directory(log_path);
 		std::string filename = "./log/";
 		filename.append(m_Name);
 		filename.append("-thread");
@@ -459,6 +472,7 @@ void Task<T>::LaunchThreads(std::vector<ThreadRank> &tRankList)
 	std::lock_guard<std::mutex> lock(m_activeLocalThreadMutex);
 	m_activeLocalThreadCount = m_numLocalThreads;
 #ifdef USE_DEBUG_LOG
+	PRINT_TIME_NOW(*m_procOstream)
 	(*m_procOstream)<<m_numLocalThreads<<" threads for ["<<m_Name<<"] launched on proc "<<m_processRank
 			<<std::endl;
 #endif

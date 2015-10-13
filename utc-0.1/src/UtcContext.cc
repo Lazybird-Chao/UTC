@@ -2,6 +2,9 @@
 #include "RootTask.h"
 #include "ConduitManager.h"
 
+#ifdef USE_DEBUG_LOG
+	std::chrono::system_clock::time_point SYSTEM_START_TIME = std::chrono::system_clock::now();
+#endif
 namespace iUtc{
 
 UtcBase* UtcContext::Utcbase_provider=0;
@@ -59,7 +62,6 @@ void UtcContext::initialize(int& argc, char** argv)
 {
     // This initialize will only run once for the first time when creating Context obj.
     // TODO: change this class to "Singleton", even under multi thread.
-
     if(m_nCount && TaskManager::getCurrentTaskId()!= m_rootTaskId)
         return;
     if(m_nCount++!=0)

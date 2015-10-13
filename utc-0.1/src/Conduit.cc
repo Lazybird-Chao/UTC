@@ -25,6 +25,7 @@ Conduit::Conduit()
     m_capacity = CONDUIT_CAPACITY_DEFAULT;
 #ifdef USE_DEBUG_LOG
     std::ofstream *procOstream = getProcOstream();
+    PRINT_TIME_NOW(*procOstream)
 	*procOstream<<"Conduit: [dummy conduit] constructed..."<<std::endl;
 #endif
     //initConduit();   call init through connect()
@@ -52,6 +53,7 @@ Conduit::Conduit(TaskBase* srctask, TaskBase* dsttask)
     m_capacity = CONDUIT_CAPACITY_DEFAULT;
 #ifdef USE_DEBUG_LOG
 	std::ofstream* procOstream = getProcOstream();
+	PRINT_TIME_NOW(*procOstream)
 	*procOstream<<"Conduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
 				<<"] constructed..."<<std::endl;
 #endif
@@ -72,6 +74,7 @@ Conduit::Conduit(TaskBase* srctask, TaskBase* dsttask, int capacity)
     m_capacity = capacity;
 #ifdef USE_DEBUG_LOG
 	std::ofstream* procOstream = getProcOstream();
+	PRINT_TIME_NOW(*procOstream)
 	*procOstream<<"Conduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
 				<<"] constructed..."<<std::endl;
 #endif
@@ -125,6 +128,7 @@ void Conduit::initConduit()
 
 #ifdef USE_DEBUG_LOG
 	std::ofstream* procOstream = getProcOstream();
+	PRINT_TIME_NOW(*procOstream)
 	*procOstream<<"Conduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
 				<<"] initiated..."<<std::endl;
 #endif
@@ -188,6 +192,7 @@ void Conduit::clear()
     m_dstBuffPool.clear();
 #ifdef USE_DEBUG_LOG
     std::ofstream* procOstream = getProcOstream();
+    PRINT_TIME_NOW(*procOstream)
     if(m_srcTask && m_dstTask)
     {
         *procOstream<<"Conduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
@@ -242,6 +247,7 @@ void Conduit::Connect(TaskBase* src, TaskBase* dst)
     m_numDstLocalThreads = dst->getNumLocalThreads();
 #ifdef USE_DEBUG_LOG
 	std::ofstream* procOstream = getProcOstream();
+	PRINT_TIME_NOW(*procOstream)
 	*procOstream<<"Conduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
 				<<"] connected..."<<std::endl;
 #endif
@@ -275,6 +281,7 @@ int Conduit::Write(void* DataPtr, int DataSize, int tag)
 		// get manager lock to access buffer pool info
 		std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);
 #ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"src-thread "<<myThreadRank<<" call write...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
 		if(m_srcBuffPool.find(tag) != m_srcBuffPool.end())
@@ -317,6 +324,7 @@ int Conduit::Write(void* DataPtr, int DataSize, int tag)
 				else
 				{
 #ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"src-thread "<<myThreadRank<<" doing write...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
 					// just released, we can use this tag again
@@ -348,6 +356,7 @@ int Conduit::Write(void* DataPtr, int DataSize, int tag)
 					// access lock.
 					/*m_srcBuffAccessCond[tmp_buffinfo->buffId].nitify_all(); */
 #ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"src-thread "<<myThreadRank<<" finish write!:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
 				}
@@ -363,7 +372,8 @@ int Conduit::Write(void* DataPtr, int DataSize, int tag)
 				m_srcBuffAvailableCond.wait(LCK2);
 			}
 #ifdef USE_DEBUG_LOG
-		*m_threadOstream<<"src-thread "<<myThreadRank<<" doing write...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+			PRINT_TIME_NOW(*m_threadOstream)
+			*m_threadOstream<<"src-thread "<<myThreadRank<<" doing write...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
 
 			// recover from wait, has buff for using
@@ -394,6 +404,7 @@ int Conduit::Write(void* DataPtr, int DataSize, int tag)
 			LCK1.unlock();
 			/*m_srcBuffAccessCond[tmp_buffinfo->buffId].nitify_all();*/
 #ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"src-thread "<<myThreadRank<<" finish write!:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
 		}
@@ -404,6 +415,7 @@ int Conduit::Write(void* DataPtr, int DataSize, int tag)
 		std::unique_lock<std::mutex> LCK1(m_dstHoldOtherthreadsWriteMutex);
 		std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
 #ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"dst-thread "<<myThreadRank<<" call write...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
 		if(m_dstBuffPool.find(tag) != m_dstBuffPool.end())
@@ -448,6 +460,7 @@ int Conduit::Write(void* DataPtr, int DataSize, int tag)
 				else
 				{
 #ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing write...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
 					// just released, we can use this tag again
@@ -476,6 +489,7 @@ int Conduit::Write(void* DataPtr, int DataSize, int tag)
 					LCK1.unlock();
 					/*m_dstBuffAccessCond[tmp_buffinfo->buffId].nitify_all();*/
 #ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish write!:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
 				}
@@ -492,6 +506,7 @@ int Conduit::Write(void* DataPtr, int DataSize, int tag)
 			m_dstBuffAvailableCond.wait(LCK2,
 					[=](){return m_dstAvailableBuffCount !=0;});
 #ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing write...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
 			// wake from wait, has buff for using
@@ -520,6 +535,7 @@ int Conduit::Write(void* DataPtr, int DataSize, int tag)
 			LCK1.unlock();
 			/*m_dstBuffAccessCond[tmp_buffinfo->buffId].nitify_all();*/
 #ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish write!:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
 		}
@@ -558,6 +574,7 @@ int Conduit::Read(void* DataPtr, int DataSize, int tag)
 		// in src, it will read data from dst buffer, so operate on dst related mutex and cond
 		std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
 #ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"src-thread "<<myThreadRank<<" call read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
 		std::cv_status w_ret = std::cv_status::no_timeout;
@@ -615,6 +632,7 @@ int Conduit::Read(void* DataPtr, int DataSize, int tag)
 		else
 		{
 #ifdef USE_DEBUG_LOG
+	PRINT_TIME_NOW(*m_threadOstream)
 	*m_threadOstream<<"src-thread "<<myThreadRank<<" doing read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
 			// the first thread doing read()
@@ -630,7 +648,8 @@ int Conduit::Read(void* DataPtr, int DataSize, int tag)
 			LCK3.unlock();
 			LCK1.unlock();
 #ifdef USE_DEBUG_LOG
-	*m_threadOstream<<"src-thread "<<myThreadRank<<" finish read:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"src-thread "<<myThreadRank<<" finish read:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
 		}
 
@@ -645,6 +664,7 @@ int Conduit::Read(void* DataPtr, int DataSize, int tag)
 		// in src, it will read data from dst buffer, so operate on dst related mutex and cond
 		std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);
 #ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"dst-thread "<<myThreadRank<<" call read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 #endif
 		bool w_ret;
@@ -701,6 +721,7 @@ int Conduit::Read(void* DataPtr, int DataSize, int tag)
 			else
 			{
 #ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 #endif
 				// the first thread doing read()
@@ -716,6 +737,7 @@ int Conduit::Read(void* DataPtr, int DataSize, int tag)
 				LCK3.unlock();
 				LCK1.unlock();
 #ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish read:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 #endif
 			}

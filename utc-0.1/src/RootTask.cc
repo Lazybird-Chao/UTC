@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <cassert>
+#include "boost/filesystem.hpp"
 
 namespace iUtc{
 
@@ -33,6 +34,9 @@ RootTask::RootTask(int WorldSize, int currentProcess)
     }
 
 #ifdef USE_DEBUG_LOG
+    boost::filesystem::path log_path("./log");
+    if(!exists(log_path))
+    	boost::filesystem::create_directory(log_path);
     std::string filename= "./log/Proc";
     filename.append(std::to_string(currentProcess));
     filename.append(".log");
@@ -63,6 +67,7 @@ RootTask::~RootTask()
 		if(m_procOstream->is_open())
 		{
 #ifdef USE_DEBUG_LOG
+			PRINT_TIME_NOW(*m_procOstream)
 		    *m_procOstream<<"Root Task destroyed!!!"<<std::endl;
 #endif
 			m_procOstream->close();

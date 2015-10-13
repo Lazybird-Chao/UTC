@@ -21,6 +21,7 @@
 #include <cassert>
 #include <sys/types.h>
 #include <unistd.h>
+#include "boost/filesystem.hpp"
 
 namespace iUtc{
 
