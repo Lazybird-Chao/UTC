@@ -35,7 +35,7 @@ default: test
 obj:= UtcContext.o RankList.o RootTask.o \
 	  TaskBase.o TaskManager.o \
 	  UtcMpi.o  Task.o\
-	  ConduitManager.o Conduit.o
+	  ConduitManager.o Conduit.o Timer.o
 LIB_UTC := libutc.a
 
 	  
@@ -72,6 +72,8 @@ Task.o: Task.cc
 ConduitManager.o: ConduitManager.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 Conduit.o: Conduit.cc
+	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+Timer.o: Timer.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 
 ###

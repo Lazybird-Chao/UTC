@@ -70,10 +70,12 @@ public:
     {
     	std::ofstream* output = getThreadOstream();
         *output<<"doing run taskB..."<<std::endl;
-
+        Timer timer(MILLISEC);
+        timer.start();
         cdt_ptr->Read(message, 100, 1);
         *output<<"Received message: "<<message<<std::endl;
         cdt_ptr->Write(message2, 100, 2);
+        *output<<"time cost:"<<timer.stop()<<" ms"<<std::endl;
     }
 
     Conduit *cdt_ptr;
@@ -100,6 +102,9 @@ int main(int argc, char*argv[])
     Task<user_taskB> task2("Second-task", r_list2);
 
     Conduit cdt1(&task1, &task2);
+    Timer timer(MILLISEC);
+
+    timer.start();
 
     task1.init(&cdt1);
 
@@ -108,9 +113,13 @@ int main(int argc, char*argv[])
     task2.init(&cdt1);
 
     task2.run();
+    double t1 = timer.stop();
 
     task1.waitTillDone();
     task2.waitTillDone();
+    double t2 = timer.stop();
+
+    *pout<<t1<<std::endl<<t2<<std::endl;
 
     return 0;
 

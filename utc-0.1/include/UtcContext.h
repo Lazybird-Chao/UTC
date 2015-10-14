@@ -45,6 +45,10 @@ class UtcContext{
 
         static int m_nCount;    // may not be useful!
 
+        //
+        UtcContext(const UtcContext& other);
+        UtcContext& operator=(const UtcContext& other);
+
     };// class UtcContext
 }//namespace iUtc
 

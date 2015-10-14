@@ -64,8 +64,6 @@ protected:
 
 
 private:
-	Task(const Task&);
-	Task& operator=(const Task&);
 
 	void threadImpl(ThreadRank trank, std::ofstream* output);
 
@@ -115,7 +113,9 @@ private:
 	//
 	std::function<void()> m_userTaskInitFunctionHandle;
 
-
+	//
+	Task& operator=(const Task& other)=delete;
+	Task(const Task& other)=delete;
 
 };
 

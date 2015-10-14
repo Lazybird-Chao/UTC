@@ -109,9 +109,37 @@
                         Remembering in one process, for a task, all threads share same system-task obj and same user-task obj.
                         
                                          
+
+    0.1-3
+    [Update]
+        TaskBase
+        Task
+        RootTask        Add ofstream for output system debug log file. We will create a log file for
+                        each process, each task thread, and define a ofstream obj for it. User program
+                        can also get this ofstream to output info to specific file.
+                        Be careful that this ofstream is passed and used as pointer, as ofstream obj is not
+                        copiable or assignable.
+                      
         
-                               
-                    
+        
+    [New]
+        ConduitManager  Similar as TaskManager, is a singlton class. In UtcContext we will create
+                        a object instanse for this class. It will record all the conduit obj create
+                        in the program. 
+                                     
+        Conduit         Firt in-process, cross-task conduit implementation. Now we are planing to realize 3 pairs
+                        of read/write operation. Now we have realized first read/write operation.
+                        1. A conduit obj is associated with two task obj - src/dst.
+                        2. A conduit obj is shared by all task threads.
+                        3. A conduit obj is passed as pointer to user task obj.
+                        4. User task use conduit's read/write obj for read or wirte data from or to conduit.
+                        5. In current design, src read and dst write share a buffer pool, while src write and dst read
+                        share another buffer pool. So it's a full-duplex communication channel.
+                        6. Because it's in process conduit, so reader and writer share a intermediate buffer for data
+                        transfer. Shared memory communication between threads.
+                                                       
+        Timer           A timer object, that has start/stop methods to caculate a time period.
+                        We use std::chrono::steady_clock to implement this timer obj.            
                       
                         
                         

@@ -138,7 +138,9 @@ private:
     static thread_local std::ofstream *m_threadOstream;
 
 
-
+    //
+    Conduit& operator=(const Conduit &other)=delete;
+    Conduit(const Conduit &other)=delete;
 
 };
 
