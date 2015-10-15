@@ -107,8 +107,8 @@ int main()
    std::ofstream* pout= getProcOstream();
    *pout<<"proc rank:"<<ctx.getProcRank()<<" processor name:"<<pname.c_str()<<std::endl;
 
-    int t_list[4]={0,0,0,0};
-    RankList r_list(4, t_list);
+    int t_list[2]={0,0};
+    RankList r_list(2, t_list);
     Task<user_taskMM> taskMM("para-MM", r_list);
 
     Timer timer;

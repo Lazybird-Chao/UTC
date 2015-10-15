@@ -361,7 +361,7 @@ void Task<T>::threadExit(ThreadRank trank)
 	// reduce active thread count
     std::lock_guard<std::mutex> lock(m_activeLocalThreadMutex);
     m_activeLocalThreadCount--;
-    // notify if main thread are waiting for finish
+    // notify main thread which is waiting for finish
     if(m_activeLocalThreadCount == 0)
         m_activeLocalThreadCond.notify_one(); // only let last thread do notify
 }
