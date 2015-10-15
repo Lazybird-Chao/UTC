@@ -21,11 +21,11 @@ namespace iUtc{
 
             int numProcs();
 
-            int numProcs(MPI_Comm comm);
+            int numProcs(MPI::Comm &comm);
 
             int rank();
 
-            int rank(MPI_Comm comm);
+            int rank(MPI::Comm &comm);
 
             void getProcessorName(std::string& name);
 
@@ -42,7 +42,7 @@ namespace iUtc{
             int m_rank;
             int m_size;
             static char m_name[MPI_MAX_PROCESSOR_NAME];
-            char* m_mode[4] = {"MPI_THREAD_SINGLE",
+            std::string m_mode[4] = {"MPI_THREAD_SINGLE",
                                 "MPI_THREAD_FUNNELED",
                                 "MPI_THREAD_SERIALIZED",
                                 "MPI_THREAD_MULTIPLE"};

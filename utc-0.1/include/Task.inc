@@ -320,6 +320,7 @@ void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 		(*m_threadOstream)<<"thread "<<std::this_thread::get_id()<<" get terminated on"
 						<<getpid()<<std::endl;
 #endif
+		threadExit(trank);
 		return;
 	}
 	// wake up by task.run call
@@ -361,7 +362,8 @@ void Task<T>::threadExit(ThreadRank trank)
     std::lock_guard<std::mutex> lock(m_activeLocalThreadMutex);
     m_activeLocalThreadCount--;
     // notify if main thread are waiting for finish
-    m_activeLocalThreadCond.notify_one();
+    if(m_activeLocalThreadCount == 0)
+        m_activeLocalThreadCond.notify_one(); // only let last thread do notify
 }
 
 template<class T>

@@ -21,11 +21,11 @@ namespace iUtc{
         }
     }
 
-    RankList::RankList(int size, int rank)
+    RankList::RankList(int size, int procrank)
 	{
 		for(int i = 0; i < size; i++)
 		{
-			m_rankList.push_back(static_cast<RankId>(rank));
+			m_rankList.push_back(static_cast<RankId>(procrank));
 		}
 	}
 

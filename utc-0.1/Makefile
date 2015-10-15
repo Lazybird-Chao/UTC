@@ -4,7 +4,7 @@ G++ := g++
 MPICXX := mpicxx
 
 CFLAG :=
-CCFLAG := -w -g -std=c++11
+CCFLAG := -g -std=c++11
 
 ###################
 MPI_LIB :=	-pthread -Wl,-rpath -Wl,/opt/openmpi/lib -Wl,--enable-new-dtags \
@@ -46,8 +46,8 @@ test: $(LIB_UTC) main.o
 	@echo "make successful !!!"  
 	
 ## test target	
-main.o: ./test/test_conduit.cc
-	$(G++)	-o main.o -c ./test/test_conduit.cc $(CCFLAG) $(INCLUDE) 	
+main.o: ./test/test_MM2.cc
+	$(G++)	-o main.o -c ./test/test_MM2.cc $(CCFLAG) $(INCLUDE) 	
 
 
 

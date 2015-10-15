@@ -604,7 +604,7 @@ int Conduit::Read(void* DataPtr, int DataSize, int tag)
 			// the last thread will release this buffer
 			if(count == m_numSrcLocalThreads)
 			{
-			    // wait in case that there are  writer threads not finish
+			    // wait in case that there are  writer threads not finish,
 			    // check if is safe to release
 			    while(!tmp_buff->safeReleaseAfterRead)
 			    {

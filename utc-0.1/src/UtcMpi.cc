@@ -38,9 +38,9 @@ namespace iUtc{
 
             int mpi_mode;
 #ifdef  MULTIPLE_THREAD_MPI
-            mpi_mode=MPI_THREAD_MULTIPLE;
+            mpi_mode=MPI::THREAD_MULTIPLE;
 #else
-            mpi_mode=MPI_THREAD_SERIALIZED;
+            mpi_mode=MPI::THREAD_SERIALIZED;
 #endif
             int provided=0;
             //MPI_Init_thread(&argc, &argv, mpi_mode, &provided);
@@ -70,28 +70,28 @@ namespace iUtc{
         int Utc::rank()
         {
             int rank=0;
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            rank = MPI::COMM_WORLD.Get_rank();
             return rank;
         }
 
-        int Utc::rank(MPI_Comm comm)
+        int Utc::rank(MPI::Comm& comm)
         {
             int rank=0;
-            MPI_Comm_rank(comm, &rank);
+            rank = comm.Get_rank();
             return rank;
         }
 
         int Utc::numProcs()
         {
             int procs=0;
-            MPI_Comm_size(MPI_COMM_WORLD, &procs);
+            procs = MPI::COMM_WORLD.Get_size();
             return procs;
         }
 
-        int Utc::numProcs(MPI_Comm comm)
+        int Utc::numProcs(MPI::Comm& comm)
         {
             int procs=0;
-            MPI_Comm_size(comm, &procs);
+            procs = comm.Get_size();
             return procs;
         }
 
