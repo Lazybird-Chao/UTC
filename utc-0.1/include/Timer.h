@@ -3,6 +3,9 @@
 
 #include <chrono>
 
+#define TIME_CLOCK  std::chrono::steady_clock
+//#define TIME_CLOCK  std::chrono::high_resolution_clock
+//#define TIME_CLOCK  std::chrono::system_clock
 
 namespace iUtc{
 
@@ -19,7 +22,7 @@ class Timer
 {
 public:
 
-	typedef std::chrono::steady_clock::time_point TimerValue;
+	typedef TIME_CLOCK::time_point TimerValue;
 
 	Timer(Timer_unit tu=SECONDS);
 
@@ -39,8 +42,8 @@ public:
 
 
 private:
-	std::chrono::steady_clock::time_point m_beginTimePoint;
-	std::chrono::steady_clock::time_point m_endTimePoint;
+	TIME_CLOCK::time_point m_beginTimePoint;
+	TIME_CLOCK::time_point m_endTimePoint;
 
 	double m_retTimeperiod;
 	double m_ratio2sec;

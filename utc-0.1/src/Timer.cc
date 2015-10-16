@@ -33,23 +33,23 @@ Timer::Timer(Timer_unit tu)
 		m_ratio2sec = 1;
 		break;
 	}
-	m_ratio2sec= m_ratio2sec*std::chrono::steady_clock::period::num / std::chrono::steady_clock::period::den;
+	m_ratio2sec= m_ratio2sec*TIME_CLOCK::period::num / TIME_CLOCK::period::den;
 
 }
 
 void Timer::start()
 {
-	m_beginTimePoint = std::chrono::steady_clock::now();
+	m_beginTimePoint = TIME_CLOCK::now();
 	//m_started = true;
 }
 void Timer::start(TimerValue& tv_out)
 {
-	tv_out = m_beginTimePoint = std::chrono::steady_clock::now();
+	tv_out = m_beginTimePoint = TIME_CLOCK::now();
 }
 
 double Timer::stop()
 {
-	m_endTimePoint = std::chrono::steady_clock::now();
+	m_endTimePoint = TIME_CLOCK::now();
 	/*if(m_started)
 	{
 		m_retTimevalue = (std::chrono::duration_cast<std::chrono::duration<double>>\
@@ -61,13 +61,13 @@ double Timer::stop()
 }
 double Timer::stop(TimerValue &tv_out)
 {
-	tv_out = m_endTimePoint = std::chrono::steady_clock::now();
+	tv_out = m_endTimePoint = TIME_CLOCK::now();
 	m_retTimeperiod=m_ratio2sec * (m_endTimePoint-m_beginTimePoint).count();
 	return m_retTimeperiod;
 }
 double Timer::stop(TimerValue& tv_in, TimerValue& tv_out)
 {
-	tv_out = m_endTimePoint = std::chrono::steady_clock::now();
+	tv_out = m_endTimePoint = TIME_CLOCK::now();
 	m_retTimeperiod=m_ratio2sec * (m_endTimePoint-tv_in).count();
 	return m_retTimeperiod;
 }

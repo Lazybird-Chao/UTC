@@ -58,7 +58,35 @@ void user_taskMM::run()
     *output<<"thread "<<mytrank<<" start computing: "<<std::endl;
     Timer timer;
     timer.start();
-    for(int n= 0; n< nthreads; n++)
+
+    float *A = new float[local_sizex*size_N];
+    float *B = new float[size_N*size_N];
+    float *C = new float[local_sizex*size_N];
+    for(int i=0; i< local_sizex; i++)
+    {
+	for(int j=0; j<size_N; j++)
+	{
+	    A[i*size_N+j] = (float)rand()/size_N;
+	    B[i*size_N+j] = (float)rand()/size_N;
+	}
+    }
+    timer.start();
+    for(int i=0; i<local_sizex; i++)
+    {
+        for(int j=0; j<size_N; j++)
+        {
+            float tmp =0.0;
+            for(int k=0; k<size_N; k++)
+            {
+                tmp += A[i*size_N + k]*B[j*size_N + k];
+            }
+            C[i*size_N + j]= tmp;
+            
+        }
+    }
+    double t1 = timer.stop();
+
+    /*for(int n= 0; n< nthreads; n++)
     {
         *output<<"\t computing sub MM["<<mytrank<<" "<<n<<"]..."<<std::endl;
         for(int i = 0; i<local_sizex; i++)
@@ -106,12 +134,43 @@ int main()
     ctx.getProcessorName(pname);
    std::ofstream* pout= getProcOstream();
    *pout<<"proc rank:"<<ctx.getProcRank()<<" processor name:"<<pname.c_str()<<std::endl;
+    Timer timer;
 
-    int t_list[2]={0,0};
+    int local_sizex = size_N/2;
+    float *A = new float[size_N*size_N];
+    float *B = new float[size_N*size_N];
+    float *C = new float[size_N*size_N];
+    for(int i=0; i< size_N; i++)
+    {
+	for(int j=0; j<size_N; j++)
+	{
+	    A[i*size_N+j] = (float)rand()/size_N;
+	    B[i*size_N+j] = (float)rand()/size_N;
+	}
+    }
+    timer.start();
+    for(int i=0; i<local_sizex; i++)
+    {
+        for(int j=0; j<size_N; j++)
+        {
+            float tmp =0.0;
+            for(int k=0; k<size_N; k++)
+            {
+                tmp += A[i*size_N + k]*B[j*size_N + k];
+            }
+            C[i*size_N + j]= tmp;
+            
+        }
+    }
+    double t3 = timer.stop();
+    std::cout<<t3<<std::endl;
+
+
+   /* int t_list[2]={0,0};
     RankList r_list(2, t_list);
     Task<user_taskMM> taskMM("para-MM", r_list);
 
-    Timer timer;
+    
     taskMM.init();
 
     timer.start();
@@ -123,6 +182,22 @@ int main()
 
     *pout<<"time1: "<< t1<<" s"<<std::endl;
     *pout<<"time2: "<< t2<<" s"<<std::endl;
+    */
+    timer.start();
+    for(int i=0; i<size_N; i++)
+    {
+        for(int j=0; j<size_N; j++)
+        {
+            float tmp = 0.0;
+            for(int k=0; k<size_N; k++)
+            {
+                tmp = A[i*size_N + k]*B[j*size_N +k];
+            }
+            C[i*size_N + j]= tmp;
+        }
+    }
+    t3 = timer.stop();    
+    std::cout<<t3<<std::endl;
 
     return 0;
 }
