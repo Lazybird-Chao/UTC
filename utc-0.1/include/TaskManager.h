@@ -35,7 +35,7 @@ namespace iUtc{
 
             // these methods are TSS data related, when calling in main thread(or
             // process), it's actually root task's TSS info
-            static TaskInfo getTaskInfo(void);
+            static TaskInfo* getTaskInfo(void);
             static void setTaskInfo(TaskInfo* InfoPtr);
 
             static TaskId getCurrentTaskId();
@@ -46,12 +46,15 @@ namespace iUtc{
 
             static TaskBase* getParentTask();
 
-            //
             static ThreadId getThreadId();
 
             static ThreadRank getCurrentThreadRankinTask();
 
             static ProcRank getCurrentProcessRankinTask();
+#ifdef USE_MPI_BASE
+            static MPI_Comm* getCurrentTaskComm();
+            static MPI_Group* getCurrentTaskmpiGroup();
+#endif
 
             //
             static void setRootTask(RootTask *root);

@@ -96,7 +96,7 @@ ThreadPrivateData* TaskBase::getThreadPrivateData()
 
 void TaskBase::setThreadPrivateData(ThreadPrivateData * tpd)
 {
-	m_threadPrivateData.reset();
+	m_threadPrivateData.reset(tpd);
 }
 
 bool TaskBase::isActiveOnCurrentProcess()

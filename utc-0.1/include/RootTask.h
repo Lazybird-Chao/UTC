@@ -2,6 +2,7 @@
 #define UTC_ROOTTASK_H_
 
 #include "TaskBase.h"
+#include "Barrier.h"
 
 #include <vector>
 #include <fstream>
@@ -23,11 +24,22 @@ namespace iUtc{
 
         std::ofstream* getProcOstream();
         void setProcOstream(std::ofstream& procOstream);
+#ifdef USE_MPI_BASE
+        MPI_Comm* getWorldComm();
+        MPI_Group* getWorldGroup();
+#endif
 
     protected:
+        Barrier * m_barrierObjPtr;
+
+#ifdef USE_MPI_BASE
+        MPI_Comm m_comm;
+        MPI_Group m_mpigroup;
+#endif
+
         RootTask(); //default constructor is disabled
 
-        //std::ofstream *m_procOstream;  move to taskbase
+        //std::ofstream *m_procOstream;  //move to taskbase
 
     };//class RootTask
 

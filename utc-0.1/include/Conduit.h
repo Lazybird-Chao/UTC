@@ -133,7 +133,7 @@ private:
     std::mutex m_dstHoldOtherthreadsReadMutex;
 
     // the max time period in second that reader wait for writer transferring data
-    int TIME_OUT = 10;
+    int TIME_OUT = 100;
     // output debug log to specific file
     static thread_local std::ofstream *m_threadOstream;
 

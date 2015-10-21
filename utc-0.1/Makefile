@@ -35,7 +35,8 @@ default: test
 obj:= UtcContext.o RankList.o RootTask.o \
 	  TaskBase.o TaskManager.o \
 	  UtcMpi.o  Task.o\
-	  ConduitManager.o Conduit.o Timer.o
+	  ConduitManager.o Conduit.o Timer.o\
+	  Barrier.o
 LIB_UTC := libutc.a
 
 	  
@@ -46,8 +47,8 @@ test: $(LIB_UTC) main.o
 	@echo "make successful !!!"  
 	
 ## test target	
-main.o: ./test/test_MM1.cc
-	$(G++)	-o main.o -c ./test/test_MM1.cc $(CCFLAG) $(INCLUDE) 	
+main.o: ./test/test_inprocess_conduit_pingpong.cc
+	$(G++)	-o main.o -c ./test/test_inprocess_conduit_pingpong.cc $(CCFLAG) $(INCLUDE) 	
 
 
 
@@ -74,6 +75,8 @@ ConduitManager.o: ConduitManager.cc
 Conduit.o: Conduit.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 Timer.o: Timer.cc
+	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+Barrier.o: Barrier.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 
 ###

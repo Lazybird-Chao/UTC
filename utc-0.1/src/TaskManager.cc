@@ -115,12 +115,11 @@ int TaskManager::getNumTasks()
 }
 
 
-TaskInfo TaskManager::getTaskInfo(void)
+TaskInfo* TaskManager::getTaskInfo(void)
 {
     TaskInfo* taskInfo = m_taskInfo.get();
 
-    if(taskInfo)
-        return *taskInfo;
+    return taskInfo;
 }
 
 void TaskManager::setTaskInfo(TaskInfo* InfoPtr)
@@ -182,6 +181,21 @@ ProcRank TaskManager::getCurrentProcessRankinTask()
     TaskInfo* taskInfo = m_taskInfo.get();
     return taskInfo->pRank;
 }
+
+#ifdef USE_MPI_BASE
+MPI_Comm* TaskManager::getCurrentTaskComm()
+{
+	TaskInfo* taskInfo = m_taskInfo.get();
+	return taskInfo->commPtr;
+}
+
+MPI_Group* TaskManager::getCurrentTaskmpiGroup()
+{
+	TaskInfo* taskInfo = m_taskInfo.get();
+	return taskInfo->mpigroupPtr;
+}
+#endif
+
 
 void TaskManager::setRootTask(RootTask* root)
 {

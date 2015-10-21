@@ -7,14 +7,15 @@ Task<T>::Task()
 	m_taskThreads.clear();
 	m_userTaskObjPtr = nullptr;
 	m_procOstream = nullptr;
+	m_taskBarrierObjPtr = nullptr;
 
 	m_threadTerminateSignal = 0;
 	m_calledRun = 0;
 	m_calledInit = 0;
 
 	m_threadReady2InitCounter =0;
-	m_threadSyncInitCounter =0;
-	m_threadSyncInitCounterBar =0;
+	m_threadSyncInitCounterComing =0;
+	m_threadSyncInitCounterLeaving =0;
 	m_threadReady2RunCounter =0;
 
 
@@ -31,14 +32,15 @@ Task<T>::Task(RankList rList)
 	m_taskThreads.clear();
 	m_userTaskObjPtr = nullptr;
 	m_procOstream = nullptr;
+	m_taskBarrierObjPtr = nullptr;
 
 	m_threadTerminateSignal = 0;
 	m_calledRun = 0;
 	m_calledInit = 0;
 
 	m_threadReady2InitCounter =0;
-	m_threadSyncInitCounter =0;
-	m_threadSyncInitCounterBar =0;
+	m_threadSyncInitCounterComing =0;
+	m_threadSyncInitCounterLeaving =0;
 	m_threadReady2RunCounter =0;
 
 
@@ -55,14 +57,15 @@ Task<T>::Task( std::string name,  RankList rList)
 	m_taskThreads.clear();
 	m_userTaskObjPtr = nullptr;
 	m_procOstream = nullptr;
+	m_taskBarrierObjPtr = nullptr;
 
 	m_threadTerminateSignal = 0;
 	m_calledRun = 0;
 	m_calledInit = 0;
 
 	m_threadReady2InitCounter =0;
-	m_threadSyncInitCounter =0;
-	m_threadSyncInitCounterBar =0;
+	m_threadSyncInitCounterComing =0;
+	m_threadSyncInitCounterLeaving =0;
 	m_threadReady2RunCounter =0;
 
 	CreateTask(name, rList);
@@ -83,6 +86,12 @@ Task<T>::~Task()
 			m_threadTerminateSignal =1 ;
 			runImpl();
 		}
+	}
+
+	if(!m_taskBarrierObjPtr)
+	{
+		delete m_taskBarrierObjPtr;
+		m_taskBarrierObjPtr=nullptr;
 	}
 
 	if(!m_userTaskObjPtr)
@@ -253,6 +262,11 @@ void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 	taskInfoPtr->tRank = trank;
 	taskInfoPtr->taskId = m_TaskId;
 	taskInfoPtr->threadId = std::this_thread::get_id(); //same as m_LocalThreadList(local_rank)
+	taskInfoPtr->barrierObjPtr = m_taskBarrierObjPtr;
+#ifdef USE_MPI_BASE
+	taskInfoPtr->commPtr = &m_taskComm;
+	taskInfoPtr->mpigroupPtr = &m_taskmpiGroup;
+#endif
 	TaskManager::setTaskInfo(taskInfoPtr);
 
 	ThreadPrivateData *threadPrivateData = new ThreadPrivateData();
@@ -282,13 +296,13 @@ void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 	// m_userTaskObjPtr->init();
 	m_userTaskInitFunctionHandle();
 
-	// wait for all threads finishing init() call
+	// wait for all threads finishing init() call,
 	// here is an synchronization point for task threads
 	std::unique_lock<std::mutex> LCK_initsync(m_threadSyncInitMutex);
-	while(m_threadSyncInitCounter < m_numLocalThreads)
+	while(m_threadSyncInitCounterComing < m_numLocalThreads)
 	{
-		m_threadSyncInitCounter++;
-		if(m_threadSyncInitCounter != m_numLocalThreads)
+		m_threadSyncInitCounterComing++;
+		if(m_threadSyncInitCounterComing != m_numLocalThreads)
 		{
 			// not the last coming here thread, increase counter and wait
 			m_threadSyncInitCond.wait(LCK_initsync);
@@ -299,12 +313,12 @@ void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 			m_threadSyncInitCond.notify_all();
 		}
 	}
-	m_threadSyncInitCounterBar++;   // record one thread leave the sync point
-	if(m_threadSyncInitCounterBar==m_numLocalThreads)
+	m_threadSyncInitCounterLeaving++;   // record one thread leave the sync point
+	if(m_threadSyncInitCounterLeaving==m_numLocalThreads)
 	{
 		// the last thread that finish sync, reset sync counter pair
-		m_threadSyncInitCounter=0;
-		m_threadSyncInitCounterBar =0;
+		m_threadSyncInitCounterComing=0;
+		m_threadSyncInitCounterLeaving =0;
 	}
 	LCK_initsync.unlock();
 
@@ -398,15 +412,23 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 	}
 	m_numProcesses = 0;
 	m_numLocalThreads = 0;
+	int *inc_rank = new int[nProcWorld];
 	for(int i=0; i<nProcWorld; i++)
 	{
 		if(plist[i].size() != 0)
+		{
+			inc_rank[m_numProcesses]= i;
 			m_numProcesses++;
+		}
 		if(currentProcRank == i)	// task has threads mapped to current process
 		{
 			m_numLocalThreads = plist[i].size();
 		}
 	}
+#ifdef USE_MPI_BASE
+	MPI_Group_incl(*(root->getWorldGroup()), m_numProcesses, inc_rank, &m_taskmpiGroup);
+	MPI_Comm_create(*(root->getWorldComm()), m_taskmpiGroup, &m_taskComm);
+#endif
 
 	// create obj of user defined task class"T". With this design all threads in
 	// one process will share this user taskobj, the data members of the this obj
@@ -418,7 +440,11 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 	    // will call user task class's constructor
 	    m_userTaskObjPtr = new T;
 	}
-
+	if(m_numLocalThreads!=0)
+	{
+		// create the barrier object in a task
+		m_taskBarrierObjPtr = new Barrier(m_numLocalThreads, m_TaskId);
+	}
 	if(m_numLocalThreads!=0)  // there are threads need to be created on current process
 	{
 		LaunchThreads(plist[currentProcRank]);
@@ -442,6 +468,10 @@ void Task<T>::LaunchThreads(std::vector<ThreadRank> &tRankList)
 	(*m_procOstream)<<"start launching threads for ["<<m_Name<<"] on proc "<<m_processRank
 			<<"..."<<std::endl;
 #endif
+	//
+	std::unique_lock<std::mutex> LCK(m_activeLocalThreadMutex);
+	m_activeLocalThreadCount = m_numLocalThreads;
+	LCK.unlock();
 	int trank=0;
 	ThreadId id;
 	for(int i=0; i<m_numLocalThreads; i++)
@@ -470,9 +500,7 @@ void Task<T>::LaunchThreads(std::vector<ThreadRank> &tRankList)
 		m_LocalThreadList.push_back(id);
 		m_LocalThreadRegistry.insert(std::pair<ThreadId, ThreadRank>(id, trank));
 	}
-	//
-	std::lock_guard<std::mutex> lock(m_activeLocalThreadMutex);
-	m_activeLocalThreadCount = m_numLocalThreads;
+
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_procOstream)
 	(*m_procOstream)<<m_numLocalThreads<<" threads for ["<<m_Name<<"] launched on proc "<<m_processRank

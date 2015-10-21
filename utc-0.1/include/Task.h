@@ -8,6 +8,7 @@
 #include "TaskBase.h"
 #include "RankList.h"
 #include "UtcException.h"
+#include "Barrier.h"
 
 #include <thread>
 #include <mutex>
@@ -64,7 +65,7 @@ protected:
 
 
 private:
-
+	//
 	void threadImpl(ThreadRank trank, std::ofstream* output);
 
 	void threadExit(ThreadRank trank);
@@ -78,6 +79,17 @@ private:
 	//
 	std::vector<std::thread> m_taskThreads;
 
+	// barrier obj, shared by all threads in one task
+	Barrier *m_taskBarrierObjPtr;
+
+	// mpi comm related obj
+#ifdef USE_MPI_BASE
+	MPI_Comm m_taskComm;
+	MPI_Group m_taskmpiGroup;
+#endif
+
+
+	// user task obj, shared by all threads in one task
 	T *m_userTaskObjPtr;
 
 	//
@@ -96,8 +108,8 @@ private:
 
 	std::mutex m_threadSyncInitMutex;
 	std::condition_variable m_threadSyncInitCond;
-	int m_threadSyncInitCounter;
-	int m_threadSyncInitCounterBar; //a pair of counter used for synch among threads
+	int m_threadSyncInitCounterComing;
+	int m_threadSyncInitCounterLeaving; //a pair of counter used for synch among threads
 
 	//
 	std::mutex m_threadReady2RunMutex;
@@ -121,15 +133,24 @@ private:
 
 
 // some utility functions
-std::ofstream* getProcOstream();
 
+// get the process's output file stream
+std::ofstream* getProcOstream();
+// get the task thread's output file stream
 std::ofstream* getThreadOstream();
 
+// return the current thread system id
 int getTid();
+// return the current thread rank in the task
 int getTrank();
+// return the current process rank
 int getPrank();
+// return the number of task threads in one process
 int getLsize();
+// return the number of task threads of the task
 int getGsize();
+
+
 
 } //namespace iUtc
 

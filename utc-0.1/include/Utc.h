@@ -7,7 +7,7 @@
 //A
 
 //B
-
+#include "Barrier.h"
 //C
 #include "ConduitManager.h"
 #include "Conduit.h"

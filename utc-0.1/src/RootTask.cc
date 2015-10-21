@@ -45,12 +45,21 @@ RootTask::RootTask(int WorldSize, int currentProcess)
     m_procOstream = nullptr;
 #endif
 
+    // create TaskInfo structure
     TaskInfo* taskInfoPtr = new TaskInfo();
     taskInfoPtr->pRank = pRank;
     taskInfoPtr->parentTaskId = m_ParentTaskId;
     taskInfoPtr->tRank = tRank;
     taskInfoPtr->taskId = m_TaskId;
     taskInfoPtr->threadId = tid;
+    m_barrierObjPtr = new Barrier(1, 0);
+    taskInfoPtr->barrierObjPtr = m_barrierObjPtr;
+#ifdef USE_MPI_BASE
+    MPI_Comm_group(MPI_COMM_WORLD, &m_mpigroup);
+    m_comm = MPI_COMM_WORLD;
+    taskInfoPtr->commPtr = &m_comm;
+    taskInfoPtr->mpigroupPtr = &m_mpigroup;
+#endif
     TaskManager::setTaskInfo(taskInfoPtr);    // reside in main thread of current process, same as
                                               // TaskManager instance, only one instance in current
                                               // process.
@@ -73,6 +82,7 @@ RootTask::~RootTask()
 			m_procOstream->close();
 		}
 	}
+	delete m_barrierObjPtr;
     return;
 }
 
@@ -85,5 +95,17 @@ void RootTask::setProcOstream(std::ofstream& procOstream)
 {
 	m_procOstream = &procOstream;
 }
+
+#ifdef USE_MPI_BASE
+MPI_Comm* RootTask::getWorldComm()
+{
+	return &m_comm;
+}
+
+MPI_Group* RootTask::getWorldGroup()
+{
+	return &m_mpigroup;
+}
+#endif
 
 } //namespace iUtc

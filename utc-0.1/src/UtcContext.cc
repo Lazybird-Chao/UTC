@@ -77,6 +77,7 @@ void UtcContext::initialize(int& argc, char** argv)
 
     root= new RootTask(nProcs, pRank);          // The very first time and only this time to create a
                                                 // RootTask instance in current process.
+
     m_rootTaskId= taskMgr->registerTask(root);
 
     taskMgr->setRootTask(root);
