@@ -46,6 +46,7 @@ public:
 
 	TaskBase* getSrcTask();
     TaskBase* getDstTask();
+    TaskBase* getAnotherTask();
     void Connect(TaskBase* src, TaskBase* dst);
     ConduitId getConduitId();
 

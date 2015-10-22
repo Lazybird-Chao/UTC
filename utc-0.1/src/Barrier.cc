@@ -20,8 +20,11 @@ Barrier::Barrier(int numLocalThreads, int taskid)
 {
 	m_numLocalThreads = numLocalThreads;
 	m_taskId = taskid;
-	m_intraThreadSyncCounterComing = 0;
-	m_intraThreadSyncCounterLeaving = 0;
+	m_intraThreadSyncCounterComing[0] = m_intraThreadSyncCounterComing[1]=0;
+	m_intraThreadSyncCounterLeaving[0] = m_intraThreadSyncCounterLeaving[1] = 0;
+	m_countIdx = (int*)malloc(sizeof(int)*numLocalThreads);
+	for(int i=0; i<numLocalThreads; i++)
+		m_countIdx[i] = 0;
 }
 #ifdef USE_MPI_BASE
 Barrier::Barrier(int numLocalThreads, int taskid, MPI_Comm *comm)
@@ -29,55 +32,63 @@ Barrier::Barrier(int numLocalThreads, int taskid, MPI_Comm *comm)
 	m_numLocalThreads = numLocalThreads;
 	m_taskId = taskid;
 	m_taskCommPtr = comm;
-	m_intraThreadSyncCounterComing = 0;
-	m_intraThreadSyncCounterLeaving = 0;
+	m_intraThreadSyncCounterComing[0] = m_intraThreadSyncCounterComing[1]=0;
+	m_intraThreadSyncCounterLeaving[0] = m_intraThreadSyncCounterLeaving[1] = 0;
+	m_countIdx = (int*)malloc(sizeof(int)*numLocalThreads);
+	for(int i=0; i<numLocalThreads; i++)
+		m_countIdx[i] = 0;
+
 }
 #endif
 
 Barrier::~Barrier()
 {
-	m_intraThreadSyncCounterComing = 0;
-	m_intraThreadSyncCounterLeaving = 0;
+	m_intraThreadSyncCounterComing[0] = m_intraThreadSyncCounterComing[1]=0;
+	m_intraThreadSyncCounterLeaving[0] = m_intraThreadSyncCounterLeaving[1] = 0;
+	if(m_countIdx)
+		free(m_countIdx);
 }
 
-void Barrier::synch_intra()
+void Barrier::synch_intra(int local_rank)
 {
-
 	std::unique_lock<std::mutex> LCK1(m_intraThreadSyncMutex);
+
 	// wait for all thread coming here
-	m_intraThreadSyncCounterComing++;
-	if(m_intraThreadSyncCounterComing == m_numLocalThreads)
+	m_intraThreadSyncCounterComing[m_countIdx[local_rank]]++;
+	if(m_intraThreadSyncCounterComing[m_countIdx[local_rank]] == m_numLocalThreads)
 	{
 		// last coming thread do notify
 		m_intraThreadSyncCond.notify_all();
-		//
-		m_intraThreadSyncCounterLeaving++;
-		LCK1.unlock();
+		assert(m_intraThreadSyncCounterLeaving[m_countIdx[local_rank]] == 0);
 	}
 	else
 	{
 		// early coming thread do wait
 		m_intraThreadSyncCond.wait(LCK1,
-					[=](){return m_intraThreadSyncCounterComing == m_numLocalThreads;});
+					[=](){return m_intraThreadSyncCounterComing[m_countIdx[local_rank]] == m_numLocalThreads;});
 		//
-		m_intraThreadSyncCounterLeaving++;
-		if(m_intraThreadSyncCounterLeaving==m_numLocalThreads)
-		{
-			// last leaving thread reset counter value
-			m_intraThreadSyncCounterComing = 0;
-			m_intraThreadSyncCounterLeaving = 0;
-		}
-		LCK1.unlock();
 	}
+
+	m_intraThreadSyncCounterLeaving[m_countIdx[local_rank]]++;
+	if(m_intraThreadSyncCounterLeaving[m_countIdx[local_rank]]==m_numLocalThreads)
+	{
+		// last leaving thread reset counter value
+		m_intraThreadSyncCounterComing[m_countIdx[local_rank]] = 0;
+		m_intraThreadSyncCounterLeaving[m_countIdx[local_rank]] = 0;
+
+	}
+	// rotate idx value to use another counter for next barrier op
+	m_countIdx[local_rank] = (m_countIdx[local_rank]+1)%2;
+	LCK1.unlock();
 
 }
 
-void Barrier::synch_inter()
+void Barrier::synch_inter(int local_rank)
 {
 	std::unique_lock<std::mutex> LCK1(m_intraThreadSyncMutex);
-	// wait for all thread coming here
-	m_intraThreadSyncCounterComing++;
-	if(m_intraThreadSyncCounterComing == m_numLocalThreads)
+	// wait for all local thread coming here
+	m_intraThreadSyncCounterComing[m_countIdx[local_rank]]++;
+	if(m_intraThreadSyncCounterComing[m_countIdx[local_rank]] == m_numLocalThreads)
 	{
 		// last coming thread
 		// before notify, wait for other processes coming to this point
@@ -87,35 +98,39 @@ void Barrier::synch_inter()
 #endif
 		//do notify
 		m_intraThreadSyncCond.notify_all();
-		//
-		assert(m_intraThreadSyncCounterLeaving == 0);
-		m_intraThreadSyncCounterLeaving++;
-		LCK1.unlock();
+		assert(m_intraThreadSyncCounterLeaving[m_countIdx[local_rank]] == 0);
+
 	}
 	else
 	{
 		// early coming thread do wait
 		m_intraThreadSyncCond.wait(LCK1,
-					[=](){return m_intraThreadSyncCounterComing == m_numLocalThreads;});
-		//
-		m_intraThreadSyncCounterLeaving++;
-		if(m_intraThreadSyncCounterLeaving==m_numLocalThreads)
-		{
-			// last leaving thread reset counter value
-			m_intraThreadSyncCounterComing = 0;
-			m_intraThreadSyncCounterLeaving = 0;
-		}
-		LCK1.unlock();
+					[=](){return m_intraThreadSyncCounterComing[m_countIdx[local_rank]] == m_numLocalThreads;});
 	}
 
+	//
+	m_intraThreadSyncCounterLeaving[m_countIdx[local_rank]]++;
+	if(m_intraThreadSyncCounterLeaving[m_countIdx[local_rank]]==m_numLocalThreads)
+	{
+		// last leaving thread reset counter value
+		m_intraThreadSyncCounterComing[m_countIdx[local_rank]] = 0;
+		m_intraThreadSyncCounterLeaving[m_countIdx[local_rank]] = 0;
+	}
+	m_countIdx[local_rank] = (m_countIdx[local_rank]+1)%2;
+	LCK1.unlock();
+
+
 }
+
 
 void intra_Barrier()
 {
 	static thread_local Barrier *taskBarrierPtr  = nullptr;
 	if(!taskBarrierPtr)
 		taskBarrierPtr = TaskManager::getTaskInfo()->barrierObjPtr;
-
+	static thread_local int local_rank =-1;
+	if(local_rank ==-1)
+		local_rank = TaskManager::getCurrentTask()->toLocal(TaskManager::getCurrentThreadRankinTask());
 #ifdef USE_DEBUG_LOG
 	std::ofstream *m_threadOstream = getThreadOstream();
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -123,7 +138,7 @@ void intra_Barrier()
 				" comes to intra sync point."<<std::endl;
 #endif
 
-	taskBarrierPtr->synch_intra();
+	taskBarrierPtr->synch_intra(local_rank);
 
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -137,7 +152,9 @@ void inter_Barrier()
 	static thread_local Barrier *taskBarrierPtr  = nullptr;
 	if(!taskBarrierPtr)
 		taskBarrierPtr = TaskManager::getTaskInfo()->barrierObjPtr;
-
+	static thread_local int local_rank =-1;
+		if(local_rank ==-1)
+			local_rank = TaskManager::getCurrentTask()->toLocal(TaskManager::getCurrentThreadRankinTask());
 #ifdef USE_DEBUG_LOG
 	std::ofstream *m_threadOstream = getThreadOstream();
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -145,7 +162,7 @@ void inter_Barrier()
 				" comes to inter sync point."<<std::endl;
 #endif
 
-	taskBarrierPtr->synch_inter();
+	taskBarrierPtr->synch_inter(local_rank);
 
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)

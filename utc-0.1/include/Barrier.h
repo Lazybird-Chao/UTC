@@ -23,9 +23,10 @@ public:
 	~Barrier();
 
 	// synch among threads in one process
-	void synch_intra();
+	void synch_intra(int local_rank);
 	// synch among threads in a task, including all threads
-	void synch_inter();
+	void synch_inter(int local_rank);
+
 
 private:
 	Barrier(const Barrier& other) = delete;
@@ -41,15 +42,19 @@ private:
 	int m_numLocalThreads;
 	std::mutex m_intraThreadSyncMutex;
 	std::condition_variable m_intraThreadSyncCond;
-	int m_intraThreadSyncCounterComing;
-	int m_intraThreadSyncCounterLeaving;
 
+	int m_intraThreadSyncCounterComing[2];
+	int m_intraThreadSyncCounterLeaving[2];
+
+	int *m_countIdx;
 
 };
 
 
 // utility functions
 void intra_Barrier();
+
+void inter_Barrier();
 
 
 }// namespace iUtc

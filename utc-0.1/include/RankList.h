@@ -19,7 +19,7 @@ namespace iUtc{
 
         /// \brief Constructor
         /// Construct a RankList, a number of ranks.  A ThreadRankList containing
-        /// 0 to size-1 will be constructed.
+        /// 0  will be constructed.
         RankList(int size);
         RankList(int size, int rank);
 

@@ -4,6 +4,8 @@
 
 using namespace iUtc;
 
+#define SIZE (1024*1024)
+
 class user_taskA{
 public:
 	void init(Conduit *cdt)
@@ -18,12 +20,12 @@ public:
 		}
 		if(getTrank() ==0)
 		{
-			message_out = new float[1024*1024];
-			for(int i=0; i<1024*1024; i++)
+			message_out = new float[SIZE];
+			for(int i=0; i<SIZE; i++)
 			{
 				message_out[i]= i;
 			}
-			message_in = new float[1024*1024];
+			message_in = new float[SIZE];
 		}
 
 	}
@@ -33,13 +35,15 @@ public:
 		std::ofstream* output = getThreadOstream();
 		int mytrank = getTrank();
 		*output<<"taskA do pingpong test..."<<std::endl;
-		for(int i=1; i<=1024*1024; i=i*4)
+		for(int i=1; i<=SIZE; i=i*4)
 		{
 			*output<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
 			if(!mytrank)
 				std::cout<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
 			cdt_ptr->Write(message_out, i*sizeof(float), i);
 			cdt_ptr->Read(message_in, i*sizeof(float), i);
+
+			intra_Barrier();
 		}
 
 	}
@@ -62,12 +66,12 @@ public:
 		}
 		if(getTrank() ==0)
 		{
-			message_out = new float[1024*1024];
-			for(int i=0; i<1024*1024; i++)
+			message_out = new float[SIZE];
+			for(int i=0; i<SIZE; i++)
 			{
 				message_out[i]= -1*i;
 			}
-			message_in = new float[1024*1024];
+			message_in = new float[SIZE];
 		}
 
 	}
@@ -77,11 +81,13 @@ public:
 		std::ofstream* output = getThreadOstream();
 		int mytrank = getTrank();
 		*output<<"taskB do pingpong test..."<<std::endl;
-		for(int i=1; i<=1024*1024; i=i*4)
+		for(int i=1; i<=SIZE; i=i*4)
 		{
 			*output<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
 			cdt_ptr->Read(message_in, i*sizeof(float), i);
 			cdt_ptr->Write(message_out, i*sizeof(float), i);
+
+			intra_Barrier();
 		}
 	}
 	Conduit *cdt_ptr;
@@ -98,7 +104,7 @@ int main()
 	std::ofstream* pout= getProcOstream();
 	*pout<<"proc rank:"<<ctx.getProcRank()<<" processor name:"<<pname.c_str()<<std::endl;
 
-	RankList r_list1(1);
+	RankList r_list1(5);
 	Task<user_taskA> task1("ping", r_list1);
 	Task<user_taskB> task2("pong", r_list1);
 	Conduit cdt1(&task1, &task2);
