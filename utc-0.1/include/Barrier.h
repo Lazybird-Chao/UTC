@@ -43,9 +43,9 @@ private:
 	std::mutex m_intraThreadSyncMutex;
 	std::condition_variable m_intraThreadSyncCond;
 
-	int m_intraThreadSyncCounterComing[2];
+	int m_intraThreadSyncCounterComing[2]; // two counters for rotate
 	int m_intraThreadSyncCounterLeaving[2];
-
+	// local thread i use m_countIdx[i] to specify which counter to use
 	int *m_countIdx;
 
 };
