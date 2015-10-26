@@ -67,7 +67,7 @@ const int MAX_TASKS=512;
 const int MAX_THREADS=256;
 const int MAX_CONDUIT = 1024;
 const int CONDUIT_CAPACITY_DEFAULT = 4;
-const int CONDUIT_CAPACITY_MAX = 128;
+const int CONDUIT_CAPACITY_MAX = 32;
 
 
 
