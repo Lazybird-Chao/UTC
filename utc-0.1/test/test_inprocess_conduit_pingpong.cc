@@ -43,7 +43,7 @@ public:
 			cdt_ptr->Write(message_out, i*sizeof(float), i);
 			cdt_ptr->Read(message_in, i*sizeof(float), i);
 
-			intra_Barrier();
+			//intra_Barrier();
 		}
 
 	}
@@ -87,7 +87,7 @@ public:
 			cdt_ptr->Read(message_in, i*sizeof(float), i);
 			cdt_ptr->Write(message_out, i*sizeof(float), i);
 
-			intra_Barrier();
+			//intra_Barrier();
 		}
 	}
 	Conduit *cdt_ptr;
@@ -104,7 +104,7 @@ int main()
 	std::ofstream* pout= getProcOstream();
 	*pout<<"proc rank:"<<ctx.getProcRank()<<" processor name:"<<pname.c_str()<<std::endl;
 
-	RankList r_list1(2);
+	RankList r_list1(1);
 	Task<user_taskA> task1("ping", r_list1);
 	Task<user_taskB> task2("pong", r_list1);
 	Conduit cdt1(&task1, &task2);

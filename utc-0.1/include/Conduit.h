@@ -130,7 +130,7 @@ private:
 	//  used by late coming thread to wait the real write op finish, and first coming thread will
 	//  use for notify
 	std::condition_variable m_srcWriteOpFinishCond;
-	std::condition_variable m_srcReadOpFinishCond
+	std::condition_variable m_srcReadOpFinishCond;
 
 
 	int m_dstAvailableBuffCount;

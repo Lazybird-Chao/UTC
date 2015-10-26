@@ -135,7 +135,7 @@ void intra_Barrier()
 	std::ofstream *m_threadOstream = getThreadOstream();
 	PRINT_TIME_NOW(*m_threadOstream)
 	*m_threadOstream<<"thread "<<TaskManager::getCurrentThreadRankinTask()<<
-				" comes to intra sync point."<<std::endl;
+				" comes to intra sync point."<<local_rank<<std::endl;
 #endif
 
 	taskBarrierPtr->synch_intra(local_rank);

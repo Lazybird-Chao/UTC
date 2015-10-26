@@ -112,7 +112,25 @@ void Conduit::initConduit()
 		m_srcBuffIdx.push_back(i);
 		m_srcBuffWrittenFlag.push_back(0);
 	}
-
+	m_srcWriteOpRotateCounter = new int[m_capacity+1];
+	m_srcReadOpRotateCounter = new int[m_capacity +1];
+	m_srcWriteOpRotateFinishFlag = new int[m_capacity+1];
+	m_srcReadOpRotateFinishFlag = new int[m_capacity+1];
+	for(int i =0;i<m_capacity+1; i++)
+	{
+		m_srcWriteOpRotateCounter[i]=0;
+		m_srcReadOpRotateCounter[i]=0;
+		m_srcWriteOpRotateFinishFlag[i]=0;
+		m_srcReadOpRotateFinishFlag[i]=0;
+	}
+	m_srcWriteOpRotateCounterIdx = new int[m_srcTask->getNumTotalThreads()];
+	//actually only use the local threads in one process, other thread pos is not used
+	m_srcReadOpRotateCounterIdx = new int[m_srcTask->getNumTotalThreads()];
+	for(int i =0; i<m_srcTask->getNumTotalThreads();i++)
+	{
+		m_srcWriteOpRotateCounterIdx[i] = 0;
+		m_srcReadOpRotateCounterIdx[i]=0;
+	}
 	m_dstAvailableBuffCount = m_capacity;
 	m_dstAvailableBuffCount = m_capacity;
 	m_dstBuffPool.clear();
@@ -128,7 +146,24 @@ void Conduit::initConduit()
 		m_dstBuffIdx.push_back(i);
 		m_dstBuffWrittenFlag.push_back(0);
 	}
-
+	m_dstWriteOpRotateCounter = new int[m_capacity+1];
+	m_dstReadOpRotateCounter = new int[m_capacity +1];
+	m_dstWriteOpRotateFinishFlag = new int[m_capacity+1];
+	m_dstReadOpRotateFinishFlag = new int[m_capacity+1];
+	for(int i =0;i<m_capacity+1; i++)
+	{
+		m_dstWriteOpRotateCounter[i]=0;
+		m_dstReadOpRotateCounter[i]=0;
+		m_dstWriteOpRotateFinishFlag[i]=0;
+		m_dstReadOpRotateFinishFlag[i]=0;
+	}
+	m_dstWriteOpRotateCounterIdx = new int[m_dstTask->getNumTotalThreads()];
+	m_dstReadOpRotateCounterIdx = new int[m_dstTask->getNumTotalThreads()];
+	for(int i =0; i<m_dstTask->getNumTotalThreads();i++)
+	{
+		m_dstWriteOpRotateCounterIdx[i] = 0;
+		m_dstReadOpRotateCounterIdx[i]=0;
+	}
 	ConduitManager* cdtMgr = ConduitManager::getInstance();
 	m_cdtMgr = cdtMgr;
 	cdtMgr->registerConduit(this, m_conduitId);
@@ -176,10 +211,22 @@ void Conduit::clear()
     m_srcBuffAccessMutex.clear();
     m_srcBuffWcallbyAllCond.clear();
     m_srcBuffWrittenFlag.clear();
+    delete m_srcWriteOpRotateCounter;
+    delete m_srcReadOpRotateCounter;
+    delete m_srcWriteOpRotateCounterIdx;
+    delete m_srcReadOpRotateCounterIdx;
+    delete m_srcWriteOpRotateFinishFlag;
+    delete m_srcReadOpRotateFinishFlag;
     m_dstBuffIdx.clear();
     m_dstBuffAccessMutex.clear();
     m_dstBuffWcallbyAllCond.clear();
     m_dstBuffWrittenFlag.clear();
+    delete m_dstWriteOpRotateCounter;
+    delete m_dstReadOpRotateCounter;
+    delete m_dstWriteOpRotateCounterIdx;
+    delete m_dstReadOpRotateCounterIdx;
+    delete m_dstWriteOpRotateFinishFlag;
+    delete m_dstReadOpRotateFinishFlag;
 
     for(std::map<MessageTag, BuffInfo*>::iterator it = m_srcBuffPool.begin();
             it != m_srcBuffPool.end(); ++it)
@@ -331,6 +378,14 @@ int Conduit::Write(void *DataPtr, int DataSize, int tag)
 				// last thread that will leave this write, reset counter and flag value
 				m_srcWriteOpRotateFinishFlag[counteridx] = 0;
 				m_srcWriteOpRotateCounter[counteridx] = 0;
+#ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"src-thread "<<myThreadRank<<" exit write...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+#endif
+				// update counter idx to next one
+				m_srcWriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_capacity+1);
+				LCK1.unlock();
+
 				// last thread update some info related with the buff inserted to buffpool
 				std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);  		///////////////// TODO: may use buffer's access mutex
 				assert(m_srcBuffPool.find(tag) != m_srcBuffPool.end());
@@ -342,21 +397,25 @@ int Conduit::Write(void *DataPtr, int DataSize, int tag)
 				m_srcBuffWcallbyAllCond[m_srcBuffPool[tag]->buffIdx].notify_one();
 				LCK2.unlock();
 			}
+			else
+			{
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"src-thread "<<myThreadRank<<" exit write...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
-			// update counter idx to next one
-			m_srcWriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_capacity+1);
-			LCK1.unlock();
+				// update counter idx to next one
+				m_srcWriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_capacity+1);
+				LCK1.unlock();
+			}
 			return 0;
 
 		}
 		else
 		{
+			LCK1.unlock();
 			// the first coming thread, who will do real write
 			std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);
-			LCK1.unlock();
+
 			// check if there is available buff
 			while(m_srcAvailableBuffCount == 0)
 			{
@@ -387,7 +446,8 @@ int Conduit::Write(void *DataPtr, int DataSize, int tag)
 				// set count to 1
 				tmp_buffinfo->callingWriteThreadCount = 1;
 				if(m_numSrcLocalThreads == 1)
-				{	// only one local thread, set this flag here, no chance going to late coming thread process
+				{
+					// only one local thread, set this flag here, no chance going to late coming thread process
 					tmp_buffinfo->safeReleaseAfterRead = true;
 				}
 				// insert this buff to buffpool
@@ -463,6 +523,14 @@ int Conduit::Write(void *DataPtr, int DataSize, int tag)
 				// last thread that will leave this write, reset counter and flag value
 				m_dstWriteOpRotateFinishFlag[counteridx] = 0;
 				m_dstWriteOpRotateCounter[counteridx] = 0;
+#ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"dst-thread "<<myThreadRank<<" exit write...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+#endif
+				// update counter idx to next one
+				m_dstWriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_capacity+1);
+				LCK1.unlock();
+
 				// last thread update some info related with the buff inserted to buffpool
 				std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
 				////////// TODO: may use access mutex, then no need to race this manager mutex, but reader side who will check safe release flag
@@ -473,24 +541,28 @@ int Conduit::Write(void *DataPtr, int DataSize, int tag)
 				m_dstBuffPool[tag]->callingWriteThreadCount = m_numDstLocalThreads;
 				m_dstBuffPool[tag]->safeReleaseAfterRead = true;
 				// in case there is reader thread waiting for this to release buff
-				m_dstBuffWcallbyAllCond[m_srcBuffPool[tag]->buffIdx].notify_one();
+				m_dstBuffWcallbyAllCond[m_dstBuffPool[tag]->buffIdx].notify_one();
 				LCK2.unlock();
 			}
+			else
+			{
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"dst-thread "<<myThreadRank<<" exit write...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
-			// update counter idx to next one
-			m_dstWriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_capacity+1);
-			LCK1.unlock();
+				// update counter idx to next one
+				m_dstWriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_capacity+1);
+				LCK1.unlock();
+			}
 			return 0;
 
 		}
 		else
 		{
+			LCK1.unlock();
 			// the first coming thread, who will do real write
 			std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
-			LCK1.unlock();
+
 			// check if there is available buff
 			while(m_dstAvailableBuffCount == 0)
 			{
@@ -618,19 +690,21 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
 				// last read thread that is leaving
 				m_srcReadOpRotateCounter[counteridx]=0;
 				m_srcReadOpRotateFinishFlag[counteridx] = 0;
+				// update counter idx to next one
+				m_srcReadOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_capacity +1);
+				// avoid prohibiting other threads go on their reading while this thread is waiting
+				LCK1.unlock();
 
 				std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
 				assert(m_dstBuffPool.find(tag) != m_dstBuffPool.end());
 				assert(m_dstBuffPool[tag]->callingReadThreadCount == 1);
 				// last read thread will release the buff
 				BuffInfo *tmp_buff = m_dstBuffPool[tag];
-				LCK1.unlock(); 			// avoid prohibiting other threads go on their reading while this thread is waiting
 				while(tmp_buff->safeReleaseAfterRead == false)
 				{
 					m_dstBuffWcallbyAllCond[tmp_buff->buffIdx].wait(LCK2);
 
 				}
-				LCK1.lock();
 				assert(tmp_buff->dataPtr!=nullptr);
 				free(tmp_buff->dataPtr);
 				tmp_buff->dataPtr = nullptr;
@@ -643,22 +717,25 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
 				m_dstBuffAvailableCond.notify_one();
 				LCK2.unlock();
 			}
+			else
+			{
+				// update counter idx to next one
+				m_srcReadOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_capacity +1);
+				LCK1.unlock();
+			}
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"src-thread "<<myThreadRank<<" exit read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
-			// update counter idx to next one
-			m_srcReadOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_capacity +1);
-			LCK1.unlock();
 			return 0;
 		}// end late coming read thread
 		else
 		{
 			// the first coming thread, do real read
-			std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
 			LCK1.unlock();
+			std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
 			std::cv_status w_ret = std::cv_status::no_timeout;
-			while(m_dstBuffPool.find[tag] == m_dstBuffPool.end())
+			while(m_dstBuffPool.find(tag) == m_dstBuffPool.end())
 			{
 				// no tag in buffpool, means the message hasn't come yet
 				// wait for writer insert the message to conduit buffpool
@@ -691,20 +768,20 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
 			// the first thread finish real read need change the readfinishflag
 			LCK1.lock();
 			assert(m_srcReadOpRotateFinishFlag[counteridx] ==0);
-			m_srcReadOpRotateFinishFlag[counteridx]++;
 			if(m_numSrcLocalThreads ==1)
 			{
-				// only one local thread read, need release buff after read
+				// only one local thread read
 				m_srcReadOpRotateCounter[counteridx] = 0;
-				m_srcReadOpRotateFinishFlag[counteridx] = 0;
-
-				LCK2.lock();
+				//m_srcReadOpRotateFinishFlag[counteridx] = 0;
+				m_srcReadOpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_capacity+1);
 				LCK1.unlock();
+
+				//need release buff after read
+				LCK2.lock();
 				while(tmp_buff->safeReleaseAfterRead == false)
 				{
 					m_dstBuffWcallbyAllCond[tmp_buff->buffIdx].wait(LCK2);
 				}
-				LCK1.lock();
 				assert(tmp_buff->dataPtr!=nullptr);
 				free(tmp_buff->dataPtr);
 				tmp_buff->dataPtr = nullptr;
@@ -718,15 +795,19 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
 				LCK2.unlock();
 
 			}
+			else
+			{
+				m_srcReadOpRotateFinishFlag[counteridx]++;
+				m_srcReadOpFinishCond.notify_all();
+				m_srcReadOpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_capacity+1);
+				LCK1.unlock();
+			}
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"src-thread "<<myThreadRank<<" finish read:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
-			m_srcReadOpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_capacity+1);
-			m_srcReadOpFinishCond.notify_all();
-			LCK1.unlock();
-			return 0;
 
+			return 0;
 		}// end real read
 
 	}// end src read
@@ -757,19 +838,21 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
 				// last read thread that is leaving
 				m_dstReadOpRotateCounter[counteridx]=0;
 				m_dstReadOpRotateFinishFlag[counteridx] = 0;
+				// update counter idx to next one
+				m_dstReadOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_capacity +1);
+				LCK1.unlock();
 
+				// also need do the buff release
 				std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);
 				assert(m_srcBuffPool.find(tag) != m_srcBuffPool.end());
 				assert(m_srcBuffPool[tag]->callingReadThreadCount == 1);
 				// last read thread will release the buff
 				BuffInfo *tmp_buff = m_srcBuffPool[tag];
-				LCK1.unlock(); 			// avoid prohibiting other threads go on their reading while this thread is waiting
 				while(tmp_buff->safeReleaseAfterRead == false)
 				{
 					m_srcBuffWcallbyAllCond[tmp_buff->buffIdx].wait(LCK2);
 
 				}
-				LCK1.lock();
 				assert(tmp_buff->dataPtr!=nullptr);
 				free(tmp_buff->dataPtr);
 				tmp_buff->dataPtr = nullptr;
@@ -782,22 +865,25 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
 				m_srcBuffAvailableCond.notify_one();
 				LCK2.unlock();
 			}
+			else
+			{
+				// update counter idx to next one
+				m_dstReadOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_capacity +1);
+				LCK1.unlock();
+			}
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"dst-thread "<<myThreadRank<<" exit read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 #endif
-			// update counter idx to next one
-			m_dstReadOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_capacity +1);
-			LCK1.unlock();
 			return 0;
 		}// end late coming read thread
 		else
 		{
 			// the first coming thread, do real read
-			std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);
 			LCK1.unlock();
+			std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);
 			std::cv_status w_ret = std::cv_status::no_timeout;
-			while(m_srcBuffPool.find[tag] == m_srcBuffPool.end())
+			while(m_srcBuffPool.find(tag) == m_srcBuffPool.end())
 			{
 				// no tag in buffpool, means the message hasn't come yet
 				// wait for writer insert the message to conduit buffpool
@@ -830,20 +916,20 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
 			// the first thread finish real read need change the readfinishflag
 			LCK1.lock();
 			assert(m_dstReadOpRotateFinishFlag[counteridx] ==0);
-			m_dstReadOpRotateFinishFlag[counteridx]++;
 			if(m_numDstLocalThreads ==1)
 			{
-				// only one local thread read, need release buff after read
+				// only one local thread read
 				m_dstReadOpRotateCounter[counteridx] = 0;
-				m_dstReadOpRotateFinishFlag[counteridx] = 0;
-
-				LCK2.lock();
+				//m_dstReadOpRotateFinishFlag[counteridx] = 0;
+				m_dstReadOpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_capacity+1);
 				LCK1.unlock();
+
+				// need release buff after read
+				LCK2.lock();
 				while(tmp_buff->safeReleaseAfterRead == false)
 				{
 					m_srcBuffWcallbyAllCond[tmp_buff->buffIdx].wait(LCK2);
 				}
-				LCK1.lock();
 				assert(tmp_buff->dataPtr!=nullptr);
 				free(tmp_buff->dataPtr);
 				tmp_buff->dataPtr = nullptr;
@@ -857,13 +943,17 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
 				LCK2.unlock();
 
 			}
+			else
+			{
+				m_dstReadOpRotateFinishFlag[counteridx]++;
+				m_dstReadOpFinishCond.notify_all();
+				m_dstReadOpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_capacity+1);
+				LCK1.unlock();
+			}
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish read:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 #endif
-			m_dstReadOpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_capacity+1);
-			m_dstReadOpFinishCond.notify_all();
-			LCK1.unlock();
 			return 0;
 
 		}// end real read

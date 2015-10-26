@@ -47,7 +47,7 @@ public:
 
 			cdtup_ptr->Read(message_in, i*sizeof(float), i);
 
-			intra_Barrier();
+			//intra_Barrier();
 		}
 	}
 
