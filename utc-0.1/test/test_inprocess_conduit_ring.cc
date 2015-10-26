@@ -6,7 +6,7 @@
 using namespace iUtc;
 
 
-#define SIZE (1024*1024*16)
+#define SIZE (1024*1024)
 
 class user_taskA{
 public:

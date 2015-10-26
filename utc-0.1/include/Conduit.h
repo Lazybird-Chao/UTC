@@ -7,13 +7,10 @@
 
 #include <vector>
 #include <map>
-#include <thread>
 #include <mutex>
 #include <condition_variable>
-#include <iostream>
 #include <fstream>
-#include <cstdlib>
-#include <cassert>
+
 
 namespace iUtc
 {
@@ -56,18 +53,17 @@ public:
      * thread-ops(in one process):
      *	   Write()      executed by all task threads, but only one thread do the data transfer
      *	   WriteBy()    the arg specified thread do the transfer
-     *     WriteByAll()  all threads do the transfer, so DataPrt and DataTag should be
-     *					 different, otherwise case conflict and behave not ensured correct
+     *
 	*/
 	int Write(void* DataPtr, int DataSize, int tag);
 	int WriteBy(ThreadRank wthread, void* DataPtr, int DataSize, int tag);
-	int WriteByAll(void* DataPtr, int DataSize, int tag);
+	int WriteBy(void* DataPtr, int DataSize, int tag);
 	/*
 	 * With same semantic and multithread behave as Write()
 	 */
 	int Read(void* DataPtr, int DataSize, int tag);
-	int ReadBy(ThreadRank wthread, void* DataPtr, int DataSize, int tag);
-	int ReadByAll(void* DataPtr, int DataSize, int tag);
+	int ReadBy(ThreadRank rthread, void* DataPtr, int DataSize, int tag);
+	int ReadBy(void* DataPtr, int DataSize, int tag);
 
 
 
@@ -101,6 +97,7 @@ private:
 	 src write to src-buffer read from dst-buffer
 	 dst write to dst-buffer read from src-buffer
 	 */
+
 	int m_srcAvailableBuffCount;
 	std::map<MessageTag, BuffInfo*> m_srcBuffPool;
 	// use this idx to refer each buffer's access mutex and buffwritten flag
@@ -108,7 +105,7 @@ private:
 	std::vector<std::mutex> m_srcBuffAccessMutex;
 	std::vector<std::condition_variable> m_srcBuffWcallbyAllCond;
 	std::vector<int> m_srcBuffWrittenFlag;
-	// used to control buffer allocate and release
+	// used to control buffer allocate and update buffer related info
 	std::mutex m_srcBuffManagerMutex;
 	// src thread wait for this cond when buff full, dst thread notify this cond when
 	// release a buff
@@ -116,9 +113,24 @@ private:
 	// src thread notify this cond when insert a new buff item to pool in write, dst thread
 	// wait this cond when can't find request message in pool in read
 	std::condition_variable m_srcNewBuffInsertedCond;
-	// used for one thread to block other thread doing write or read
-	std::mutex m_srcHoldOtherthreadsWriteMutex;
-	std::mutex m_srcHoldOtherthreadsReadMutex;
+	// used for one thread to check if need do the real write op
+	std::mutex m_srcWriteOpCheckMutex;
+	std::mutex m_srcReadOpCheckMutex;
+	// each counter is used to record how many threads called current write op
+	// for all read ops in program, each read op will use a new counter, because at most there
+	// are capacity+1 read ops active at same time, so we can use capacity+1 counters repeately
+	int *m_srcWriteOpRotateCounter;
+	int *m_srcReadOpRotateCounter;
+	// thread i use idx[i] to remember which counter for use
+	int *m_srcWriteOpRotateCounterIdx;
+	int *m_srcReadOpRotateCounterIdx;
+	//  each counter has a flag to indicate that real write op is finished
+	int *m_srcWriteOpRotateFinishFlag;
+	int *m_srcReadOpRotateFinishFlag;
+	//  used by late coming thread to wait the real write op finish, and first coming thread will
+	//  use for notify
+	std::condition_variable m_srcWriteOpFinishCond;
+	std::condition_variable m_srcReadOpFinishCond
 
 
 	int m_dstAvailableBuffCount;
@@ -130,13 +142,24 @@ private:
     std::mutex m_dstBuffManagerMutex;
     std::condition_variable m_dstBuffAvailableCond;
     std::condition_variable m_dstNewBuffInsertedCond;
-    std::mutex m_dstHoldOtherthreadsWriteMutex;
-    std::mutex m_dstHoldOtherthreadsReadMutex;
+    std::mutex m_dstWriteOpCheckMutex;
+    int *m_dstWriteOpRotateCounter;
+    int *m_dstWriteOpRotateCounterIdx;
+    int *m_dstWriteOpRotateFinishFlag;
+    std::condition_variable m_dstWriteOpFinishCond;
+    std::mutex m_dstReadOpCheckMutex;
+    int *m_dstReadOpRotateCounter;
+    int *m_dstReadOpRotateCounterIdx;
+    int *m_dstReadOpRotateFinishFlag;
+    std::condition_variable m_dstReadOpFinishCond;
+
+
 
     // the max time period in second that reader wait for writer transferring data
     int TIME_OUT = 100;
     // output debug log to specific file
     static thread_local std::ofstream *m_threadOstream;
+
 
 
     //
