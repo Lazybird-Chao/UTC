@@ -40,12 +40,12 @@ public:
 			*output<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
 			if(!mytrank)
 				std::cout<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
-			cdt_ptr->WriteBy(0,message_out, i*sizeof(float), i);
+			cdt_ptr->BWriteBy(0,message_out, i*sizeof(float), i);
 			cdt_ptr->ReadBy(1,message_in, i*sizeof(float), i);
 			//intra_Barrier();
 		}
 		cdt_ptr->ReadBy_Finish(SIZE);
-		cdt_ptr->WriteBy_Finish(SIZE);
+		cdt_ptr->BWriteBy_Finish(SIZE);
 		*output<<"end RWby!"<<std::endl;
 	}
 	Conduit *cdt_ptr;
@@ -85,12 +85,12 @@ public:
 		for(int i=1; i<=SIZE; i=i*4)
 		{
 			*output<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
-			cdt_ptr->Read(message_in, i*sizeof(float), i);
-			cdt_ptr->Write(message_out, i*sizeof(float), i);
+			cdt_ptr->ReadBy(0,message_in, i*sizeof(float), i);
+			cdt_ptr->BWriteBy(1,message_out, i*sizeof(float), i);
 			//intra_Barrier();
 		}
-		//cdt_ptr->WriteBy_Finish(SIZE);
-		//cdt_ptr->ReadBy_Finish(SIZE);
+		cdt_ptr->BWriteBy_Finish(SIZE);
+		cdt_ptr->ReadBy_Finish(SIZE);
 		*output<<"end RWby!"<<std::endl;
 	}
 	Conduit *cdt_ptr;

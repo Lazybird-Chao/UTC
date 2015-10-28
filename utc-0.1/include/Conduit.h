@@ -54,7 +54,13 @@ public:
     void Connect(TaskBase* src, TaskBase* dst);
     ConduitId getConduitId();
 
-    /* semantic: A task write the message in DataPtr to conduit inner buffer
+
+    /* Blocking op: when method returns, the write operation is finished,
+     *              data has been written to conduit.
+     * Buffered op: there are conduit inner buffer created to store the data,
+     *              the writer doesn't need to wait for reader starting read
+     *              the data. The data is buffered already.
+     * semantic: A task write the message in DataPtr to conduit inner buffer
      * 			 when it returns, the data is buffed in conduit, and sender
      *			 can modify this sent data safely.
      * thread-ops(in one process):
@@ -62,11 +68,27 @@ public:
      *	   WriteBy()    the arg specified thread do the transfer
      *	   WriteBy_Finish()   check and wait finishing WriteBy() operation of a message
 	*/
-	int Write(void* DataPtr, int DataSize, int tag);
-	int WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag);
-	void WriteBy_Finish(int tag);
+	int BWrite(void* DataPtr, int DataSize, int tag);
+	int BWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag);
+	void BWriteBy_Finish(int tag);
+
 	/*
-	 * With same semantic and multithread behave as Write()
+	 * For this write operation, whether to buffer the message data is decided
+	 * by system. When write happens, if the corresponding read is already
+	 * wait for the message, then it will not buffer the data, reader will
+	 * read the data directly. Otherwise, data will be stored in conduit
+	 * internal buffer like BWrite() does.
+	 */
+	int Write(void* DataPtr, int DataSize, int tag);
+    int WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag);
+    void WriteBy_Finish(int tag);
+
+
+
+	/*
+	 * Blocking op: when returns, the read operation is finished, reader get
+	 *              the data, and is safe to use.
+	 * thread-ops(in one process): same as write() operation.
 	 */
 	int Read(void* DataPtr, int DataSize, int tag);
 	int ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag);

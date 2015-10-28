@@ -3,7 +3,7 @@ GCC := gcc
 G++ := g++
 MPICXX := mpicxx
 
-CFLAG :=
+CFLAG := -Wall
 CCFLAG := -g -std=c++11
 
 ###################
@@ -32,11 +32,9 @@ vpath %.cc ./src
 default: test
 
 ### utc targets
-obj:= UtcContext.o RankList.o RootTask.o \
-	  TaskBase.o TaskManager.o \
-	  UtcMpi.o  Task.o\
-	  ConduitManager.o Conduit.o Timer.o\
-	  Barrier.o
+obj:= UtcContext.o UtcMpi.o RankList.o RootTask.o  TaskBase.o TaskManager.o \
+	  Task.o  ConduitManager.o Conduit.o Conduit_Write.o Conduit_Read.o \
+	  Timer.o  Barrier.o
 LIB_UTC := libutc.a
 
 	  
@@ -73,7 +71,11 @@ Task.o: Task.cc
 ConduitManager.o: ConduitManager.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 Conduit.o: Conduit.cc
-	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+	$(G++)	-o $@ -c $^ $(CCFLAG) $(INCLUDE)
+Conduit_Write.o: Conduit_Write.cc
+	$(G++)	-o $@ -c $^ $(CCFLAG) $(INCLUDE)
+Conduit_Read.o: Conduit_Read.cc
+	$(G++)	-o $@ -c $^ $(CCFLAG) $(INCLUDE)
 Timer.o: Timer.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 Barrier.o: Barrier.cc
