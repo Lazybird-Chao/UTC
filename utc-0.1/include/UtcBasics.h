@@ -63,8 +63,12 @@ typedef  int MessageTag;
 
 
 const int MAX_PROCS=32;
+const int LOG_MAX_PROCS=5;
 const int MAX_TASKS=512;
+const int LOG_MAX_TASKS=9;
 const int MAX_THREADS=256;
+const int LOG_MAX_THREADS=8;
+
 const int MAX_CONDUIT = 1024;
 const int CONDUIT_CAPACITY_DEFAULT = 4;
 const int CONDUIT_CAPACITY_MAX = 32;

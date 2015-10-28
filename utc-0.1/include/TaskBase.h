@@ -30,6 +30,8 @@ public:
 
     int getNumProcesses();
 
+    // convert thread global rank(among all processes of a task) to local rank
+    // (the rank on current process)
     int toLocal(ThreadRank trank);
 
     //
@@ -40,6 +42,7 @@ public:
 
     ProcRank getCurrentProcRank();
 
+    // return if thread with rank value 'tRank' is on current process
     bool isLocal(ThreadRank tRank);
 
     ThreadRank getThreadRankById(ThreadId tid);

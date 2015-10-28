@@ -18,6 +18,13 @@ namespace iUtc
 //
 class ConduitManager;
 
+enum OpType{
+	unknown =0,
+	read,
+	write,
+	readby,
+	writeby
+};
 class Conduit{
 
 	struct BuffInfo
@@ -53,18 +60,17 @@ public:
      * thread-ops(in one process):
      *	   Write()      executed by all task threads, but only one thread do the data transfer
      *	   WriteBy()    the arg specified thread do the transfer
-     *
+     *	   WriteBy_Finish()   check and wait finishing WriteBy() operation of a message
 	*/
 	int Write(void* DataPtr, int DataSize, int tag);
-	int WriteBy(ThreadRank wthread, void* DataPtr, int DataSize, int tag);
-	int WriteBy(void* DataPtr, int DataSize, int tag);
+	int WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag);
+	void WriteBy_Finish(int tag);
 	/*
 	 * With same semantic and multithread behave as Write()
 	 */
 	int Read(void* DataPtr, int DataSize, int tag);
-	int ReadBy(ThreadRank rthread, void* DataPtr, int DataSize, int tag);
-	int ReadBy(void* DataPtr, int DataSize, int tag);
-
+	int ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag);
+	void ReadBy_Finish(int tag);
 
 
 	~Conduit();
@@ -152,6 +158,18 @@ private:
     int *m_dstReadOpRotateCounterIdx;
     int *m_dstReadOpRotateFinishFlag;
     std::condition_variable m_dstReadOpFinishCond;
+
+
+    // used by writeby and readby to set a flag for check and waiting
+    // as only asigned thread do the op, other threads will go one their process,
+    // use this to make sure all threads know the data transfer is complete,
+    // safe to use the source data or dst data.
+    std::map<int, int> m_readbyFinishSet;
+    std::mutex m_readbyFinishMutex;
+    std::condition_variable m_readbyFinishCond;
+    std::map<int, int> m_writebyFinishSet;
+	std::mutex m_writebyFinishMutex;
+	std::condition_variable m_writebyFinishCond;
 
 
 

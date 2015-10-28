@@ -47,8 +47,8 @@ test: $(LIB_UTC) main.o
 	@echo "make successful !!!"  
 	
 ## test target	
-main.o: ./test/test_inprocess_conduit_pingpong.cc
-	$(G++)	-o main.o -c ./test/test_inprocess_conduit_pingpong.cc $(CCFLAG) $(INCLUDE) 	
+main.o: ./test/test_inprocess_conduit_RWby.cc
+	$(G++)	-o main.o -c ./test/test_inprocess_conduit_RWby.cc $(CCFLAG) $(INCLUDE) 	
 
 
 
