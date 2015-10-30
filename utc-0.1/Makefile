@@ -33,7 +33,7 @@ default: test
 
 ### utc targets
 obj:= UtcContext.o UtcMpi.o RankList.o RootTask.o  TaskBase.o TaskManager.o \
-	  Task.o  ConduitManager.o Conduit.o Conduit_Write.o Conduit_Read.o \
+	  Task.o  ConduitManager.o Conduit.o Conduit_BWrite.o Conduit_Read.o \
 	  Timer.o  Barrier.o
 LIB_UTC := libutc.a
 
@@ -72,7 +72,7 @@ ConduitManager.o: ConduitManager.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 Conduit.o: Conduit.cc
 	$(G++)	-o $@ -c $^ $(CCFLAG) $(INCLUDE)
-Conduit_Write.o: Conduit_Write.cc
+Conduit_BWrite.o: Conduit_BWrite.cc
 	$(G++)	-o $@ -c $^ $(CCFLAG) $(INCLUDE)
 Conduit_Read.o: Conduit_Read.cc
 	$(G++)	-o $@ -c $^ $(CCFLAG) $(INCLUDE)

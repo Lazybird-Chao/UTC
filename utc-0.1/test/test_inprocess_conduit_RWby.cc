@@ -41,7 +41,7 @@ public:
 			if(!mytrank)
 				std::cout<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
 			cdt_ptr->BWriteBy(0,message_out, i*sizeof(float), i);
-			cdt_ptr->ReadBy(1,message_in, i*sizeof(float), i);
+			cdt_ptr->ReadBy(2,message_in, i*sizeof(float), i);
 			//intra_Barrier();
 		}
 		cdt_ptr->ReadBy_Finish(SIZE);
@@ -85,12 +85,14 @@ public:
 		for(int i=1; i<=SIZE; i=i*4)
 		{
 			*output<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
-			cdt_ptr->ReadBy(0,message_in, i*sizeof(float), i);
-			cdt_ptr->BWriteBy(1,message_out, i*sizeof(float), i);
+			//cdt_ptr->ReadBy(0,message_in, i*sizeof(float), i);
+			//cdt_ptr->BWriteBy(1,message_out, i*sizeof(float), i);
+			cdt_ptr->Read(message_in, i*sizeof(float), i);
+			cdt_ptr->BWrite(message_out, i*sizeof(float), i);
 			//intra_Barrier();
 		}
-		cdt_ptr->BWriteBy_Finish(SIZE);
-		cdt_ptr->ReadBy_Finish(SIZE);
+		//cdt_ptr->BWriteBy_Finish(SIZE);
+		//cdt_ptr->ReadBy_Finish(SIZE);
 		*output<<"end RWby!"<<std::endl;
 	}
 	Conduit *cdt_ptr;
@@ -107,9 +109,10 @@ int main()
 	std::ofstream* pout= getProcOstream();
 	*pout<<"proc rank:"<<ctx.getProcRank()<<" processor name:"<<pname.c_str()<<std::endl;
 
-	RankList r_list1(2);
+	RankList r_list1(3);
 	Task<user_taskA> task1("writer", r_list1);
-	Task<user_taskB> task2("reader", r_list1);
+	RankList r_list2(2);
+	Task<user_taskB> task2("reader", r_list2);
 	Conduit cdt1(&task1, &task2);
 	Timer timer(MILLISEC);
 

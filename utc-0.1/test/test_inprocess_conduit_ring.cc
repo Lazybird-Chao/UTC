@@ -43,7 +43,7 @@ public:
 			*output<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
 			if(getTid() ==1 && mytrank==0)
 				std::cout<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
-			cdtdown_ptr->Write(message_out, i*sizeof(float), i);
+			cdtdown_ptr->BWrite(message_out, i*sizeof(float), i);
 
 			cdtup_ptr->Read(message_in, i*sizeof(float), i);
 
@@ -69,7 +69,7 @@ int main()
 	std::ofstream* pout= getProcOstream();
 	*pout<<"proc rank:"<<ctx.getProcRank()<<" processor name:"<<pname.c_str()<<std::endl;
 
-	RankList r_list1(1);
+	RankList r_list1(5);
 	Task<user_taskA> task1("ring1", r_list1);
 	Task<user_taskA> task2("ring2", r_list1);
 	Task<user_taskA> task3("ring3", r_list1);

@@ -55,14 +55,14 @@ public:
     ConduitId getConduitId();
 
 
-    /* Blocking op: when method returns, the write operation is finished,
-     *              data has been written to conduit.
-     * Buffered op: there are conduit inner buffer created to store the data,
+    /* Blocking & Buffered write
+     *
+     * Blocking op: when method returns, the write operation is finished,
+     *              data has been written to conduit, safe to use data.
+     * Buffered op: there is conduit inner buffer created to store the data,
      *              the writer doesn't need to wait for reader starting read
-     *              the data. The data is buffered already.
-     * semantic: A task write the message in DataPtr to conduit inner buffer
-     * 			 when it returns, the data is buffed in conduit, and sender
-     *			 can modify this sent data safely.
+     *              the data.
+     *
      * thread-ops(in one process):
      *	   Write()      executed by all task threads, but only one thread do the data transfer
      *	   WriteBy()    the arg specified thread do the transfer
@@ -72,7 +72,8 @@ public:
 	int BWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag);
 	void BWriteBy_Finish(int tag);
 
-	/*
+	/* Blocking & Buffered when needed write
+	 *
 	 * For this write operation, whether to buffer the message data is decided
 	 * by system. When write happens, if the corresponding read is already
 	 * wait for the message, then it will not buffer the data, reader will
@@ -82,6 +83,17 @@ public:
 	int Write(void* DataPtr, int DataSize, int tag);
     int WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag);
     void WriteBy_Finish(int tag);
+
+
+    /* Blocking & Non-buffered write
+     *
+     * There is no conduit internal buffer created to store data,
+     * it pass "DataPtr" the address to reader.
+     * But it will not return until reader copied data away.
+     */
+    int PWrite(void* DataPtr, int DataSize, int tag);
+    int PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag);
+    void PWriteBy_Finish(int tag);
 
 
 
@@ -128,20 +140,29 @@ private:
 
 	int m_srcAvailableBuffCount;
 	std::map<MessageTag, BuffInfo*> m_srcBuffPool;
+	std::map<MessageTag, int> m_srcBuffPoolWaitlist;
+	std::condition_variable m_srcBuffPoolWaitlistCond;
 	// use this idx to refer each buffer's access mutex and buffwritten flag
 	std::vector<int> m_srcBuffIdx;
 	std::vector<std::mutex> m_srcBuffAccessMutex;
-	std::vector<std::condition_variable> m_srcBuffWcallbyAllCond;
-	std::vector<int> m_srcBuffWrittenFlag;
+	// signal that thread copied data into buffer
+	std::vector<std::condition_variable> m_srcBuffDataWrittenCond;
+	// signal that thread copied data outof buffer
+	std::vector<std::condition_variable> m_srcBuffDataReadCond;
+	std::vector<int> m_srcBuffDataWrittenFlag;
+	std::vector<int> m_srcBuffDataReadFlag;
+	// when all write threads finish write, use this to signal reader to release buffer,
+	// changer this var from every buffer's to one, may cause more compete use
+	std::condition_variable m_srcBuffSafeReleaseCond;
 	// used to control buffer allocate and update buffer related info
 	std::mutex m_srcBuffManagerMutex;
 	// src thread wait for this cond when buff full, dst thread notify this cond when
 	// release a buff
 	std::condition_variable m_srcBuffAvailableCond;
-	// src thread notify this cond when insert a new buff item to pool in write, dst thread
-	// wait this cond when can't find request message in pool in read
+	//src thread notify this cond when insert a new buff item to pool in write, dst thread
+	//wait this cond when can't find request message in pool in read
 	std::condition_variable m_srcNewBuffInsertedCond;
-	// used for one thread to check if need do the real write op
+	// used for thread to check if need do the real write op
 	std::mutex m_srcWriteOpCheckMutex;
 	std::mutex m_srcReadOpCheckMutex;
 	// each counter is used to record how many threads called current write op
@@ -163,10 +184,15 @@ private:
 
 	int m_dstAvailableBuffCount;
     std::map<MessageTag, BuffInfo*> m_dstBuffPool;
+    std::map<MessageTag, int> m_dstBuffPoolWaitlist;
+    std::condition_variable m_dstBuffPoolWaitlistCond;
     std::vector<int> m_dstBuffIdx;
     std::vector<std::mutex> m_dstBuffAccessMutex;
-    std::vector<std::condition_variable> m_dstBuffWcallbyAllCond;
-    std::vector<int> m_dstBuffWrittenFlag;
+    std::vector<std::condition_variable> m_dstBuffDataWrittenCond;
+    std::vector<std::condition_variable> m_dstBuffDataReadCond;
+    std::vector<int> m_dstBuffDataWrittenFlag;
+    std::vector<int> m_dstBuffDataReadFlag;
+    std::condition_variable m_dstBuffSafeReleaseCond;
     std::mutex m_dstBuffManagerMutex;
     std::condition_variable m_dstBuffAvailableCond;
     std::condition_variable m_dstNewBuffInsertedCond;

@@ -101,17 +101,22 @@ void Conduit::initConduit()
 
 	m_srcAvailableBuffCount = m_capacity;
 	m_srcBuffPool.clear();
+	m_srcBuffPoolWaitlist.clear();
 	m_srcBuffIdx.clear();
 	//m_srcBuffAccessMutex.clear();
 	std::vector<std::mutex> *tmp1_mutexlist = new std::vector<std::mutex>(m_capacity);
 	m_srcBuffAccessMutex.swap(*tmp1_mutexlist);
 	std::vector<std::condition_variable> *tmp1_condlist = new std::vector<std::condition_variable>(m_capacity);
-	m_srcBuffWcallbyAllCond.swap(*tmp1_condlist);
-	m_srcBuffWrittenFlag.clear();
+	m_srcBuffDataWrittenCond.swap(*tmp1_condlist);
+	std::vector<std::condition_variable> *tmp2_condlist = new std::vector<std::condition_variable>(m_capacity);
+	m_srcBuffDataReadCond.swap(*tmp2_condlist);
+	m_srcBuffDataWrittenFlag.clear();
+	m_srcBuffDataReadFlag.clear();
 	for(int i = 0; i< m_capacity; i++)
 	{
 		m_srcBuffIdx.push_back(i);
-		m_srcBuffWrittenFlag.push_back(0);
+		m_srcBuffDataWrittenFlag.push_back(0);
+		m_srcBuffDataReadFlag.push_back(0);
 	}
 	m_srcWriteOpRotateCounter = new int[m_capacity+1];
 	m_srcReadOpRotateCounter = new int[m_capacity +1];
@@ -133,20 +138,25 @@ void Conduit::initConduit()
 		m_srcReadOpRotateCounterIdx[i]=0;
 	}
 
-	m_dstAvailableBuffCount = m_capacity;
+
 	m_dstAvailableBuffCount = m_capacity;
 	m_dstBuffPool.clear();
+	m_dstBuffPoolWaitlist.clear();
 	m_dstBuffIdx.clear();
 	//m_dstBuffAccessMutex.clear();
 	std::vector<std::mutex> *tmp2_mutexlist= new std::vector<std::mutex>(m_capacity);
 	m_dstBuffAccessMutex.swap(*tmp2_mutexlist);
-	std::vector<std::condition_variable> *tmp2_condlist = new std::vector<std::condition_variable>(m_capacity);
-	m_dstBuffWcallbyAllCond.swap(*tmp2_condlist);
-	m_dstBuffWrittenFlag.clear();
+	std::vector<std::condition_variable> *tmp3_condlist = new std::vector<std::condition_variable>(m_capacity);
+	m_dstBuffDataWrittenCond.swap(*tmp3_condlist);
+	std::vector<std::condition_variable> *tmp4_condlist = new std::vector<std::condition_variable>(m_capacity);
+	m_dstBuffDataReadCond.swap(*tmp4_condlist);
+	m_dstBuffDataWrittenFlag.clear();
+	m_dstBuffDataReadFlag.clear();
 	for(int i = 0; i< m_capacity; i++)
 	{
 		m_dstBuffIdx.push_back(i);
-		m_dstBuffWrittenFlag.push_back(0);
+		m_dstBuffDataWrittenFlag.push_back(0);
+		m_dstBuffDataReadFlag.push_back(0);
 	}
 	m_dstWriteOpRotateCounter = new int[m_capacity+1];
 	m_dstReadOpRotateCounter = new int[m_capacity +1];
@@ -221,8 +231,10 @@ void Conduit::clear()
 
     m_srcBuffIdx.clear();
     m_srcBuffAccessMutex.clear();
-    m_srcBuffWcallbyAllCond.clear();
-    m_srcBuffWrittenFlag.clear();
+    m_srcBuffDataWrittenCond.clear();
+    m_srcBuffDataReadCond.clear();
+    m_srcBuffDataWrittenFlag.clear();
+    m_srcBuffDataReadFlag.clear();
     delete m_srcWriteOpRotateCounter;
     delete m_srcReadOpRotateCounter;
     delete m_srcWriteOpRotateCounterIdx;
@@ -232,8 +244,10 @@ void Conduit::clear()
 
     m_dstBuffIdx.clear();
     m_dstBuffAccessMutex.clear();
-    m_dstBuffWcallbyAllCond.clear();
-    m_dstBuffWrittenFlag.clear();
+    m_dstBuffDataWrittenCond.clear();
+    m_dstBuffDataReadCond.clear();
+    m_dstBuffDataWrittenFlag.clear();
+    m_dstBuffDataReadFlag.clear();
     delete m_dstWriteOpRotateCounter;
     delete m_dstReadOpRotateCounter;
     delete m_dstWriteOpRotateCounterIdx;
@@ -249,6 +263,8 @@ void Conduit::clear()
         delete it->second;
     }
     m_srcBuffPool.clear();
+    m_srcBuffPoolWaitlist.clear();
+
     for(std::map<MessageTag, BuffInfo*>::iterator it = m_dstBuffPool.begin();
             it != m_dstBuffPool.end(); ++it)
     {
@@ -257,6 +273,8 @@ void Conduit::clear()
         delete it->second;
     }
     m_dstBuffPool.clear();
+    m_dstBuffPoolWaitlist.clear();
+
 #ifdef USE_DEBUG_LOG
     std::ofstream* procOstream = getProcOstream();
     PRINT_TIME_NOW(*procOstream)
