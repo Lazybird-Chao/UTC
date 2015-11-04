@@ -40,17 +40,17 @@ extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
 #ifdef USE_MPI_BASE
     #include <mpi.h>
 #endif
-#define MULTIPLE_THREAD_MPI   //  MPI_THREAD_SINGLE",
-                              //  MPI_THREAD_FUNNELED",
-                              //  MPI_THREAD_SERIALIZED",
+#define MULTIPLE_THREAD_MPI   //  MPI_THREAD_SINGLE,
+                              //  MPI_THREAD_FUNNELED,
+                              //  MPI_THREAD_SERIALIZED,
 
 
-typedef  int RankId;
-typedef  int ProcRank;
-typedef  int ThreadRank;
-typedef  int TaskId;
-typedef  int ConduitId;
-typedef  int MessageTag;
+typedef  int RankId;  // >=0
+typedef  int ProcRank; // >=0
+typedef  int ThreadRank; // >=0
+typedef  int TaskId; // >=0
+typedef  int ConduitId; // >=0
+typedef  int MessageTag; // >=0
 
 #if defined(USE_CPLUS_THREAD_CREATION)
     typedef  std::thread::id ThreadId;

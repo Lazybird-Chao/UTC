@@ -1,5 +1,7 @@
 #include "Task.h"
 #include "RootTask.h"
+#include "Task_Utilities.h"
+
 #include <functional>
 #include "boost/filesystem.hpp"
 
