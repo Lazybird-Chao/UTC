@@ -69,15 +69,16 @@ int Conduit::BWrite(void *DataPtr, int DataSize, int tag)
                 LCK1.unlock();
 
                 // last thread update some info related with the buff inserted to buffpool
-                std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);       ///////////////// TODO: may use buffer's access mutex
+                /*std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);       ///////////////// TODO: may use buffer's access mutex
                 assert(m_srcBuffPool.find(tag) != m_srcBuffPool.end());
                 assert(m_srcBuffPool[tag]->callingWriteThreadCount == 1);  //only the real write thread has modified this value
-                assert(m_srcBuffPool[tag]->safeReleaseAfterRead == false);
+                assert(m_srcBuffPool[tag]->safeReleaseAfterRead == false);*/
+                std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[m_srcBuffPool[tag]->buffIdx]);
                 m_srcBuffPool[tag]->callingWriteThreadCount = m_numSrcLocalThreads;
                 m_srcBuffPool[tag]->safeReleaseAfterRead = true;
                 // in case there is reader thread waiting for this to release buff
                 m_srcBuffSafeReleaseCond.notify_all();
-                LCK2.unlock();
+                LCK3.unlock();
             }
             else
             {
@@ -116,10 +117,7 @@ int Conduit::BWrite(void *DataPtr, int DataSize, int tag)
             if(m_srcBuffPool.find(tag) == m_srcBuffPool.end())
             {
                 // has buff and tag not exist now, can do the real write
-#ifdef USE_DEBUG_LOG
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"src-thread "<<myThreadRank<<" doing Bwrite...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
-#endif
+
                 if(m_srcBuffPoolWaitlist.find(tag)!= m_srcBuffPoolWaitlist.end())
                 {
                     // tag is in waitlist, means reader is already waiting for this msg.
@@ -135,30 +133,54 @@ int Conduit::BWrite(void *DataPtr, int DataSize, int tag)
                 m_srcBuffIdx.pop_back();
                 // set write thread count to 1
                 tmp_buffinfo->callingWriteThreadCount = 1;
-                if(m_numSrcLocalThreads == 1)
-                {
-                    // only one local thread, set this flag here, no chance going to late coming thread process
-                    tmp_buffinfo->safeReleaseAfterRead = true;
-                    // no need to call wcallbyallcond.notify, as no reader thread's release can happen before this time point
-                }
                 // insert this buff to buffpool
                 m_srcBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
                 // decrease availabe buff
                 m_srcAvailableBuffCount--;
-                // release buffmanager lock to allow other threads to get buff
-                LCK2.unlock();
-                // notify reader that one new item inserted to buff pool
-                m_srcNewBuffInsertedCond.notify_all();
+                if(DataSize<SMALL_MESSAGE_CUTOFF)
+                {
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" doing Bwrite small msg...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+#endif
+                	memcpy(tmp_buffinfo->dataPtr, DataPtr, DataSize);
+					m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =1;
+					if(m_numSrcLocalThreads == 1)
+					{
+						// only one local thread, set this flag here, no chance going to late coming thread process
+						tmp_buffinfo->safeReleaseAfterRead = true;
+						// no need to call wcallbyallcond.notify, as no reader thread's release can happen before this time point
+					}
+					LCK2.unlock();
+					m_srcNewBuffInsertedCond.notify_all();
+                }
+                else
+                {
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" doing Bwrite...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+#endif
+					// release buffmanager lock to allow other threads to get buff
+					LCK2.unlock();
+					// notify reader that one new item inserted to buff pool
+					m_srcNewBuffInsertedCond.notify_all();
 
-                // get access lock for this buffer to write data
-                std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
-                // do real data transfer
-                memcpy(tmp_buffinfo->dataPtr, DataPtr, DataSize);
-                m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =1;
-                // release access lock
-                LCK3.unlock();
-                // notify reader to read data
-                m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].notify_one();
+					// get access lock for this buffer to write data
+					std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
+					// do real data transfer
+					memcpy(tmp_buffinfo->dataPtr, DataPtr, DataSize);
+					m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =1;
+					if(m_numSrcLocalThreads == 1)
+					{
+						// only one local thread, set this flag here, no chance going to late coming thread process
+						tmp_buffinfo->safeReleaseAfterRead = true;
+						// no need to call wcallbyallcond.notify, as no reader thread's release can happen before this time point
+					}
+					// release access lock
+					LCK3.unlock();
+					// notify reader to read data
+					m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].notify_one();
+                }
 
                 // the first thread finish real write, change finishflag
                 LCK1.lock();
@@ -222,17 +244,18 @@ int Conduit::BWrite(void *DataPtr, int DataSize, int tag)
                 LCK1.unlock();
 
                 // last thread update some info related with the buff inserted to buffpool
-                std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
+                /*std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
                 ////////// TODO: may use access mutex, then no need to race this manager mutex, but reader side who will check safe release flag
                 ////////// and do release may has problem, as he need managermutex to release a buffer
                 assert(m_dstBuffPool.find(tag) != m_dstBuffPool.end());
                 assert(m_dstBuffPool[tag]->callingWriteThreadCount == 1);
-                assert(m_dstBuffPool[tag]->safeReleaseAfterRead == false);
+                assert(m_dstBuffPool[tag]->safeReleaseAfterRead == false);*/
+                std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[m_dstBuffPool[tag]->buffIdx]);
                 m_dstBuffPool[tag]->callingWriteThreadCount = m_numDstLocalThreads;
                 m_dstBuffPool[tag]->safeReleaseAfterRead = true;
                 // in case there is reader thread waiting for this to release buff
                 m_dstBuffSafeReleaseCond.notify_all();
-                LCK2.unlock();
+                LCK3.unlock();
             }
             else
             {
@@ -271,11 +294,8 @@ int Conduit::BWrite(void *DataPtr, int DataSize, int tag)
             if(m_dstBuffPool.find(tag) == m_dstBuffPool.end())
             {
                 // has buff now, can do the real write
-#ifdef USE_DEBUG_LOG
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Bwrite...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
-#endif
-                if(m_dstBuffPoolWaitlist.find(tag) != m_dstBuffPoolWaitlist.end());
+
+                if(m_dstBuffPoolWaitlist.find(tag) != m_dstBuffPoolWaitlist.end())
                 {
                     m_dstBuffPoolWaitlist.erase(tag);
                 }
@@ -288,28 +308,51 @@ int Conduit::BWrite(void *DataPtr, int DataSize, int tag)
                 m_dstBuffIdx.pop_back();
                 // set count to 1
                 tmp_buffinfo->callingWriteThreadCount = 1;
-                if(m_numDstLocalThreads == 1)
-                {   // only one local thread, set this flag here, no chance going to late coming thread process
-                    tmp_buffinfo->safeReleaseAfterRead = true;
-                }
                 // insert this buff to buffpool
                 m_dstBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
                 // decrease availabe buff
                 m_dstAvailableBuffCount--;
-                // release buffmanager lock to allow other threads to get buff
-                LCK2.unlock();
-                // notify reader that one new item inserted to buff pool
-                m_dstNewBuffInsertedCond.notify_all();
+                if(DataSize<SMALL_MESSAGE_CUTOFF)
+                {
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Bwrite small msg...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+#endif
+                	memcpy(tmp_buffinfo->dataPtr, DataPtr, DataSize);
+					m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =1;
+					if(m_numDstLocalThreads == 1)
+					{   // only one local thread, set this flag here, no chance going to late coming thread process
+						tmp_buffinfo->safeReleaseAfterRead = true;
+					}
+					LCK2.unlock();
+					// notify reader that one new item inserted to buff pool
+					m_dstNewBuffInsertedCond.notify_all();
+                }
+                else
+                {
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Bwrite...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+#endif
+					// release buffmanager lock to allow other threads to get buff
+					LCK2.unlock();
+					// notify reader that one new item inserted to buff pool
+					m_dstNewBuffInsertedCond.notify_all();
 
-                // get access lock for this buffer to write data
-                std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
-                // do real data transfer
-                memcpy(tmp_buffinfo->dataPtr, DataPtr, DataSize);
-                m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =1;
-                // release access lock
-                LCK3.unlock();
-                // notify reader to read data.
-                m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].notify_one();
+					// get access lock for this buffer to write data
+					std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
+					// do real data transfer
+					memcpy(tmp_buffinfo->dataPtr, DataPtr, DataSize);
+					m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =1;
+					if(m_numDstLocalThreads == 1)
+					{   // only one local thread, set this flag here, no chance going to late coming thread process
+						tmp_buffinfo->safeReleaseAfterRead = true;
+					}
+					// release access lock
+					LCK3.unlock();
+					// notify reader to read data.
+					m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].notify_one();
+                }
 
                 // the first thread finish real write
                 LCK1.lock();
@@ -402,10 +445,7 @@ int Conduit::BWriteBy(ThreadRank thread, void *DataPtr, int DataSize, int tag)
         if(m_srcBuffPool.find(tag) == m_srcBuffPool.end())
         {
             // has buff and tag not exist, do real write
-#ifdef USE_DEBUG_LOG
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"src-thread "<<myThreadRank<<" doing Bwriteby...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
-#endif
+
             if(m_srcBuffPoolWaitlist.find(tag) != m_srcBuffPoolWaitlist.end())
             {
                 m_srcBuffPoolWaitlist.erase(tag);
@@ -418,25 +458,46 @@ int Conduit::BWriteBy(ThreadRank thread, void *DataPtr, int DataSize, int tag)
             m_srcBuffIdx.pop_back();
             // set count to 1
             tmp_buffinfo->callingWriteThreadCount = 1;
-            // only one thread do write, set safe release flag
-            tmp_buffinfo->safeReleaseAfterRead = true;
             // insert this buff to buffpool
             m_srcBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
             // decrease availabe buff
             m_srcAvailableBuffCount--;
-            // release buffmanager lock to allow other threads to get buff
-            LCK2.unlock();
-            // notify reader that one new item inserted to buff pool
-            m_srcNewBuffInsertedCond.notify_all();
+            if(DataSize<SMALL_MESSAGE_CUTOFF)
+            {
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" doing Bwriteby small msg...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+#endif
+            	memcpy(tmp_buffinfo->dataPtr, DataPtr, DataSize);
+				m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =1;
+				// only one thread do write, set safe release flag
+				tmp_buffinfo->safeReleaseAfterRead = true;
+				LCK2.unlock();
+				// notify reader that one new item inserted to buff pool
+				m_srcNewBuffInsertedCond.notify_all();
+            }
+            else
+            {
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" doing Bwriteby...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+#endif
+				// release buffmanager lock to allow other threads to get buff
+				LCK2.unlock();
+				// notify reader that one new item inserted to buff pool
+				m_srcNewBuffInsertedCond.notify_all();
 
-            // get access lock for this buffer to write data
-            std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
-            // do real data transfer
-            memcpy(tmp_buffinfo->dataPtr, DataPtr, DataSize);
-            m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =1;
-            // release access lock
-            LCK3.unlock();
-            m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].notify_one();
+				// get access lock for this buffer to write data
+				std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
+				// do real data transfer
+				memcpy(tmp_buffinfo->dataPtr, DataPtr, DataSize);
+				m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =1;
+				// only one thread do write, set safe release flag
+				tmp_buffinfo->safeReleaseAfterRead = true;
+				// release access lock
+				LCK3.unlock();
+				m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].notify_one();
+            }
 
             // record this op to readby finish set
             std::lock_guard<std::mutex> LCK4(m_writebyFinishMutex);
@@ -471,10 +532,7 @@ int Conduit::BWriteBy(ThreadRank thread, void *DataPtr, int DataSize, int tag)
         if(m_dstBuffPool.find(tag) == m_dstBuffPool.end())
         {
             // has buff now, can do the real write
-#ifdef USE_DEBUG_LOG
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Bwriteby...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
-#endif
+
             if(m_dstBuffPoolWaitlist.find(tag) != m_dstBuffPoolWaitlist.end())
             {
                 // tag is in the waitlist, reader already waits there
@@ -488,25 +546,46 @@ int Conduit::BWriteBy(ThreadRank thread, void *DataPtr, int DataSize, int tag)
             m_dstBuffIdx.pop_back();
             // set count to 1
             tmp_buffinfo->callingWriteThreadCount = 1;
-            // set safe release flag
-            tmp_buffinfo->safeReleaseAfterRead = true;
             // insert this buff to buffpool
             m_dstBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
             // decrease availabe buff
             m_dstAvailableBuffCount--;
-            // release buffmanager lock to allow other threads to get buff
-            LCK2.unlock();
-            // notify reader that one new item inserted to buff pool
-            m_dstNewBuffInsertedCond.notify_all();
+            if(DataSize<SMALL_MESSAGE_CUTOFF)
+            {
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Bwriteby small msg...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+#endif
+            	memcpy(tmp_buffinfo->dataPtr, DataPtr, DataSize);
+				m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =1;
+				// set safe release flag
+				tmp_buffinfo->safeReleaseAfterRead = true;
+				LCK2.unlock();
+				// notify reader that one new item inserted to buff pool
+				m_dstNewBuffInsertedCond.notify_all();
+            }
+            else
+            {
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Bwriteby...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+#endif
+				// release buffmanager lock to allow other threads to get buff
+				LCK2.unlock();
+				// notify reader that one new item inserted to buff pool
+				m_dstNewBuffInsertedCond.notify_all();
 
-            // get access lock for this buffer to write data
-            std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
-            // do real data transfer
-            memcpy(tmp_buffinfo->dataPtr, DataPtr, DataSize);
-            m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =1;
-            // release access lock
-            LCK3.unlock();
-            m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].notify_one();
+				// get access lock for this buffer to write data
+				std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
+				// do real data transfer
+				memcpy(tmp_buffinfo->dataPtr, DataPtr, DataSize);
+				m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =1;
+				// set safe release flag
+				tmp_buffinfo->safeReleaseAfterRead = true;
+				// release access lock
+				LCK3.unlock();
+				m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].notify_one();
+            }
 
             // record this op to readby finish set
             std::lock_guard<std::mutex> LCK4(m_writebyFinishMutex);
@@ -530,7 +609,7 @@ int Conduit::BWriteBy(ThreadRank thread, void *DataPtr, int DataSize, int tag)
 
     return 0;
 
-}// end WriteBy()
+}// end BWriteBy()
 
 void Conduit::BWriteBy_Finish(int tag)
 {
@@ -569,7 +648,7 @@ void Conduit::BWriteBy_Finish(int tag)
         //last thread do the finish check, erase this tag from finish set
         // as we erase this tag, so after all threads call this function,
         // another call with same tag value may cause infinite waiting.
-        // In one thread, do not call finish check with same tag for two or more
+        // In a thread, do not call finish check with same tag for two or more
         // times, unless write a new msg with this tag.
         m_writebyFinishSet.erase((tag<<LOG_MAX_TASKS)+myTaskid);
     }
@@ -580,20 +659,7 @@ void Conduit::BWriteBy_Finish(int tag)
 
     return;
 
-}// end WriteBy_Finish
-
-
-
-/*
- * Standard Blocking write operation.
- * Do buffered message when it needs to.
- */
-int Write(void* DataPtr, int DataSize, int tag)
-{
-
-
-    return 0;
-}
+}// end BWriteBy_Finish
 
 
 

@@ -4,6 +4,10 @@
 
 using namespace iUtc;
 
+//#define TEST_BWRITE
+//#define TEST_WRITE
+#define TEST_PWRITE
+
 #define SIZE (1024*1024)
 
 class user_taskA{
@@ -40,7 +44,13 @@ public:
 			*output<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
 			if(!mytrank)
 				std::cout<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
+#if defined(TEST_BWRITE)
 			cdt_ptr->BWrite(message_out, i*sizeof(float), i);
+#elif defined(TEST_WRITE)
+			cdt_ptr->Write(message_out, i*sizeof(float), i);
+#elif defined(TEST_PWRITE)
+			cdt_ptr->PWrite(message_out, i*sizeof(float), i);
+#endif
 			cdt_ptr->Read(message_in, i*sizeof(float), i);
 
 			//intra_Barrier();
@@ -85,7 +95,13 @@ public:
 		{
 			*output<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
 			cdt_ptr->Read(message_in, i*sizeof(float), i);
+#if defined(TEST_BWRITE)
 			cdt_ptr->BWrite(message_out, i*sizeof(float), i);
+#elif defined(TEST_WRITE)
+			cdt_ptr->Write(message_out, i*sizeof(float), i);
+#elif defined(TEST_PWRITE)
+			cdt_ptr->PWrite(message_out, i*sizeof(float), i);
+#endif
 
 			//intra_Barrier();
 		}
