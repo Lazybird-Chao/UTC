@@ -4,6 +4,10 @@
 
 using namespace iUtc;
 
+//#define TEST_BWRITE
+#define TEST_WRITE
+//#define TEST_PWRITE
+
 #define SIZE (1024*1024)
 
 class user_taskA{
@@ -40,12 +44,24 @@ public:
 			*output<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
 			if(!mytrank)
 				std::cout<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
+#if defined(TEST_BWRITE)
 			cdt_ptr->BWriteBy(0,message_out, i*sizeof(float), i);
+#elif defined(TEST_WRITE)
+			cdt_ptr->WriteBy(0,message_out, i*sizeof(float), i);
+#elif defined(TEST_PWRITE)
+			cdt_ptr->PWriteBy(0,message_out, i*sizeof(float), i);
+#endif
 			cdt_ptr->ReadBy(2,message_in, i*sizeof(float), i);
 			//intra_Barrier();
 		}
 		cdt_ptr->ReadBy_Finish(SIZE);
+#if defined(TEST_BWIRTE)
 		cdt_ptr->BWriteBy_Finish(SIZE);
+#elif defined(TEST_WRITE)
+		cdt_ptr->WriteBy_Finish(SIZE);
+#elif defined(TEST_PWRITE)
+		cdt_ptr->PWriteBy_Finish(SIZE);
+#endif
 		*output<<"end RWby!"<<std::endl;
 	}
 	Conduit *cdt_ptr;
@@ -85,14 +101,16 @@ public:
 		for(int i=1; i<=SIZE; i=i*4)
 		{
 			*output<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
-			//cdt_ptr->ReadBy(0,message_in, i*sizeof(float), i);
-			//cdt_ptr->BWriteBy(1,message_out, i*sizeof(float), i);
 			cdt_ptr->Read(message_in, i*sizeof(float), i);
+#if defined(TEST_BWRITE)
 			cdt_ptr->BWrite(message_out, i*sizeof(float), i);
+#elif defined(TEST_WRITE)
+			cdt_ptr->Write(message_out, i*sizeof(float), i);
+#elif defined(TEST_PWRITE)
+			cdt_ptr->PWrite(message_out, i*sizeof(float), i);
+#endif
 			//intra_Barrier();
 		}
-		//cdt_ptr->BWriteBy_Finish(SIZE);
-		//cdt_ptr->ReadBy_Finish(SIZE);
 		*output<<"end RWby!"<<std::endl;
 	}
 	Conduit *cdt_ptr;

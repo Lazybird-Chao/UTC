@@ -34,6 +34,7 @@ class Conduit{
 		int callingWriteThreadCount =0;
 		int callingReadThreadCount = 0;
 		bool safeReleaseAfterRead = false;
+		bool isBuffered = true;
 	};
 
 public:
@@ -141,7 +142,7 @@ private:
 	int m_srcAvailableBuffCount;
 	std::map<MessageTag, BuffInfo*> m_srcBuffPool;
 	std::map<MessageTag, int> m_srcBuffPoolWaitlist;
-	std::condition_variable m_srcBuffPoolWaitlistCond;
+	/*std::condition_variable m_srcBuffPoolWaitlistCond;*/
 	// use this idx to refer each buffer's access mutex and buffwritten flag
 	std::vector<int> m_srcBuffIdx;
 	std::vector<std::mutex> m_srcBuffAccessMutex;
@@ -185,7 +186,7 @@ private:
 	int m_dstAvailableBuffCount;
     std::map<MessageTag, BuffInfo*> m_dstBuffPool;
     std::map<MessageTag, int> m_dstBuffPoolWaitlist;
-    std::condition_variable m_dstBuffPoolWaitlistCond;
+   /* std::condition_variable m_dstBuffPoolWaitlistCond;*/
     std::vector<int> m_dstBuffIdx;
     std::vector<std::mutex> m_dstBuffAccessMutex;
     std::vector<std::condition_variable> m_dstBuffDataWrittenCond;
@@ -212,6 +213,8 @@ private:
     // as only asigned thread do the op, other threads will go one their process,
     // use this to make sure all threads know the data transfer is complete,
     // safe to use the source data or dst data.
+    // an item is released from this set by calling readby_finish(), so if this is
+    // not called, the corespond item will not be erased from the finishset.
     std::map<int, int> m_readbyFinishSet;
     std::mutex m_readbyFinishMutex;
     std::condition_variable m_readbyFinishCond;

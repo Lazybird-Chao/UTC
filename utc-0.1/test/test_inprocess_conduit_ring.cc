@@ -5,6 +5,9 @@
 
 using namespace iUtc;
 
+#define TEST_BWRITE
+//#define TEST_WRITE
+//#define TEST_PWRITE
 
 #define SIZE (1024*1024)
 
@@ -43,8 +46,13 @@ public:
 			*output<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
 			if(getTid() ==1 && mytrank==0)
 				std::cout<<"\tmessage size: "<<i*sizeof(float)<<" Bytes..."<<std::endl;
+#ifdef TEST_BWRITE
 			cdtdown_ptr->BWrite(message_out, i*sizeof(float), i);
-
+#elif TEST_WRITE
+			cdtdown_ptr->Write(message_out, i*sizeof(float), i);
+#elif TEST_PWRITE
+			cdtdown_ptr->PWrite(message_out, i*sizeof(float), i);
+#endif
 			cdtup_ptr->Read(message_in, i*sizeof(float), i);
 
 			//intra_Barrier();

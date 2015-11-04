@@ -65,19 +65,21 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
                 // avoid prohibiting other threads go on their reading while this thread is waiting
                 LCK1.unlock();
 
-                // release this buffer
-                std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
+                // last thread release this buffer
                 assert(m_dstBuffPool.find(tag) != m_dstBuffPool.end());
                 assert(m_dstBuffPool[tag]->callingReadThreadCount == 1);
-                // last read thread will release the buff
-                BuffInfo *tmp_buff = m_dstBuffPool[tag];
-                while(tmp_buff->safeReleaseAfterRead == false)
-                {
-                    m_dstBuffSafeReleaseCond.wait(LCK2);
+                std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[m_dstBuffPool[tag]->buffIdx]);
+                while(m_dstBuffPool[tag]->safeReleaseAfterRead == false)
+				{
+					m_dstBuffSafeReleaseCond.wait(LCK3);
 
-                }
+				}
+                LCK3.unlock();
+                std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
+                BuffInfo *tmp_buff = m_dstBuffPool[tag];
                 assert(tmp_buff->dataPtr!=nullptr);
-                free(tmp_buff->dataPtr);
+                if(tmp_buff->isBuffered)
+                	free(tmp_buff->dataPtr);
                 tmp_buff->dataPtr = nullptr;
                 m_dstBuffDataWrittenFlag[tmp_buff->buffIdx] =0;
                 m_dstBuffDataReadFlag[tmp_buff->buffIdx] =0;
@@ -113,9 +115,10 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
                 // add this tag to buffpoolwaitlist
                 assert(m_dstBuffPoolWaitlist.find(tag) == m_dstBuffPoolWaitlist.end());
                 m_dstBuffPoolWaitlist[tag] = 1;
+                // this useful for Pwrite, as he may wait for a reader come
+                /*m_dstBuffPoolWaitlistCond.notify_one();*/
                 // go on waiting for this tag-buffer come from writer
                 std::cv_status w_ret= std::cv_status::no_timeout;
-
                 while(m_dstBuffPool.find(tag) == m_dstBuffPool.end())
                 {
                     w_ret = m_dstNewBuffInsertedCond.wait_for(LCK2, std::chrono::seconds(TIME_OUT));
@@ -134,24 +137,40 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
                 assert(tmp_buffinfo->callingWriteThreadCount >0);
                 tmp_buffinfo->callingReadThreadCount =1;
                 LCK2.unlock();
-
-                // go on check if data is ready for copy
-                std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
-                while(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+                if(DataSize<SMALL_MESSAGE_CUTOFF)
                 {
-                    m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
-                }
-                // wake up when the data is filled
+                	// for small msg, do not use two-phase msg copy
 #ifdef USE_DEBUG_LOG
-    PRINT_TIME_NOW(*m_threadOstream)
-    *m_threadOstream<<"src-thread "<<myThreadRank<<" doing read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+	PRINT_TIME_NOW(*m_threadOstream)
+	*m_threadOstream<<"src-thread "<<myThreadRank<<" doing read small msg...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
-                // real data transfer
-                memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-                m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-                LCK3.unlock();
-                // notify writer that read finish
-                m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+					std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
+                	memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                	m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+                	LCK3.unlock();
+                	m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                }
+                else
+                {
+                	// for big msg, use two-phase copy
+					// go on check if data is ready for copy
+					std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
+					while(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+					{
+						m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
+					}
+					// wake up when the data is filled
+#ifdef USE_DEBUG_LOG
+	PRINT_TIME_NOW(*m_threadOstream)
+	*m_threadOstream<<"src-thread "<<myThreadRank<<" doing read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+#endif
+					// real data transfer
+					memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+					m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+					LCK3.unlock();
+					// notify writer that read finish
+					m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                }
             }
             else
             {
@@ -173,23 +192,38 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
                 assert(tmp_buffinfo->callingWriteThreadCount >0);
                 tmp_buffinfo->callingReadThreadCount =1;
                 LCK2.unlock();
-                // go on check if data is filled
-                std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
-                while(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+                if(DataSize<SMALL_MESSAGE_CUTOFF)
                 {
-                    m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
-                }
-                // wake up when the data is filled
 #ifdef USE_DEBUG_LOG
-    PRINT_TIME_NOW(*m_threadOstream)
-    *m_threadOstream<<"src-thread "<<myThreadRank<<" doing read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+	PRINT_TIME_NOW(*m_threadOstream)
+	*m_threadOstream<<"src-thread "<<myThreadRank<<" doing read small msg...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
-                // real data transfer
-                memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-                m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-                LCK3.unlock();
-                // notify writer that read finish
-                m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+					std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
+                	memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                	m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+                	LCK3.unlock();
+                	m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                }
+                else
+                {
+					// go on check if data is filled
+					std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
+					while(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+					{
+						m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
+					}
+					// wake up when the data is filled
+#ifdef USE_DEBUG_LOG
+	PRINT_TIME_NOW(*m_threadOstream)
+	*m_threadOstream<<"src-thread "<<myThreadRank<<" doing read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+#endif
+					// real data transfer
+					memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+					m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+					LCK3.unlock();
+					// notify writer that read finish
+					m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                }
             }
 
             // the first thread finish real read need change the readfinishflag
@@ -204,13 +238,16 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
                 LCK1.unlock();
 
                 //need release buff after read
-                LCK2.lock();
+                std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
                 while(tmp_buffinfo->safeReleaseAfterRead == false)
-                {
-                    m_dstBuffSafeReleaseCond.wait(LCK2);
-                }
+				{
+					m_dstBuffSafeReleaseCond.wait(LCK3);
+				}
+                LCK3.unlock();
+                LCK2.lock();
                 assert(tmp_buffinfo->dataPtr!=nullptr);
-                free(tmp_buffinfo->dataPtr);
+                if(tmp_buffinfo->isBuffered)
+                		free(tmp_buffinfo->dataPtr);
                 tmp_buffinfo->dataPtr = nullptr;
                 m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =0;
                 m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =0;
@@ -271,18 +308,21 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
                 LCK1.unlock();
 
                 // also need do the buff release
-                std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);
                 assert(m_srcBuffPool.find(tag) != m_srcBuffPool.end());
                 assert(m_srcBuffPool[tag]->callingReadThreadCount == 1);
-                // last read thread will release the buff
-                BuffInfo *tmp_buffinfo = m_srcBuffPool[tag];
-                while(tmp_buffinfo->safeReleaseAfterRead == false)
-                {
-                    m_srcBuffSafeReleaseCond.wait(LCK2);
+                std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[m_srcBuffPool[tag]->buffIdx]);
+                while(m_srcBuffPool[tag]->safeReleaseAfterRead == false)
+				{
+					m_srcBuffSafeReleaseCond.wait(LCK3);
 
-                }
+				}
+                LCK3.unlock();
+                // last read thread will release the buff
+                std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);
+                BuffInfo *tmp_buffinfo = m_srcBuffPool[tag];
                 assert(tmp_buffinfo->dataPtr!=nullptr);
-                free(tmp_buffinfo->dataPtr);
+                if(tmp_buffinfo->isBuffered)
+                	free(tmp_buffinfo->dataPtr);
                 tmp_buffinfo->dataPtr = nullptr;
                 m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =0;
                 m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =0;
@@ -319,6 +359,7 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
                 // add this tag to buffpoolwaitlist
                 assert(m_srcBuffPoolWaitlist.find(tag)==m_srcBuffPoolWaitlist.end());
                 m_srcBuffPoolWaitlist[tag]=1;
+                /*m_srcBuffPoolWaitlistCond.notify_one();*/
                 // go one wait for the msg come
                 bool w_ret = m_srcNewBuffInsertedCond.wait_for(LCK2, std::chrono::seconds(TIME_OUT),
                                            [=](){return m_srcBuffPool.find(tag) !=m_srcBuffPool.end(); });
@@ -335,24 +376,38 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
                 assert(tmp_buffinfo->callingWriteThreadCount >0);
                 tmp_buffinfo->callingReadThreadCount = 1;
                 LCK2.unlock();
-
-               // wait for data if ready to copy
-               std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
-               while(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
-               {
-                   m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
-               }
-               // wake up when the data is filled
+                if(DataSize < SMALL_MESSAGE_CUTOFF)
+                {
 #ifdef USE_DEBUG_LOG
     PRINT_TIME_NOW(*m_threadOstream)
-    *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+    *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read small msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 #endif
-                // real data transfer
-                memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-                m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-                LCK3.unlock();
-                // notify writer that read finish
-                m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+    				std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
+                	memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                	m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+                	LCK3.unlock();
+                	m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                }
+                else
+                {
+                	// wait for data if ready to copy
+				   std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
+				   while(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+				   {
+					   m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
+				   }
+				   // wake up when the data is filled
+#ifdef USE_DEBUG_LOG
+	PRINT_TIME_NOW(*m_threadOstream)
+	*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+#endif
+					// real data transfer
+					memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+					m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+					LCK3.unlock();
+					// notify writer that read finish
+					m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                }
             }
             else
             {
@@ -362,23 +417,38 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
                 assert(tmp_buffinfo->callingWriteThreadCount >0);
                 tmp_buffinfo->callingReadThreadCount = 1;
                 LCK2.unlock();
-                // go on check if data is filled
-                std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
-                while(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+                if(DataSize < SMALL_MESSAGE_CUTOFF)
                 {
-                    m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
-                }
-                // wake up when the data is filled
 #ifdef USE_DEBUG_LOG
     PRINT_TIME_NOW(*m_threadOstream)
-    *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+    *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read small msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 #endif
-                // real data transfer
-                memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-                m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-                LCK3.unlock();
-                // notify writer that read finish
-                m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+    				std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
+    				memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+    				m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+    				LCK3.unlock();
+    				m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                }
+                else
+                {
+					// go on check if data is filled
+					std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
+					while(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+					{
+						m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
+					}
+					// wake up when the data is filled
+#ifdef USE_DEBUG_LOG
+	PRINT_TIME_NOW(*m_threadOstream)
+	*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+#endif
+					// real data transfer
+					memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+					m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+					LCK3.unlock();
+					// notify writer that read finish
+					m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                }
             }
 
             // the first thread finish real read need change the readfinishflag
@@ -393,13 +463,16 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
                 LCK1.unlock();
 
                 // need release buff after read
-                LCK2.lock();
+                std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
                 while(tmp_buffinfo->safeReleaseAfterRead == false)
-                {
-                    m_srcBuffSafeReleaseCond.wait(LCK2);
-                }
+				{
+					m_srcBuffSafeReleaseCond.wait(LCK3);
+				}
+                LCK3.unlock();
+                LCK2.lock();
                 assert(tmp_buffinfo->dataPtr!=nullptr);
-                free(tmp_buffinfo->dataPtr);
+                if(tmp_buffinfo->isBuffered)
+                	free(tmp_buffinfo->dataPtr);
                 tmp_buffinfo->dataPtr = nullptr;
                 m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =0;
                 m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =0;
@@ -481,6 +554,8 @@ int Conduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
             // add tag to buffpoolwaitlist
             assert(m_dstBuffPoolWaitlist.find(tag) == m_dstBuffPoolWaitlist.end());
             m_dstBuffPoolWaitlist.insert(std::pair<MessageTag,int>(tag, 1));
+            // signal writer that reader has come
+            /*m_dstBuffPoolWaitlistCond.notify_one();*/
             // go on waiting for this tag-buffer come from writer
             std::cv_status w_ret= std::cv_status::no_timeout;
             while(m_dstBuffPool.find(tag) == m_dstBuffPool.end())
@@ -500,24 +575,38 @@ int Conduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
             assert(tmp_buffinfo->callingWriteThreadCount >0);
             tmp_buffinfo->callingReadThreadCount =1;
             LCK2.unlock();
-
-            // wait for writer fill in the data
-            std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
-            while(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+            if(DataSize<SMALL_MESSAGE_CUTOFF)
             {
-                m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
-            }
-            // wake up when the data is filled
 #ifdef USE_DEBUG_LOG
     PRINT_TIME_NOW(*m_threadOstream)
-    *m_threadOstream<<"src-thread "<<myThreadRank<<" doing readby...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+    *m_threadOstream<<"src-thread "<<myThreadRank<<" doing readby small msg...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
-            // real data transfer
-            memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-            m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-            LCK3.unlock();
-            // notify reader copy complete
-            m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+    			std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
+    			memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+    			m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+    			LCK3.unlock();
+    			m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+            }
+            else
+            {
+				// wait for writer fill in the data
+				std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
+				while(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+				{
+					m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
+				}
+				// wake up when the data is filled
+#ifdef USE_DEBUG_LOG
+	PRINT_TIME_NOW(*m_threadOstream)
+	*m_threadOstream<<"src-thread "<<myThreadRank<<" doing readby...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+#endif
+				// real data transfer
+				memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+				m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+				LCK3.unlock();
+				// notify reader copy complete
+				m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+            }
         }
         else
         {
@@ -527,33 +616,51 @@ int Conduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
             assert(tmp_buffinfo->callingWriteThreadCount >0);
             tmp_buffinfo->callingReadThreadCount = 1;
             LCK2.unlock();
-            // go on check if data is filled
-            std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
-            while(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+            if(DataSize<SMALL_MESSAGE_CUTOFF)
             {
-                m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
-            }
-            // data is filled in
 #ifdef USE_DEBUG_LOG
     PRINT_TIME_NOW(*m_threadOstream)
-    *m_threadOstream<<"src-thread "<<myThreadRank<<" doing readby...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+    *m_threadOstream<<"src-thread "<<myThreadRank<<" doing readby small msg...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
-            // real data transfer
-            memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-            m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-            LCK3.unlock();
-            // notify reader copy complete
-            m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+    			std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
+    			memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+    			m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+    			LCK3.unlock();
+    			m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+            }
+            else
+            {
+				// go on check if data is filled
+				std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
+				while(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+				{
+					m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
+				}
+				// data is filled in
+	#ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"src-thread "<<myThreadRank<<" doing readby...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+	#endif
+				// real data transfer
+				memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+				m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+				LCK3.unlock();
+				// notify reader copy complete
+				m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+            }
         }
 
         // as only this assigned thread do read, so release buff after read
-        LCK2.lock();
+        std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
         while(tmp_buffinfo->safeReleaseAfterRead == false)
         {
-            m_dstBuffSafeReleaseCond.wait(LCK2);
+            m_dstBuffSafeReleaseCond.wait(LCK3);
         }
+        LCK3.unlock();
+        LCK2.lock();
         assert(tmp_buffinfo->dataPtr!=nullptr);
-        free(tmp_buffinfo->dataPtr);
+        if(tmp_buffinfo->isBuffered)
+        	free(tmp_buffinfo->dataPtr);
         tmp_buffinfo->dataPtr = nullptr;
         m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =0;
         m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =0;
@@ -583,6 +690,7 @@ int Conduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
             // tag not exist, means writer haven't come yet
             assert(m_srcBuffPoolWaitlist.find(tag)==m_srcBuffPoolWaitlist.end());
             m_srcBuffPoolWaitlist.insert(std::pair<MessageTag, int>(tag, 1));
+            /*m_srcBuffPoolWaitlistCond.notify_one();*/
             // go on waiting for the msg come
             bool w_ret = m_srcNewBuffInsertedCond.wait_for(LCK2, std::chrono::seconds(TIME_OUT),
                                        [=](){return m_srcBuffPool.find(tag) !=m_srcBuffPool.end();});
@@ -600,22 +708,37 @@ int Conduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
             tmp_buffinfo->callingReadThreadCount = 1;
             LCK2.unlock();
 
-           // wait for writer come and fill in the data
-           std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
-           while(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
-           {
-               m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
-           }
-           // wake up when the data is filled
+            if(DataSize<SMALL_MESSAGE_CUTOFF)
+            {
 #ifdef USE_DEBUG_LOG
     PRINT_TIME_NOW(*m_threadOstream)
-    *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing readby...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+    *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing readby small msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 #endif
-            // real data transfer
-            memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-            m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] = 1;
-            LCK3.unlock();
-            m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+    			std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
+    			memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+				m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] = 1;
+				LCK3.unlock();
+				m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+            }
+            else
+            {
+			   // wait for writer come and fill in the data
+			   std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
+			   while(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+			   {
+				   m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
+			   }
+			   // wake up when the data is filled
+	#ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing readby...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+	#endif
+				// real data transfer
+				memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+				m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] = 1;
+				LCK3.unlock();
+				m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+            }
         }
         else
         {
@@ -625,32 +748,50 @@ int Conduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
             assert(tmp_buffinfo->callingWriteThreadCount >0);
             tmp_buffinfo->callingReadThreadCount = 1;
             LCK2.unlock();
-            // go on check if data is filled
-            std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
-            while(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+            if(DataSize<SMALL_MESSAGE_CUTOFF)
             {
-                m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
-            }
-            // wake up when the data is filled
 #ifdef USE_DEBUG_LOG
     PRINT_TIME_NOW(*m_threadOstream)
-    *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing readby...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+    *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing readby small msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 #endif
-            // real data transfer
-            memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-            m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] = 1;
-            LCK3.unlock();
-            m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+    			std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
+    			memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] = 1;
+                LCK3.unlock();
+                m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+            }
+            else
+            {
+				// go on check if data is filled
+				std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
+				while(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+				{
+					m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
+				}
+				// wake up when the data is filled
+#ifdef USE_DEBUG_LOG
+	PRINT_TIME_NOW(*m_threadOstream)
+	*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing readby...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+#endif
+				// real data transfer
+				memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+				m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] = 1;
+				LCK3.unlock();
+				m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+            }
         }
 
         // need release buff after read
-        LCK2.lock();
+        std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
         while(tmp_buffinfo->safeReleaseAfterRead == false)
-        {
-            m_srcBuffSafeReleaseCond.wait(LCK2);
-        }
+		{
+			m_srcBuffSafeReleaseCond.wait(LCK2);
+		}
+        LCK3.unlock();
+        LCK2.lock();
         assert(tmp_buffinfo->dataPtr!=nullptr);
-        free(tmp_buffinfo->dataPtr);
+        if(tmp_buffinfo->isBuffered)
+        	free(tmp_buffinfo->dataPtr);
         tmp_buffinfo->dataPtr = nullptr;
         m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =0;
         m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =0;
