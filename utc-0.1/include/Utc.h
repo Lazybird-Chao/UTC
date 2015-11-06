@@ -44,12 +44,14 @@
 #include "RootTask.h"
 
 //S
+#include "SharedDataLock.h"
 
 //T
 #include "TaskBase.h"
 #include "TaskInfo.h"
 #include "TaskManager.h"
 #include "Task.h"
+#include "Task_Utilities.h"
 #include "Timer.h"
 
 //U

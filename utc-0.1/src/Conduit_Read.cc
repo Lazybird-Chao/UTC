@@ -1,6 +1,7 @@
 #include "Conduit.h"
 #include "TaskManager.h"
 #include "Task.h"
+#include "Task_Utilities.h"
 
 #include <map>
 #include <cstdlib>

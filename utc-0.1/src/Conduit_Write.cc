@@ -1,6 +1,7 @@
 #include "Conduit.h"
 #include "TaskManager.h"
 #include "Task.h"
+#include "Task_Utilities.h"
 
 #include <map>
 #include <cstdlib>
@@ -164,6 +165,8 @@ int Conduit::Write(void* DataPtr, int DataSize, int tag)
 					// reader not come yet.
 					// malloc a buffer to store the data.
 					tmp_buffinfo->dataPtr = malloc(DataSize);
+					if(!tmp_buffinfo->dataPtr)
+						 std::cerr<<"Error, not enough memory!"<<std::endl;
 					tmp_buffinfo->isBuffered = true;
 					if(DataSize<SMALL_MESSAGE_CUTOFF)
 					{
@@ -362,6 +365,8 @@ int Conduit::Write(void* DataPtr, int DataSize, int tag)
 				{
 					// reader not comes, alloc space and copy data
 					tmp_buffinfo->dataPtr = malloc(DataSize);
+					if(!tmp_buffinfo->dataPtr)
+						std::cerr<<"Error, not enough memory!"<<std::endl;
 					tmp_buffinfo->isBuffered = true;
 					if(DataSize<SMALL_MESSAGE_CUTOFF)
 					{
@@ -531,6 +536,8 @@ int Conduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
 			else
 			{
 				tmp_buffinfo->dataPtr = malloc(DataSize);
+				if(!tmp_buffinfo->dataPtr)
+					std::cerr<<"Error, not enough memory!"<<std::endl;
 				tmp_buffinfo->isBuffered = true;
 				if(DataSize<SMALL_MESSAGE_CUTOFF)
 				{
@@ -635,6 +642,8 @@ int Conduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
 			else
 			{
 				tmp_buffinfo->dataPtr = malloc(DataSize);
+				if(!tmp_buffinfo->dataPtr)
+					std::cerr<<"Error, not enough memory!"<<std::endl;
 				tmp_buffinfo->isBuffered = true;
 				if(DataSize<SMALL_MESSAGE_CUTOFF)
 				{

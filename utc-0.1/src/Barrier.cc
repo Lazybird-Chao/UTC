@@ -1,7 +1,10 @@
 #include "Barrier.h"
 #include "TaskManager.h"
+#include "RootTask.h"
 #include "Task.h"
+#include "Task_Utilities.h"
 #include "UtcBasics.h"
+
 
 #include <cassert>
 
@@ -20,6 +23,10 @@ Barrier::Barrier(int numLocalThreads, int taskid)
 {
 	m_numLocalThreads = numLocalThreads;
 	m_taskId = taskid;
+#ifdef USE_MPI_BASE
+	RootTask *root = TaskManager::getRootTask();
+	m_taskCommPtr = root->getWorldComm();
+#endif
 	m_intraThreadSyncCounterComing[0] = m_intraThreadSyncCounterComing[1]=0;
 	m_intraThreadSyncCounterLeaving[0] = m_intraThreadSyncCounterLeaving[1] = 0;
 	m_countIdx = (int*)malloc(sizeof(int)*numLocalThreads);
@@ -31,7 +38,9 @@ Barrier::Barrier(int numLocalThreads, int taskid, MPI_Comm *comm)
 {
 	m_numLocalThreads = numLocalThreads;
 	m_taskId = taskid;
+#ifdef USE_MPI_BASE
 	m_taskCommPtr = comm;
+#endif
 	m_intraThreadSyncCounterComing[0] = m_intraThreadSyncCounterComing[1]=0;
 	m_intraThreadSyncCounterLeaving[0] = m_intraThreadSyncCounterLeaving[1] = 0;
 	m_countIdx = (int*)malloc(sizeof(int)*numLocalThreads);

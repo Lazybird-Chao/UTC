@@ -34,7 +34,7 @@ default: test
 ### utc targets
 obj:= UtcContext.o UtcMpi.o RankList.o RootTask.o  TaskBase.o TaskManager.o \
 	  Task.o  ConduitManager.o Conduit.o Conduit_Write.o Conduit_BWrite.o Conduit_PWrite.o\
-	  Conduit_Read.o Timer.o  Barrier.o
+	  Conduit_Read.o Timer.o  Barrier.o SharedDataLock.o
 LIB_UTC := libutc.a
 
 	  
@@ -45,8 +45,8 @@ test: $(LIB_UTC) main.o
 	@echo "make successful !!!"  
 	
 ## test target	
-main.o: ./test/test_inprocess_conduit_RWby.cc
-	$(G++)	-o main.o -c ./test/test_inprocess_conduit_RWby.cc $(CCFLAG) $(INCLUDE) 	
+main.o: ./test/test_inprocess_conduit_capacity.cc
+	$(G++)	-o main.o -c ./test/test_inprocess_conduit_capacity.cc $(CCFLAG) $(INCLUDE) 	
 
 
 
@@ -84,7 +84,10 @@ Timer.o: Timer.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 Barrier.o: Barrier.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
-
+SharedDataLock.o: SharedDataLock.cc
+	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+	
+	
 ###
 .PHONY: clean cleanall cleanlog
 clean:

@@ -440,11 +440,13 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 	    // will call user task class's constructor
 	    m_userTaskObjPtr = new T;
 	}
+
 	if(m_numLocalThreads!=0)
 	{
 		// create the barrier object in a task
-		m_taskBarrierObjPtr = new Barrier(m_numLocalThreads, m_TaskId);
+		m_taskBarrierObjPtr = new Barrier(m_numLocalThreads, m_TaskId, &m_taskComm);
 	}
+
 	if(m_numLocalThreads!=0)  // there are threads need to be created on current process
 	{
 		LaunchThreads(plist[currentProcRank]);

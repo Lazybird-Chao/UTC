@@ -1,6 +1,7 @@
 #include "Conduit.h"
 #include "TaskManager.h"
 #include "Task.h"
+#include "Task_Utilities.h"
 
 #include <map>
 #include <cstdlib>
@@ -128,6 +129,8 @@ int Conduit::BWrite(void *DataPtr, int DataSize, int tag)
                 BuffInfo* tmp_buffinfo = new BuffInfo;
                 // allocate space
                 tmp_buffinfo->dataPtr = malloc(DataSize);
+                if(!tmp_buffinfo->dataPtr)
+                	std::cerr<<"Error, not enough memory!"<<std::endl;
                 // get buff id
                 tmp_buffinfo->buffIdx = m_srcBuffIdx.back();
                 m_srcBuffIdx.pop_back();
@@ -303,6 +306,8 @@ int Conduit::BWrite(void *DataPtr, int DataSize, int tag)
                 BuffInfo* tmp_buffinfo = new BuffInfo;
                 // allocate space
                 tmp_buffinfo->dataPtr = malloc(DataSize);
+                if(!tmp_buffinfo->dataPtr)
+					std::cerr<<"Error, not enough memory!"<<std::endl;
                 // get buff id
                 tmp_buffinfo->buffIdx = m_dstBuffIdx.back();
                 m_dstBuffIdx.pop_back();
@@ -453,6 +458,8 @@ int Conduit::BWriteBy(ThreadRank thread, void *DataPtr, int DataSize, int tag)
             BuffInfo* tmp_buffinfo = new BuffInfo;
             // allocate space
             tmp_buffinfo->dataPtr = malloc(DataSize);
+            if(!tmp_buffinfo->dataPtr)
+				std::cerr<<"Error, not enough memory!"<<std::endl;
             // get buff id
             tmp_buffinfo->buffIdx = m_srcBuffIdx.back();
             m_srcBuffIdx.pop_back();
@@ -541,6 +548,8 @@ int Conduit::BWriteBy(ThreadRank thread, void *DataPtr, int DataSize, int tag)
             BuffInfo* tmp_buffinfo = new BuffInfo;
             // allocate space
             tmp_buffinfo->dataPtr = malloc(DataSize);
+            if(!tmp_buffinfo->dataPtr)
+            	std::cerr<<"Error, not enough memory!"<<std::endl;
             // get buff id
             tmp_buffinfo->buffIdx = m_dstBuffIdx.back();
             m_dstBuffIdx.pop_back();
