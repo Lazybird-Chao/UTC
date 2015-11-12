@@ -68,7 +68,9 @@ void Barrier::synch_intra(int local_rank)
 	{
 		// last coming thread do notify
 		m_intraThreadSyncCond.notify_all();
+#ifdef USE_DEBUG_ASSERT
 		assert(m_intraThreadSyncCounterLeaving[m_countIdx[local_rank]] == 0);
+#endif
 	}
 	else
 	{
@@ -107,7 +109,9 @@ void Barrier::synch_inter(int local_rank)
 #endif
 		//do notify
 		m_intraThreadSyncCond.notify_all();
+#ifdef USE_DEBUG_ASSERT
 		assert(m_intraThreadSyncCounterLeaving[m_countIdx[local_rank]] == 0);
+#endif
 
 	}
 	else

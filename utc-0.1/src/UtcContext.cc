@@ -84,6 +84,10 @@ void UtcContext::initialize(int& argc, char** argv)
 
     ConduitManager* cdtMgr = ConduitManager::getInstance(); // The very first time and only this
     														// time to create a ConduitManager obj
+#ifdef USE_MPI_BASE
+    MPI_Barrier(*(root->getWorldComm()));
+#endif
+
 #ifdef USE_DEBUG_LOG
     std::ofstream *procOstream = root->getProcOstream();
     PRINT_TIME_NOW(*procOstream)

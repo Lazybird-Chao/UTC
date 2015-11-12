@@ -20,7 +20,9 @@ ConduitManager::~ConduitManager()
 {
 	if(m_InstancePtr)
 	{
+#ifdef USE_DEBUG_ASSERT
 	    assert(m_ConduitRegistry.size() == 0);
+#endif
 		m_ConduitRegistry.clear();
 		m_InstancePtr = nullptr;
 		m_ConduitIdDealer = 0;

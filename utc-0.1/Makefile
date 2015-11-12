@@ -31,24 +31,29 @@ vpath %.cc ./src
 .PHONY: default
 default: test
 
-### utc targets
+### utc library targets
 obj:= 	UtcContext.o UtcMpi.o RankList.o \
 		RootTask.o  TaskBase.o TaskManager.o Task.o  \
 		ConduitManager.o Conduit.o InprocConduit.o XprocConduit.o\
 		InprocConduit_Write.o InprocConduit_BWrite.o InprocConduit_PWrite.o	InprocConduit_Read.o \
 		Timer.o  Barrier.o SharedDataLock.o
 LIB_UTC := libutc.a
-
-	  
-test: $(LIB_UTC) main.o
-	$(G++)	-o a.out main.o $(CCFLAG) -lutc $(LIB)
-	mkdir -p bin; cd bin; mv ../a.out ./; mv ../main.o ./
-	mkdir -p log
-	@echo "make successful !!!"  
+ 
 	
-## test target	
-main.o: ./test/test_inprocess_conduit_capacity.cc
-	$(G++)	-o main.o -c ./test/test_inprocess_conduit_capacity.cc $(CCFLAG) $(INCLUDE) 	
+## test target
+TARGET_SOURCE:= ./test/test_xprocess_conduit_pingpong.cc
+TARGET_OBJ:= main.o	
+TARGET_EXE:= a.out
+
+$(TARGET_OBJ): $(TARGET_SOURCE)
+	$(G++)	-o $(TARGET_OBJ) -c $(TARGET_SOURCE)  $(CCFLAG) $(INCLUDE) 	
+
+
+test: $(LIB_UTC) $(TARGET_OBJ)
+	$(G++)	-o $(TARGET_EXE) $(TARGET_OBJ) $(CCFLAG) -lutc $(LIB)
+	mkdir -p bin; cd bin; mv ../$(TARGET_EXE) ./; mv ../$(TARGET_OBJ) ./
+	mkdir -p log
+	@echo "make successful !!!" 
 
 
 

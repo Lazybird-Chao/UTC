@@ -33,8 +33,8 @@ namespace iUtc{
         Barrier * m_barrierObjPtr;
 
 #ifdef USE_MPI_BASE
-        MPI_Comm m_comm;
-        MPI_Group m_mpigroup;
+        MPI_Comm m_worldComm;
+        MPI_Group m_worldGroup;
 #endif
 
         RootTask(); //default constructor is disabled

@@ -20,7 +20,9 @@ RootTask::RootTask(int WorldSize, int currentProcess)
     ThreadRank tRank = 0;
     ProcRank pRank = currentProcess;
     m_TaskId = TaskManager::getNewTaskId();      // should get 0 for root
+#ifdef USE_DEBUG_ASSERT
     assert(m_TaskId ==0);
+#endif
     ThreadId tid = TaskManager::getThreadId();   // main thread of current process,
                                                  // no other threads have been created yet
     m_LocalThreadList.push_back(tid);
@@ -56,10 +58,10 @@ RootTask::RootTask(int WorldSize, int currentProcess)
     m_barrierObjPtr = new Barrier(1, 0);
     taskInfoPtr->barrierObjPtr = m_barrierObjPtr;
 #ifdef USE_MPI_BASE
-    MPI_Comm_group(MPI_COMM_WORLD, &m_mpigroup);
-    m_comm = MPI_COMM_WORLD;
-    taskInfoPtr->commPtr = &m_comm;
-    taskInfoPtr->mpigroupPtr = &m_mpigroup;
+    MPI_Comm_group(MPI_COMM_WORLD, &m_worldGroup);
+    m_worldComm = MPI_COMM_WORLD;
+    taskInfoPtr->commPtr = &m_worldComm;
+    taskInfoPtr->mpigroupPtr = &m_worldGroup;
 #endif
     TaskManager::setTaskInfo(taskInfoPtr);    // reside in main thread of current process, same as
                                               // TaskManager instance, only one instance in current
@@ -100,12 +102,12 @@ void RootTask::setProcOstream(std::ofstream& procOstream)
 #ifdef USE_MPI_BASE
 MPI_Comm* RootTask::getWorldComm()
 {
-	return &m_comm;
+	return &m_worldComm;
 }
 
 MPI_Group* RootTask::getWorldGroup()
 {
-	return &m_mpigroup;
+	return &m_worldGroup;
 }
 #endif
 

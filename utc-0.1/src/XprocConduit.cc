@@ -1,5 +1,6 @@
 #include "XprocConduit.h"
 #include "UtcBasics.h"
+#include "TaskManager.h"
 #include "Task_Utilities.h"
 
 #include <cstdlib>
@@ -68,7 +69,7 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
     if(!m_threadOstream)
         m_threadOstream = getThreadOstream();
 #endif
-    // current calling thread's belonging task id
+    //
 	static thread_local int mpiOtherEndProc = -1;
 	static thread_local int localNumthreads = -1;
 	static thread_local int myThreadRank = -1;
@@ -90,7 +91,7 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
 	}
 	if(myTaskid != m_srcId && myTaskid!=m_dstId)
 	{
-		std::cout<<"Error, conduit doesn't associated to calling task!"<<std::endl;
+		std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
 		exit(1);
 	}
 
@@ -113,7 +114,9 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
 	if(m_WriteOpRotateCounter[counteridx]>1)
 	{
 		// a late thread
-		assert(m_WriteOpRotateCounter[counteridx] <= m_numSrcLocalThreads);
+#ifdef USE_DEBUG_ASSERT
+		assert(m_WriteOpRotateCounter[counteridx] <= localNumthreads);
+#endif
 		while(m_WriteOpRotateFinishFlag[counteridx] == 0)
 		{
 			m_WriteOpFinishCond.wait(LCK1);
@@ -184,13 +187,15 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
 	    // same tag, then mpi msg would has same msg-envelop, may cause msg matching
 	    // error. Here, we attach tag with conduitid, as each conduit has unque id,
 		// the mpi msg will have different new tag
-		MPI_Send(DataPtr, DataSize, MPI_CHAR, mpiOtherEndproc,
-				tag<<LOG_MAX_CONDUITS+m_conduitId, MPI_COMM_WORLD);
+		MPI_Send(DataPtr, DataSize, MPI_CHAR, mpiOtherEndProc,
+				(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
 #endif
 
 		// the first thread finish real write, change finishflag
 		LCK1.lock();
+#ifdef USE_DEBUG_ASSERT
 		assert(m_WriteOpRotateFinishFlag[counteridx] == 0);
+#endif
 		// set finish flag
 		m_WriteOpRotateFinishFlag[counteridx]++;
 		// update counter idx to next one
@@ -248,7 +253,7 @@ int XprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
 	}
 	if(myTaskid != m_srcId && myTaskid!=m_dstId)
 	{
-		std::cout<<"Error, conduit doesn't associated to calling task!"<<std::endl;
+		std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
 		exit(1);
 	}
 
@@ -261,7 +266,7 @@ int XprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
 	{
 		if(myThreadRank >= TaskManager::getCurrentTask()->getNumTotalThreads())
 		{
-			std::cout<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
+			std::cerr<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
 			exit(1);
 		}
 		// not the writing thread, just return, we will not wait for the real write
@@ -289,8 +294,8 @@ int XprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
 
 	// doing real data write
 #ifdef USE_MPI_BASE
-	MPI_Send(DataPtr, DataSize, MPI_CHAR, mpiOtherEndproc,
-				tag<<LOG_MAX_CONDUITS+m_conduitId, MPI_COMM_WORLD);
+	MPI_Send(DataPtr, DataSize, MPI_CHAR, mpiOtherEndProc,
+				(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
 #endif
 
 	// record this op to readby finish set
@@ -341,7 +346,9 @@ void XprocConduit::WriteBy_Finish(int tag)
 		m_writebyFinishCond.wait(LCK1);
 	}
 	// find tag in finishset
+#ifdef USE_DEBUG_ASSERT
 	assert(m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]>0);
+#endif
 	m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]--;
 	if(m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]==0)
 	{
@@ -360,17 +367,17 @@ void XprocConduit::WriteBy_Finish(int tag)
 ////////////////
 int XprocConduit::BWrite(void* DataPtr, int DataSize, int tag)
 {
-	std::cout<<"Error, crossing process conduit doen't has 'BWrite' method."<<std::endl;
+	std::cerr<<"Error, crossing process conduit doen't has 'BWrite' method."<<std::endl;
 	return 0;
 }
 int XprocConduit::BWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
 {
-	std::cout<<"Error, crossing process conduit doen't has 'BWriteBy' method."<<std::endl;
+	std::cerr<<"Error, crossing process conduit doen't has 'BWriteBy' method."<<std::endl;
 	return 0;
 }
 void XprocConduit::BWriteBy_Finish(int tag)
 {
-	std::cout<<"Error, crossing process conduit doen't has 'BWriteBy_Finish' method."<<std::endl;
+	std::cerr<<"Error, crossing process conduit doen't has 'BWriteBy_Finish' method."<<std::endl;
 	return;
 }
 
@@ -405,7 +412,7 @@ int XprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 	}
 	if(myTaskid != m_srcId && myTaskid!=m_dstId)
 	{
-		std::cout<<"Error, conduit doesn't associated to calling task!"<<std::endl;
+		std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
 		exit(1);
 	}
 
@@ -428,7 +435,9 @@ int XprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 	if(m_WriteOpRotateCounter[counteridx]>1)
 	{
 		// a late thread
-		assert(m_WriteOpRotateCounter[counteridx] <= m_numSrcLocalThreads);
+#ifdef USE_DEBUG_ASSERT
+		assert(m_WriteOpRotateCounter[counteridx] <= localNumthreads);
+#endif
 		while(m_WriteOpRotateFinishFlag[counteridx] == 0)
 		{
 			m_WriteOpFinishCond.wait(LCK1);
@@ -494,13 +503,15 @@ int XprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 #endif
 
 #ifdef USE_MPI_BASE
-		MPI_Ssend(DataPtr, DataSize, MPI_CHAR, mpiOtherEndproc,
-				tag<<LOG_MAX_CONDUITS+m_conduitId, MPI_COMM_WORLD);
+		MPI_Ssend(DataPtr, DataSize, MPI_CHAR, mpiOtherEndProc,
+				(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
 #endif
 
 		// the first thread finish real write, change finishflag
 		LCK1.lock();
+#ifdef USE_DEBUG_ASSERT
 		assert(m_WriteOpRotateFinishFlag[counteridx] == 0);
+#endif
 		// set finish flag
 		m_WriteOpRotateFinishFlag[counteridx]++;
 		// update counter idx to next one
@@ -557,7 +568,7 @@ int XprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
 	}
 	if(myTaskid != m_srcId && myTaskid!=m_dstId)
 	{
-		std::cout<<"Error, conduit doesn't associate to calling task!"<<std::endl;
+		std::cerr<<"Error, conduit doesn't associate to calling task!"<<std::endl;
 		exit(1);
 	}
 
@@ -570,7 +581,7 @@ int XprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
 	{
 		if(myThreadRank >= TaskManager::getCurrentTask()->getNumTotalThreads())
 		{
-			std::cout<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
+			std::cerr<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
 			exit(1);
 		}
 		// not the writing thread, just return, we will not wait for the real write
@@ -598,8 +609,8 @@ int XprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
 
 	// doing real data write
 #ifdef USE_MPI_BASE
-	MPI_Ssend(DataPtr, DataSize, MPI_CHAR, mpiOtherEndproc,
-				tag<<LOG_MAX_CONDUITS+m_conduitId, MPI_COMM_WORLD);
+	MPI_Ssend(DataPtr, DataSize, MPI_CHAR, mpiOtherEndProc,
+				(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
 #endif
 
 	// record this op to readby finish set
@@ -649,7 +660,9 @@ void XprocConduit::PWriteBy_Finish(int tag)
 		m_writebyFinishCond.wait(LCK1);
 	}
 	// find tag in finishset
+#ifdef USE_DEBUG_ASSERT
 	assert(m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]>0);
+#endif
 	m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]--;
 	if(m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]==0)
 	{
@@ -692,7 +705,7 @@ int XprocConduit::Read(void* DataPtr, int DataSize, int tag)
 	}
 	if(myTaskid != m_srcId && myTaskid!=m_dstId)
 	{
-		std::cout<<"Error, conduit doesn't associate to calling task!"<<std::endl;
+		std::cerr<<"Error, conduit doesn't associate to calling task!"<<std::endl;
 		exit(1);
 	}
 
@@ -715,7 +728,9 @@ int XprocConduit::Read(void* DataPtr, int DataSize, int tag)
 	if(m_ReadOpRotateCounter[counteridx]>1)
 	{
 		// late coming thread
+#ifdef USE_DEBUG_ASSERT
 		assert(m_ReadOpRotateCounter[counteridx] <= localNumthreads);
+#endif
 		while(m_ReadOpRotateFinishFlag[counteridx] ==0)
 		{
 			m_ReadOpFinishCond.wait(LCK1);
@@ -778,13 +793,15 @@ int XprocConduit::Read(void* DataPtr, int DataSize, int tag)
 #endif
 
 #ifdef USE_MPI_BASE
-		MPI_Recv(DataPtr, DataSize, MPI_CHAR, mpiOtherEndproc,
-				tag<<LOG_MAX_CONDUITS+m_conduitId, MPI_STATUS_IGNORE);
+		MPI_Recv(DataPtr, DataSize, MPI_CHAR, mpiOtherEndProc,
+				(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 #endif
 
 		// change readfinishflag
 		LCK1.lock();
+#ifdef USE_DEBUG_ASSERT
 		assert(m_ReadOpRotateFinishFlag[counteridx] ==0);
+#endif
 		m_ReadOpRotateFinishFlag[counteridx]++;
 		m_ReadOpFinishCond.notify_all();
 		m_ReadOpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_capacity+1);
@@ -837,7 +854,7 @@ int XprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag
 	}
 	if(myTaskid != m_srcId && myTaskid!=m_dstId)
 	{
-		std::cout<<"Error, conduit doesn't associated to calling task!"<<std::endl;
+		std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
 		exit(1);
 	}
 
@@ -850,7 +867,7 @@ int XprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag
 	{
 		if(myThreadRank >= TaskManager::getCurrentTask()->getNumTotalThreads())
 		{
-			std::cout<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
+			std::cerr<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
 			exit(1);
 		}
 		// not the writing thread, just return, we will not wait for the real write
@@ -877,8 +894,8 @@ int XprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag
 #endif
 
 #ifdef USE_MPI_BASE
-	MPI_Recv(DataPtr, DataSize, MPI_CHAR, mpiOtherEndproc,
-			tag<<LOG_MAX_CONDUITS+m_conduitId, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	MPI_Recv(DataPtr, DataSize, MPI_CHAR, mpiOtherEndProc,
+			(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 #endif
 
 	// record this op in finish set
@@ -924,15 +941,13 @@ void XprocConduit::ReadBy_Finish(int tag)
     while(m_readbyFinishSet.find((tag<<LOG_MAX_TASKS)+myTaskid) ==
             m_readbyFinishSet.end())
     {
-        // we use (tag<<LOG_MAX_TASKS)+myTaskid as the internal tag here,
-        // as for src and dst we use one finish set, so to need differentiate
-        // the srctag and dsttag
-
         // tag not in finishset, so not finish yet
         m_readbyFinishCond.wait(LCK1);
     }
     // find tag in finishset
+#ifdef USE_DEBUG_ASSERT
     assert(m_readbyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]>0);
+#endif
     m_readbyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]--;
     if(m_readbyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]==0)
     {

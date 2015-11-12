@@ -163,7 +163,7 @@ template<class T>
 template<typename T1, typename T2>
 void Task<T>::init(T1 arg1, T2 arg2)
 {
-    // no task threads on this process, just return
+    // no task threads on this process, just return.
     // same as m_userTaskObjPtr==nullptr
     if(m_numLocalThreads ==0)
     {
@@ -181,7 +181,7 @@ void Task<T>::init(T1 arg1, T2 arg2)
 template<class T>
 void Task<T>::run()
 {
-    // no task threads on this process, just return
+    // no task threads on this process, just return.
     // same as m_userTaskObjPtr==nullptr
     if(m_numLocalThreads ==0)
     {
@@ -290,11 +290,13 @@ void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 	}
 	LCK1.unlock();
 
-	// TODO: notifying main thread that this user task.init is finished
 
 	// call user's task.init() with user task obj
 	// m_userTaskObjPtr->init();
 	m_userTaskInitFunctionHandle();
+
+	// TODO: notifying main thread that this user task.init is finished
+
 
 	// wait for all threads finishing init() call,
 	// here is an synchronization point for task threads
@@ -377,8 +379,9 @@ void Task<T>::threadExit(ThreadRank trank)
     std::lock_guard<std::mutex> lock(m_activeLocalThreadMutex);
     m_activeLocalThreadCount--;
     // notify main thread which is waiting for finish
+    // only let last thread do notify
     if(m_activeLocalThreadCount == 0)
-        m_activeLocalThreadCond.notify_one(); // only let last thread do notify
+        m_activeLocalThreadCond.notify_one(); // only main thread would wait for this
 }
 
 template<class T>
@@ -406,7 +409,7 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 	{
 		if(m_TaskRankList[i]>nProcWorld-1)
 		{
-			std::cout<<"\n*****Error, Task ["<<m_Name<<"] mapped to non-existed processes!*****\n"<<std::endl;
+			std::cerr<<"\n*****Error, Task ["<<m_Name<<"] mapped to non-existed processes!*****\n"<<std::endl;
 			std::exit(1);
 		}
 		plist[m_TaskRankList[i]].push_back(i);
@@ -437,7 +440,9 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 	// one process will share this user taskobj, the data members of the this obj
 	// will be accessed by all threads. Also each processes will has a same copy
 	// of this user taskobj.
+#ifdef USE_DEBUG_ASSERT
 	assert(m_userTaskObjPtr == nullptr);
+#endif
 	if(m_numLocalThreads !=0)
 	{
 	    // will call user task class's constructor

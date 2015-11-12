@@ -33,8 +33,10 @@ public:
 
 private:
 	boost::shared_mutex m_SharedMutex;
-	boost::unique_lock<boost::shared_mutex> m_Wlock{m_SharedMutex, boost::defer_lock};
-	boost::shared_lock<boost::shared_mutex> m_Rlock{m_SharedMutex, boost::defer_lock};
+	//boost::unique_lock<boost::shared_mutex> m_Wlock{m_SharedMutex, boost::defer_lock};
+	//boost::shared_lock<boost::shared_mutex> m_Rlock{m_SharedMutex, boost::defer_lock};
+	boost::unique_lock<boost::shared_mutex> m_Wlock;
+	boost::shared_lock<boost::shared_mutex> m_Rlock;
 };
 
 

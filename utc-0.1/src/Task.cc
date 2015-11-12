@@ -14,7 +14,7 @@ std::ofstream* getProcOstream()
 	{
 		// this function must be called in main thread, not in some task's thread
 		// main thread in a process is actually root, root task id is 0
-		std::cout<<"Error, getProcOstream() must be called in main thread\n";
+		std::cerr<<"Error, getProcOstream() must be called in main thread\n";
 		//std::ofstream output;
 		//return std::ref(output);
 		return nullptr;
@@ -42,7 +42,7 @@ std::ofstream* getThreadOstream()
 	int currentTaskid = TaskManager::getCurrentTaskId();
 	if(currentTaskid == 0)
 	{
-		std::cout<<"Error, getThreadOstream() must be called in task's thread\n";
+		std::cerr<<"Error, getThreadOstream() must be called in task's thread\n";
 		//std::ofstream output;
 		//return std::ref(output);
 		return nullptr;

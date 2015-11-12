@@ -45,7 +45,9 @@ int InprocConduit::Write(void* DataPtr, int DataSize, int tag)
 		if(m_srcWriteOpRotateCounter[counteridx] > 1)
 		{
 			// a late coming thread, but at most = all local threads
+#ifdef USE_DEBUG_ASSERT
 			assert(m_srcWriteOpRotateCounter[counteridx] <= m_numSrcLocalThreads);
+#endif
 
 			while(m_srcWriteOpRotateFinishFlag[counteridx] == 0)
 			{
@@ -107,7 +109,7 @@ int InprocConduit::Write(void* DataPtr, int DataSize, int tag)
 			if(m_srcBuffPool.find(tag) != m_srcBuffPool.end())
 			{
 				// exist, this would be an tag reuse error
-				std::cout<<"Error, tag resued!"<<std::endl;
+				std::cerr<<"Error, tag resued!"<<std::endl;
 				LCK2.unlock();
 				exit(1);
 			}
@@ -216,7 +218,9 @@ int InprocConduit::Write(void* DataPtr, int DataSize, int tag)
 
 				// the first thread finish real write, change finishflag
 				LCK1.lock();
+#ifdef USE_DEBUG_ASSERT
 				assert(m_srcWriteOpRotateFinishFlag[counteridx] == 0);
+#endif
 				// set finish flag
 				m_srcWriteOpRotateFinishFlag[counteridx]++;
 				if(m_numSrcLocalThreads == 1)
@@ -251,7 +255,9 @@ int InprocConduit::Write(void* DataPtr, int DataSize, int tag)
 		if(m_dstWriteOpRotateCounter[counteridx] >1)
 		{
 			// a late coming thread, but at most = all local threads
+#ifdef USE_DEBUG_ASSERT
 			assert(m_dstWriteOpRotateCounter[counteridx] <= m_numDstLocalThreads);
+#endif
 
 			while(m_dstWriteOpRotateFinishFlag[counteridx] == 0)
 			{
@@ -313,7 +319,7 @@ int InprocConduit::Write(void* DataPtr, int DataSize, int tag)
 			if(m_dstBuffPool.find(tag) != m_dstBuffPool.end())
 			{
 				// exist, this would be an tag reuse error
-				std::cout<<"Error, tag resued!"<<std::endl;
+				std::cerr<<"Error, tag resued!"<<std::endl;
 				LCK2.unlock();
 				exit(1);
 			}
@@ -414,7 +420,9 @@ int InprocConduit::Write(void* DataPtr, int DataSize, int tag)
 
 				// the first thread finish real write
 				LCK1.lock();
+#ifdef USE_DEBUG_ASSERT
 				assert(m_dstWriteOpRotateFinishFlag[counteridx] == 0);
+#endif
 				// set finish flag
 				m_dstWriteOpRotateFinishFlag[counteridx]++;
 				if(m_numSrcLocalThreads == 1)
@@ -437,7 +445,7 @@ int InprocConduit::Write(void* DataPtr, int DataSize, int tag)
     }// end dsttask
     else
     {
-    	std::cout<<"Error, conduit doesn't associated to calling task!"<<std::endl;
+    	std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
     	exit(1);
     }
 
@@ -467,7 +475,7 @@ int InprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
     {
         if(myThreadRank >= TaskManager::getCurrentTask()->getNumTotalThreads())
         {
-            std::cout<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
+            std::cerr<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
             exit(1);
         }
         // not the writing thread, just return, we will not wait for the real write
@@ -490,7 +498,7 @@ int InprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
 		if(m_srcBuffPool.find(tag) != m_srcBuffPool.end())
 		{
 			// tag already exist
-			std::cout<<"Error, tag resued!"<<std::endl;
+			std::cerr<<"Error, tag resued!"<<std::endl;
 			LCK2.unlock();
 			exit(1);
 		}
@@ -515,7 +523,9 @@ int InprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
 		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"src-thread "<<myThreadRank<<" doing writeby ptr...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
+#ifdef USE_DEBUG_ASSERT
 				assert(m_srcBuffPoolWaitlist[tag]==1);
+#endif
 				m_srcBuffPoolWaitlist.erase(tag);
 				tmp_buffinfo->dataPtr = DataPtr;
 				tmp_buffinfo->isBuffered = false;
@@ -597,7 +607,7 @@ int InprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
 		if(m_dstBuffPool.find(tag) != m_dstBuffPool.end())
 		{
 			// exist, this would be an tag reuse error
-			std::cout<<"Error, tag resued!"<<std::endl;
+			std::cerr<<"Error, tag resued!"<<std::endl;
 			LCK2.unlock();
 			exit(1);
 		}
@@ -622,7 +632,9 @@ int InprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
 		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing writeby ptr...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
+#ifdef USE_DEBUG_ASSERT
 				assert(m_dstBuffPoolWaitlist[tag] ==1);
+#endif
 				m_dstBuffPoolWaitlist.erase(tag);
 				tmp_buffinfo->dataPtr = DataPtr;
 				tmp_buffinfo->isBuffered = false;
@@ -696,7 +708,7 @@ int InprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
 	}// end dsttask
 	else
 	{
-		std::cout<<"Error, conduit doesn't associated to calling task!"<<std::endl;
+		std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
 		exit(1);
 	}
 
@@ -731,7 +743,9 @@ void InprocConduit::WriteBy_Finish(int tag)
 		m_writebyFinishCond.wait(LCK1);
 	}
 	// find tag in finishset
+#ifdef USE_DEBUG_ASSERT
 	assert(m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]>0);
+#endif
 	m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]--;
 	if(m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]==0)
 	{

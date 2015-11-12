@@ -27,7 +27,9 @@ TaskManager::~TaskManager()
 {
     if(m_InstancePtr)
     {
+#ifdef USE_DEBUG_ASSERT
         assert(m_TaskRegistry.size() ==0);
+#endif
         m_TaskRegistry.clear();
         m_InstancePtr = nullptr;
         m_TaskIdDealer = 0;

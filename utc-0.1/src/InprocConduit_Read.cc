@@ -48,7 +48,9 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
         if(m_srcReadOpRotateCounter[counteridx] > 1)
         {
             // a late coming thread
+#ifdef USE_DEBUG_ASSERT
             assert(m_srcReadOpRotateCounter[counteridx] <= m_numSrcLocalThreads);
+#endif
             while(m_srcReadOpRotateFinishFlag[counteridx] ==0)
             {
                 m_srcReadOpFinishCond.wait(LCK1);
@@ -67,8 +69,10 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
                 LCK1.unlock();
 
                 // last thread release this buffer
+#ifdef USE_DEBUG_ASSERt
                 assert(m_dstBuffPool.find(tag) != m_dstBuffPool.end());
                 assert(m_dstBuffPool[tag]->callingReadThreadCount == 1);
+#endif
                 std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[m_dstBuffPool[tag]->buffIdx]);
                 while(m_dstBuffPool[tag]->safeReleaseAfterRead == false)
 				{
@@ -78,7 +82,9 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
                 LCK3.unlock();
                 std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
                 BuffInfo *tmp_buff = m_dstBuffPool[tag];
+#ifdef USE_DEBUG_ASSERT
                 assert(tmp_buff->dataPtr!=nullptr);
+#endif
                 if(tmp_buff->isBuffered)
                 	free(tmp_buff->dataPtr);
                 tmp_buff->dataPtr = nullptr;
@@ -114,7 +120,9 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
             {
                 // tag not exist, means writer haven't come yet
                 // add this tag to buffpoolwaitlist
+#ifdef USE_DEBUG_ASSERT
                 assert(m_dstBuffPoolWaitlist.find(tag) == m_dstBuffPoolWaitlist.end());
+#endif
                 m_dstBuffPoolWaitlist[tag] = 1;
                 // this useful for Pwrite, as he may wait for a reader come
                 /*m_dstBuffPoolWaitlistCond.notify_one();*/
@@ -125,17 +133,21 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
                     w_ret = m_dstNewBuffInsertedCond.wait_for(LCK2, std::chrono::seconds(TIME_OUT));
                    if(w_ret == std::cv_status::timeout)
                    {
-                       std::cout<<"Error, reader wait time out!"<<"src-thread "<<myThreadRank<<std::endl;
+                       std::cerr<<"Error, reader wait time out!"<<"src-thread "<<myThreadRank<<std::endl;
                        LCK2.unlock();
                        exit(1);
                    }
                 }
 
                 // wake up when writer comes
+#ifdef USE_DEBUG_ASSERT
                 assert(m_dstBuffPoolWaitlist.find(tag) == m_dstBuffPoolWaitlist.end());
+#endif
                 tmp_buffinfo = m_dstBuffPool[tag];
+#ifdef USE_DEBUG_ASSERT
                 assert(tmp_buffinfo->callingReadThreadCount == 0);
                 assert(tmp_buffinfo->callingWriteThreadCount >0);
+#endif
                 tmp_buffinfo->callingReadThreadCount =1;
                 LCK2.unlock();
                 if(DataSize<SMALL_MESSAGE_CUTOFF)
@@ -189,8 +201,10 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
                  *  tag can do out-of-order recv
                  */
                 tmp_buffinfo = m_dstBuffPool[tag];
+#ifdef USE_DEBUG_ASSERT
                 assert(tmp_buffinfo->callingReadThreadCount == 0);
                 assert(tmp_buffinfo->callingWriteThreadCount >0);
+#endif
                 tmp_buffinfo->callingReadThreadCount =1;
                 LCK2.unlock();
                 if(DataSize<SMALL_MESSAGE_CUTOFF)
@@ -229,7 +243,9 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
 
             // the first thread finish real read need change the readfinishflag
             LCK1.lock();
+#ifdef USE_DEBUG_ASSERT
             assert(m_srcReadOpRotateFinishFlag[counteridx] ==0);
+#endif
             if(m_numSrcLocalThreads ==1)
             {
                 // only one local thread read
@@ -246,7 +262,9 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
 				}
                 LCK3.unlock();
                 LCK2.lock();
+#ifdef USE_DEBUG_ASSERT
                 assert(tmp_buffinfo->dataPtr!=nullptr);
+#endif
                 if(tmp_buffinfo->isBuffered)
                 		free(tmp_buffinfo->dataPtr);
                 tmp_buffinfo->dataPtr = nullptr;
@@ -292,7 +310,9 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
         if(m_dstReadOpRotateCounter[counteridx] > 1)
         {
             // a late coming thread
+#ifdef USE_DEBUG_ASSERT
             assert(m_dstReadOpRotateCounter[counteridx] <= m_numDstLocalThreads);
+#endif
             while(m_dstReadOpRotateFinishFlag[counteridx] ==0)
             {
                 m_dstReadOpFinishCond.wait(LCK1);
@@ -309,8 +329,10 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
                 LCK1.unlock();
 
                 // also need do the buff release
+#ifdef USE_DEBUG_ASSERT
                 assert(m_srcBuffPool.find(tag) != m_srcBuffPool.end());
                 assert(m_srcBuffPool[tag]->callingReadThreadCount == 1);
+#endif
                 std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[m_srcBuffPool[tag]->buffIdx]);
                 while(m_srcBuffPool[tag]->safeReleaseAfterRead == false)
 				{
@@ -321,7 +343,9 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
                 // last read thread will release the buff
                 std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);
                 BuffInfo *tmp_buffinfo = m_srcBuffPool[tag];
+#ifdef USE_DEBUG_ASSERT
                 assert(tmp_buffinfo->dataPtr!=nullptr);
+#endif
                 if(tmp_buffinfo->isBuffered)
                 	free(tmp_buffinfo->dataPtr);
                 tmp_buffinfo->dataPtr = nullptr;
@@ -358,7 +382,9 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
             {
                 // tag not exist, means writer haven't come yet
                 // add this tag to buffpoolwaitlist
+#ifdef USE_DEBUG_ASSERT
                 assert(m_srcBuffPoolWaitlist.find(tag)==m_srcBuffPoolWaitlist.end());
+#endif
                 m_srcBuffPoolWaitlist[tag]=1;
                 /*m_srcBuffPoolWaitlistCond.notify_one();*/
                 // go one wait for the msg come
@@ -366,15 +392,19 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
                                            [=](){return m_srcBuffPool.find(tag) !=m_srcBuffPool.end(); });
                 if(w_ret == false)
                 {
-                    std::cout<<"Error, reader wait time out!"<<"src-thread "<<myThreadRank<<std::endl;
+                    std::cerr<<"Error, reader wait time out!"<<"src-thread "<<myThreadRank<<std::endl;
                     LCK2.unlock();
                     exit(1);
                 }
                 //wake up when msg comes
+#ifdef USE_DEBUG_ASSERT
                 assert(m_srcBuffPoolWaitlist.find(tag)==m_srcBuffPoolWaitlist.end());
+#endif
                 tmp_buffinfo = m_srcBuffPool[tag];
+#ifdef USE_DEBUG_ASSERT
                 assert(tmp_buffinfo->callingReadThreadCount == 0);
                 assert(tmp_buffinfo->callingWriteThreadCount >0);
+#endif
                 tmp_buffinfo->callingReadThreadCount = 1;
                 LCK2.unlock();
                 if(DataSize < SMALL_MESSAGE_CUTOFF)
@@ -414,8 +444,10 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
             {
                 // writer already comes
                 tmp_buffinfo = m_srcBuffPool[tag];
+#ifdef USE_DEBUG_ASSERT
                 assert(tmp_buffinfo->callingReadThreadCount == 0);
                 assert(tmp_buffinfo->callingWriteThreadCount >0);
+#endif
                 tmp_buffinfo->callingReadThreadCount = 1;
                 LCK2.unlock();
                 if(DataSize < SMALL_MESSAGE_CUTOFF)
@@ -454,7 +486,9 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
 
             // the first thread finish real read need change the readfinishflag
             LCK1.lock();
+#ifdef USE_DEBUG_ASSERT
             assert(m_dstReadOpRotateFinishFlag[counteridx] ==0);
+#endif
             if(m_numDstLocalThreads ==1)
             {
                 // only one local thread read
@@ -471,7 +505,9 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
 				}
                 LCK3.unlock();
                 LCK2.lock();
+#ifdef USE_DEBUG_ASSERT
                 assert(tmp_buffinfo->dataPtr!=nullptr);
+#endif
                 if(tmp_buffinfo->isBuffered)
                 	free(tmp_buffinfo->dataPtr);
                 tmp_buffinfo->dataPtr = nullptr;
@@ -503,7 +539,7 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
     }// end dst read
     else
     {
-        std::cout<<"Error, conduit doesn't associated to calling task!"<<std::endl;
+        std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
         exit(1);
     }
 
@@ -533,7 +569,7 @@ int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
     {
         if(myThreadRank >= TaskManager::getCurrentTask()->getNumTotalThreads())
         {
-            std::cout<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
+            std::cerr<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
             exit(1);
         }
 
@@ -553,7 +589,9 @@ int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
         {
             // no tag in buffpool, means the message hasn't come yet
             // add tag to buffpoolwaitlist
+#ifdef USE_DEBUG_ASSERT
             assert(m_dstBuffPoolWaitlist.find(tag) == m_dstBuffPoolWaitlist.end());
+#endif
             m_dstBuffPoolWaitlist.insert(std::pair<MessageTag,int>(tag, 1));
             // signal writer that reader has come
             /*m_dstBuffPoolWaitlistCond.notify_one();*/
@@ -564,16 +602,20 @@ int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
                 w_ret = m_dstNewBuffInsertedCond.wait_for(LCK2, std::chrono::seconds(TIME_OUT));
                 if(w_ret == std::cv_status::timeout)
                 {
-                  std::cout<<"Error, reader wait time out!"<<"src-thread "<<myThreadRank<<std::endl;
+                  std::cerr<<"Error, reader wait time out!"<<"src-thread "<<myThreadRank<<std::endl;
                   LCK2.unlock();
                   exit(1);
                 }
             }
             // wake up when writer comes
+#ifdef USE_DEBUG_ASSERT
             assert(m_dstBuffPoolWaitlist.find(tag) == m_dstBuffPoolWaitlist.end());
+#endif
             tmp_buffinfo = m_dstBuffPool[tag];
+#ifdef USE_DEBUG_ASSERT
             assert(tmp_buffinfo->callingReadThreadCount == 0);
             assert(tmp_buffinfo->callingWriteThreadCount >0);
+#endif
             tmp_buffinfo->callingReadThreadCount =1;
             LCK2.unlock();
             if(DataSize<SMALL_MESSAGE_CUTOFF)
@@ -613,8 +655,10 @@ int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
         {
             // tag is already in buffpool
             tmp_buffinfo = m_dstBuffPool[tag];
+#ifdef USE_DEBUG_ASSERT
             assert(tmp_buffinfo->callingReadThreadCount == 0);
             assert(tmp_buffinfo->callingWriteThreadCount >0);
+#endif
             tmp_buffinfo->callingReadThreadCount = 1;
             LCK2.unlock();
             if(DataSize<SMALL_MESSAGE_CUTOFF)
@@ -659,7 +703,9 @@ int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
         }
         LCK3.unlock();
         LCK2.lock();
+#ifdef USE_DEBUG_ASSERT
         assert(tmp_buffinfo->dataPtr!=nullptr);
+#endif
         if(tmp_buffinfo->isBuffered)
         	free(tmp_buffinfo->dataPtr);
         tmp_buffinfo->dataPtr = nullptr;
@@ -689,7 +735,9 @@ int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
         if(m_srcBuffPool.find(tag) == m_srcBuffPool.end())
         {
             // tag not exist, means writer haven't come yet
+#ifdef USE_DEBUG_ASSERT
             assert(m_srcBuffPoolWaitlist.find(tag)==m_srcBuffPoolWaitlist.end());
+#endif
             m_srcBuffPoolWaitlist.insert(std::pair<MessageTag, int>(tag, 1));
             /*m_srcBuffPoolWaitlistCond.notify_one();*/
             // go on waiting for the msg come
@@ -697,15 +745,19 @@ int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
                                        [=](){return m_srcBuffPool.find(tag) !=m_srcBuffPool.end();});
             if(w_ret == false)
             {
-                std::cout<<"Error, reader wait time out!"<<"src-thread "<<myThreadRank<<std::endl;
+                std::cerr<<"Error, reader wait time out!"<<"src-thread "<<myThreadRank<<std::endl;
                 LCK2.unlock();
                 exit(1);
             }
             //wake up when msg comes
+#ifdef USE_DEBUG_ASSERT
             assert(m_srcBuffPoolWaitlist.find(tag)==m_srcBuffPoolWaitlist.end());
+#endif
             tmp_buffinfo = m_srcBuffPool[tag];
+#ifdef USE_DEBUG_ASSERT
             assert(tmp_buffinfo->callingReadThreadCount == 0);
             assert(tmp_buffinfo->callingWriteThreadCount >0);
+#endif
             tmp_buffinfo->callingReadThreadCount = 1;
             LCK2.unlock();
 
@@ -745,8 +797,10 @@ int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
         {
             // writer already comes
             tmp_buffinfo = m_srcBuffPool[tag];
+#ifdef USE_DEBUG_ASSERT
             assert(tmp_buffinfo->callingReadThreadCount == 0);
             assert(tmp_buffinfo->callingWriteThreadCount >0);
+#endif
             tmp_buffinfo->callingReadThreadCount = 1;
             LCK2.unlock();
             if(DataSize<SMALL_MESSAGE_CUTOFF)
@@ -790,7 +844,9 @@ int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
 		}
         LCK3.unlock();
         LCK2.lock();
+#ifdef USE_DEBUG_ASSERT
         assert(tmp_buffinfo->dataPtr!=nullptr);
+#endif
         if(tmp_buffinfo->isBuffered)
         	free(tmp_buffinfo->dataPtr);
         tmp_buffinfo->dataPtr = nullptr;
@@ -815,7 +871,7 @@ int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
     }
     else
     {
-        std::cout<<"Error, conduit doesn't associated to calling task!"<<std::endl;
+        std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
         exit(1);
     }
 
@@ -853,7 +909,9 @@ void InprocConduit::ReadBy_Finish(int tag)
         m_readbyFinishCond.wait(LCK1);
     }
     // find tag in finishset
+#ifdef USE_DEBUG_ASSERT
     assert(m_readbyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]>0);
+#endif
     m_readbyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]--;
     if(m_readbyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]==0)
     {

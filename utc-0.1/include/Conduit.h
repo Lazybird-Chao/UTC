@@ -68,6 +68,7 @@ private:
 
 	std::string m_Name;
 	int m_conduitId;
+	// used for inproc-conduit, the number of available inner buffer items
 	int m_capacity;
 
 	//

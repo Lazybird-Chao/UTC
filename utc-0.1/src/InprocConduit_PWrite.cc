@@ -43,7 +43,9 @@ int InprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 		if(m_srcWriteOpRotateCounter[counteridx] > 1)
 		{
 			// a late coming thread, but at most = all local threads
+#ifdef USE_DEBUG_ASSERT
 			assert(m_srcWriteOpRotateCounter[counteridx] <= m_numSrcLocalThreads);
+#endif
 
 			while(m_srcWriteOpRotateFinishFlag[counteridx] == 0)
 			{
@@ -105,7 +107,7 @@ int InprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 			if(m_srcBuffPool.find(tag) != m_srcBuffPool.end())
 			{
 				// exist, this would be an tag reuse error
-				std::cout<<"Error, tag resued!"<<std::endl;
+				std::cerr<<"Error, tag resued!"<<std::endl;
 				LCK2.unlock();
 				exit(1);
 			}
@@ -167,7 +169,9 @@ int InprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 
 				// the first thread finish real write, change finishflag
 				LCK1.lock();
+#ifdef USE_DEBUG_ASSERT
 				assert(m_srcWriteOpRotateFinishFlag[counteridx] == 0);
+#endif
 				// set finish flag
 				m_srcWriteOpRotateFinishFlag[counteridx]++;
 				if(m_numSrcLocalThreads == 1)
@@ -201,7 +205,9 @@ int InprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 		if(m_dstWriteOpRotateCounter[counteridx] >1)
 		{
 			// a late coming thread, but at most = all local threads
+#ifdef USE_DEBUG_ASSERT
 			assert(m_dstWriteOpRotateCounter[counteridx] <= m_numDstLocalThreads);
+#endif
 
 			while(m_dstWriteOpRotateFinishFlag[counteridx] == 0)
 			{
@@ -263,7 +269,7 @@ int InprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 			if(m_dstBuffPool.find(tag) != m_dstBuffPool.end())
 			{
 				// exist, this would be an tag reuse error
-				std::cout<<"Error, tag resued!"<<std::endl;
+				std::cerr<<"Error, tag resued!"<<std::endl;
 				LCK2.unlock();
 				exit(1);
 			}
@@ -321,7 +327,9 @@ int InprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 
 				// the first thread finish real write
 				LCK1.lock();
+#ifdef USE_DEBUG_ASSERT
 				assert(m_dstWriteOpRotateFinishFlag[counteridx] == 0);
+#endif
 				// set finish flag
 				m_dstWriteOpRotateFinishFlag[counteridx]++;
 				if(m_numSrcLocalThreads == 1)
@@ -344,7 +352,7 @@ int InprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
     }// end dsttask
     else
     {
-    	std::cout<<"Error, conduit doesn't associated to calling task!"<<std::endl;
+    	std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
     	exit(1);
     }
 
@@ -375,7 +383,7 @@ int InprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int 
     {
         if(myThreadRank >= TaskManager::getCurrentTask()->getNumTotalThreads())
         {
-            std::cout<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
+            std::cerr<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
             exit(1);
         }
         // not the writing thread, just return, we will not wait for the real write
@@ -398,7 +406,7 @@ int InprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int 
     		if(m_srcBuffPool.find(tag) != m_srcBuffPool.end())
     		{
     			// tag already exist
-    			std::cout<<"Error, tag resued!"<<std::endl;
+    			std::cerr<<"Error, tag resued!"<<std::endl;
     			LCK2.unlock();
     			exit(1);
     		}
@@ -469,7 +477,7 @@ int InprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int 
 			if(m_dstBuffPool.find(tag) != m_dstBuffPool.end())
 			{
 				// exist, this would be an tag reuse error
-				std::cout<<"Error, tag resued!"<<std::endl;
+				std::cerr<<"Error, tag resued!"<<std::endl;
 				LCK2.unlock();
 				exit(1);
 			}
@@ -532,7 +540,7 @@ int InprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int 
     	}// end dsttask
     	else
     	{
-    		std::cout<<"Error, conduit doesn't associated to calling task!"<<std::endl;
+    		std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
     		exit(1);
     	}
 
@@ -564,7 +572,9 @@ void InprocConduit::PWriteBy_Finish(int tag)
 		m_writebyFinishCond.wait(LCK1);
 	}
 	// find tag in finishset
+#ifdef USE_DEBUG_ASSERT
 	assert(m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]>0);
+#endif
 	m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]--;
 	if(m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]==0)
 	{

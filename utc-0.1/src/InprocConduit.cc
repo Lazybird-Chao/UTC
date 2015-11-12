@@ -6,7 +6,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <chrono>
-#include <cassert>
+
 
 namespace iUtc
 {

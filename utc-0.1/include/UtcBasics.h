@@ -2,14 +2,18 @@
 #define UTC_BASICS_H_
 
 
-//#define UTC_DEBUG
-//#define UTC_BAR_DEBUG
-//#define PRINT_EXCEPTION
-//#define UTC_DEVELOP
-//#define XFER_DEBUG
-//#define USE_RUN_FUNCTORS
+/*
+ *
+ */
+//#define USE_DEBUG_LOG
+//#define USE_DEBUG_ASSERT
 
-#define USE_DEBUG_LOG
+
+
+
+/*
+ *
+ */
 #ifdef USE_DEBUG_LOG
 #include <chrono>
 #include <ctime>
@@ -26,6 +30,10 @@ extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
 											"("<<dtn.count()<<")"<<">>>>>>>>>>:    ";}
 #endif
 
+
+/*
+ *
+ */
 #define USE_CPLUS_THREAD_CREATION
 #if defined(USE_CPLUS_THREAD_CREATION)
     #include <thread>
@@ -36,6 +44,10 @@ extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
     #include <sys/types.h>
 #endif
 
+
+/*
+ *
+ */
 #define USE_MPI_BASE
 #ifdef USE_MPI_BASE
     #include <mpi.h>
@@ -44,7 +56,9 @@ extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
                               //  MPI_THREAD_FUNNELED,
                               //  MPI_THREAD_SERIALIZED,
 
-
+/*
+ *
+ */
 typedef  int RankId;  // >=0
 typedef  int ProcRank; // >=0
 typedef  int ThreadRank; // >=0
@@ -61,7 +75,9 @@ typedef  int MessageTag; // >=0
 #endif
 
 
-
+/*
+ *
+ */
 const int MAX_PROCS=32;
 const int LOG_MAX_PROCS=5;
 const int MAX_TASKS=512;
@@ -71,7 +87,7 @@ const int LOG_MAX_THREADS=8;
 
 const int MAX_CONDUITS = 1024;
 const int LOG_MAX_CONDUITS = 10;
-const int INPROC_CONDUIT_CAPACITY_DEFAULT = 4;
+const int INPROC_CONDUIT_CAPACITY_DEFAULT = 16;
 const int INPROC_CONDUIT_CAPACITY_MAX = 32;
 const int SMALL_MESSAGE_CUTOFF = 1024*1024;
 

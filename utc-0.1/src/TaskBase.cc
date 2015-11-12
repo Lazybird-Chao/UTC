@@ -45,7 +45,7 @@ int TaskBase::toLocal(ThreadRank trank)
 	std::map<ThreadRank, int>::iterator it=m_ThreadRank2Local.find(trank);
 	if(it == m_ThreadRank2Local.end())
 	{
-		std::cout<<"Error for calling toLocal, no this thread rank\n";
+		std::cerr<<"Error for calling toLocal, no this thread rank\n";
 		return -1;
 	}
 	return it->second;
@@ -82,7 +82,7 @@ ThreadRank TaskBase::getThreadRankById(ThreadId tid)
 	std::map<ThreadId, ThreadRank>::iterator it = m_LocalThreadRegistry.find(tid);
 	if(it == m_LocalThreadRegistry.end())
 	{
-		std::cout<<"Error for calling getThreadRankById, no this thread\n";
+		std::cerr<<"Error for calling getThreadRankById, no this thread\n";
 		return -1;
 	}
     return it->second; //m_LocalThreadRegistry[tid];

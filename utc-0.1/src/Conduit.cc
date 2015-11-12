@@ -15,7 +15,7 @@ Conduit::Conduit()
 	m_srcId = -1;
 	m_dstId = -1;
 
-	m_capacity = CONDUIT_CAPACITY_DEFAULT;
+	m_capacity = INPROC_CONDUIT_CAPACITY_DEFAULT;
 	m_Name = "";
 	m_conduitId = ConduitManager::getNewConduitId();
 	m_cdtMgr = ConduitManager::getInstance();
@@ -50,7 +50,7 @@ Conduit::Conduit(TaskBase* srctask, TaskBase* dsttask)
 	if(srctask->isActiveOnCurrentProcess()==true &&
 			dsttask->isActiveOnCurrentProcess()==true)
 	{
-		m_realConduitPtr = new InprocConduit(srctask, dsttask, m_capacity, m_conduitId);
+		m_realConduitPtr = new InprocConduit(srctask, dsttask, m_conduitId, m_capacity);
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*procOstream)
 		*procOstream<<"InprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
@@ -60,7 +60,7 @@ Conduit::Conduit(TaskBase* srctask, TaskBase* dsttask)
 	else if((srctask->isActiveOnCurrentProcess()== false && dsttask->isActiveOnCurrentProcess()== true) ||
 			(srctask->isActiveOnCurrentProcess()== true && dsttask->isActiveOnCurrentProcess()==false))
 	{
-		m_realConduitPtr = new XprocConduit(srctask, dsttask);
+		m_realConduitPtr = new XprocConduit(srctask, dsttask, m_conduitId);
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*procOstream)
 		*procOstream<<"XprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
@@ -109,7 +109,7 @@ Conduit::Conduit(TaskBase* srctask, TaskBase* dsttask, int capacity)
 	if(srctask->isActiveOnCurrentProcess()==true &&
 				dsttask->isActiveOnCurrentProcess()==true)
 	{
-		m_realConduitPtr = new InprocConduit(srctask, dsttask, m_capacity);
+		m_realConduitPtr = new InprocConduit(srctask, dsttask, m_conduitId, m_capacity);
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*procOstream)
 		*procOstream<<"InprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
@@ -119,7 +119,7 @@ Conduit::Conduit(TaskBase* srctask, TaskBase* dsttask, int capacity)
 	else if((srctask->isActiveOnCurrentProcess()== false && dsttask->isActiveOnCurrentProcess()== true) ||
 			(srctask->isActiveOnCurrentProcess()== true && dsttask->isActiveOnCurrentProcess()==false))
 	{
-		m_realConduitPtr = new XprocConduit(srctask, dsttask);
+		m_realConduitPtr = new XprocConduit(srctask, dsttask, m_conduitId);
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*procOstream)
 		*procOstream<<"XprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
@@ -171,7 +171,7 @@ TaskBase* Conduit::getAnotherTask()
 		return m_srcTask;
 	else
 	{
-		std::cout<<"Error, conduit doesn't associated to calling task!"<<std::endl;
+		std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
 		exit(1);
 	}
 
@@ -186,7 +186,7 @@ void Conduit::Connect(TaskBase* srctask, TaskBase* dsttask)
 {
     if(m_srcTask || m_dstTask)
     {
-        std::cout<<"Error, already connected to some Task"<<std::endl;
+        std::cerr<<"Error, already connected to some Task"<<std::endl;
         exit(1);
     }
     m_srcTask = srctask;
@@ -203,7 +203,7 @@ void Conduit::Connect(TaskBase* srctask, TaskBase* dsttask)
 	if(srctask->isActiveOnCurrentProcess()==true &&
 					dsttask->isActiveOnCurrentProcess()==true)
 	{
-		m_realConduitPtr = new InprocConduit(srctask, dsttask, m_capacity);
+		m_realConduitPtr = new InprocConduit(srctask, dsttask, m_conduitId, m_capacity);
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*procOstream)
 		*procOstream<<"InprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
@@ -213,7 +213,7 @@ void Conduit::Connect(TaskBase* srctask, TaskBase* dsttask)
 	else if((srctask->isActiveOnCurrentProcess()== false && dsttask->isActiveOnCurrentProcess()== true) ||
 			(srctask->isActiveOnCurrentProcess()== true && dsttask->isActiveOnCurrentProcess()==false))
 	{
-		m_realConduitPtr = new XprocConduit(srctask, dsttask);
+		m_realConduitPtr = new XprocConduit(srctask, dsttask,m_conduitId);
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*procOstream)
 		*procOstream<<"XprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
