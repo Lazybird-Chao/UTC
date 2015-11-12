@@ -84,6 +84,11 @@ void UtcContext::initialize(int& argc, char** argv)
 
     ConduitManager* cdtMgr = ConduitManager::getInstance(); // The very first time and only this
     														// time to create a ConduitManager obj
+#ifdef USE_DEBUG_LOG
+    std::ofstream *procOstream = root->getProcOstream();
+    PRINT_TIME_NOW(*procOstream)
+    *procOstream<<"Utc context created on proc "<<pRank<<"..."<<std::endl;
+#endif
 }
 
 void UtcContext::finalize()
@@ -106,11 +111,26 @@ void UtcContext::finalize()
     taskMgr->unregisterTask(root, 0);
     delete taskMgr;
 
+    // procOstream is new-ed in root's constructor, we delete it here as we still want
+    // to use it before destruct the root obj
+    std::ofstream *procOstream = root->getProcOstream();
     delete root;
     root = nullptr;
 
-    delete Utcbase_provider;
+    if(Utcbase_provider)
+    	delete Utcbase_provider;
     Utcbase_provider = nullptr;
+#ifdef USE_DEBUG_LOG
+    PRINT_TIME_NOW(*procOstream)
+    *procOstream<<"Utc context destroyed!!!"<<std::endl;
+#endif
+    if(procOstream)
+    {
+    	if(procOstream->is_open())
+    		procOstream->close();
+    	delete procOstream;
+    }
+
 }
 
 }// namespace iUtc

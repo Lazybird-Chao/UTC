@@ -42,6 +42,8 @@ public:
 
     ProcRank getCurrentProcRank();
 
+    ProcRank getMainResideProcess();
+
     // return if thread with rank value 'tRank' is on current process
     bool isLocal(ThreadRank tRank);
 
@@ -74,6 +76,8 @@ protected:
     int    m_numTotalThreads;
 
     ProcRank m_processRank;    // the current running process's rank value
+
+    ProcRank m_mainResideProcess;  // a main process rank that a task maped to
 
     std::vector<ProcRank> m_TaskRankList;  //how task threads map to proc
 

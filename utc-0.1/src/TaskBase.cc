@@ -105,6 +105,10 @@ bool TaskBase::isActiveOnCurrentProcess()
 	return m_numLocalThreads!=0;
 }
 
+ProcRank TaskBase::getMainResideProcess()
+{
+	return m_mainResideProcess;
+}
 
 ///
 TaskBase::TaskBase()

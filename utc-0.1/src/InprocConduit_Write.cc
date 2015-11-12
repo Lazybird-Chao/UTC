@@ -1,4 +1,4 @@
-#include "Conduit.h"
+#include "InprocConduit.h"
 #include "TaskManager.h"
 #include "Task.h"
 #include "Task_Utilities.h"
@@ -17,7 +17,7 @@ namespace iUtc{
  * Standard Blocking write operation.
  * Do buffered message when it needs to.
  */
-int Conduit::Write(void* DataPtr, int DataSize, int tag)
+int InprocConduit::Write(void* DataPtr, int DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -445,7 +445,7 @@ int Conduit::Write(void* DataPtr, int DataSize, int tag)
 }// end Write()
 
 
-int Conduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
+int InprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -706,7 +706,7 @@ int Conduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
 
 
 // Actually, it's same as other mode of writeby_finish operation.
-void Conduit::WriteBy_Finish(int tag)
+void InprocConduit::WriteBy_Finish(int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)

@@ -24,7 +24,7 @@ std::ofstream* getProcOstream()
 	if(!procOstream)
 	{
 		boost::filesystem::path log_path("./log");
-		if(!exists(log_path))
+		if(!boost::filesystem::exists(log_path))
 			boost::filesystem::create_directory(log_path);
 		std::string filename = "./log/Proc";
 		filename.append(std::to_string(root->getCurrentProcRank()));
@@ -51,7 +51,7 @@ std::ofstream* getThreadOstream()
 	if(!tpd->threadOstream)
 	{
 		boost::filesystem::path log_path("./log");
-		if(!exists(log_path))
+		if(!boost::filesystem::exists(log_path))
 			boost::filesystem::create_directory(log_path);
 		std::string filename = "./log/";
 		filename.append((TaskManager::getCurrentTask())->getName());

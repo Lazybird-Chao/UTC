@@ -1,4 +1,4 @@
-#include "Conduit.h"
+#include "InprocConduit.h"
 #include "TaskManager.h"
 #include "Task.h"
 #include "Task_Utilities.h"
@@ -18,7 +18,7 @@ namespace iUtc
 /*
  *  Blocking conduit read operation
  */
-int Conduit::Read(void *DataPtr, int DataSize, int tag)
+int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -512,7 +512,7 @@ int Conduit::Read(void *DataPtr, int DataSize, int tag)
 }// end read
 
 
-int Conduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
+int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -823,7 +823,7 @@ int Conduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
 
 }// end ReadBy()
 
-void Conduit::ReadBy_Finish(int tag)
+void InprocConduit::ReadBy_Finish(int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)

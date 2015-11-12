@@ -8,7 +8,7 @@ using namespace iUtc;
 //#define TEST_WRITE
 #define TEST_PWRITE
 
-#define SIZE (1024*1024*64)
+#define SIZE (1024*1024*16)
 #define test_capacity 8
 
 

@@ -50,10 +50,11 @@ namespace iUtc{
             int length;
             MPI_Get_processor_name(m_name, &length);
             m_name[length]='\0';
+#ifdef USE_DEBUG_LOG
             std::cout<< "MPI ThreadMode="<<m_mode[provided]<<", "
                     <<"Total processes="<<m_size<<", "
                     <<"Current proc rank="<<m_rank<<"("<<getpid()<<")"<<std::endl;
-
+#endif
 
         }
 
@@ -62,9 +63,14 @@ namespace iUtc{
             if(--nCount !=0)
                 return;
 
+            //
+            MPI_Barrier(MPI_COMM_WORLD);
+
             //MPI_Finalize();
             MPI::Finalize();
+#ifdef USE_DEBUG_LOG
             std::cout<<"MPI Proc "<<m_rank<<" exit!"<<std::endl;
+#endif
         }
 
         int Utc::rank()

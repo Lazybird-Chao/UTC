@@ -28,6 +28,7 @@ RootTask::RootTask(int WorldSize, int currentProcess)
     m_ThreadRank2Local.insert(std::pair<ThreadRank, int>(tRank, 0));
     m_ParentTaskId= m_TaskId; //only for root
     m_processRank= pRank;
+    m_mainResideProcess = 0;
     for(int i=0; i<WorldSize; i++)
     {
     	m_TaskRankList.push_back(i);
@@ -35,7 +36,7 @@ RootTask::RootTask(int WorldSize, int currentProcess)
 
 #ifdef USE_DEBUG_LOG
     boost::filesystem::path log_path("./log");
-    if(!exists(log_path))
+    if(!boost::filesystem::exists(log_path))
     	boost::filesystem::create_directory(log_path);
     std::string filename= "./log/Proc";
     filename.append(std::to_string(currentProcess));
@@ -79,7 +80,7 @@ RootTask::~RootTask()
 			PRINT_TIME_NOW(*m_procOstream)
 		    *m_procOstream<<"Root Task destroyed!!!"<<std::endl;
 #endif
-			m_procOstream->close();
+			//m_procOstream->close();
 		}
 	}
 	delete m_barrierObjPtr;

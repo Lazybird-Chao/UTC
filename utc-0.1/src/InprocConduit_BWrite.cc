@@ -1,4 +1,4 @@
-#include "Conduit.h"
+#include "InprocConduit.h"
 #include "TaskManager.h"
 #include "Task.h"
 #include "Task_Utilities.h"
@@ -17,7 +17,7 @@ namespace iUtc
 /*
  *  Buffered & Blocking conduit write operation
  */
-int Conduit::BWrite(void *DataPtr, int DataSize, int tag)
+int InprocConduit::BWrite(void *DataPtr, int DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -61,10 +61,6 @@ int Conduit::BWrite(void *DataPtr, int DataSize, int tag)
                 // last thread that will leave this write, reset counter and flag value
                 m_srcWriteOpRotateFinishFlag[counteridx] = 0;
                 m_srcWriteOpRotateCounter[counteridx] = 0;
-#ifdef USE_DEBUG_LOG
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"src-thread "<<myThreadRank<<" exit Bwrite...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
-#endif
                 // update counter idx to next one
                 m_srcWriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_capacity+1);
                 LCK1.unlock();
@@ -80,16 +76,20 @@ int Conduit::BWrite(void *DataPtr, int DataSize, int tag)
                 // in case there is reader thread waiting for this to release buff
                 m_srcBuffSafeReleaseCond.notify_all();
                 LCK3.unlock();
-            }
-            else
-            {
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"src-thread "<<myThreadRank<<" exit Bwrite...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
+            }
+            else
+            {
                 // update counter idx to next one
                 m_srcWriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_capacity+1);
                 LCK1.unlock();
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" exit Bwrite...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+#endif
             }
             return 0;
 
@@ -195,15 +195,15 @@ int Conduit::BWrite(void *DataPtr, int DataSize, int tag)
                     m_srcWriteOpRotateFinishFlag[counteridx] = 0;
                     m_srcWriteOpRotateCounter[counteridx] = 0;
                 }
-#ifdef USE_DEBUG_LOG
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"src-thread "<<myThreadRank<<" finish Bwrite!:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
-#endif
                 // update counter idx to next one
                 m_srcWriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_capacity+1);
                 // notify other late coming threads to exit
                 m_srcWriteOpFinishCond.notify_all();
                 LCK1.unlock();
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" finish Bwrite!:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+#endif
                 return 0;
             }// end do real write
         }// end first coming thread
@@ -390,7 +390,7 @@ int Conduit::BWrite(void *DataPtr, int DataSize, int tag)
     }
 }// end Write()
 
-int Conduit::BWriteBy(ThreadRank thread, void *DataPtr, int DataSize, int tag)
+int InprocConduit::BWriteBy(ThreadRank thread, void *DataPtr, int DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -620,7 +620,7 @@ int Conduit::BWriteBy(ThreadRank thread, void *DataPtr, int DataSize, int tag)
 
 }// end BWriteBy()
 
-void Conduit::BWriteBy_Finish(int tag)
+void InprocConduit::BWriteBy_Finish(int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)

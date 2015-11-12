@@ -8,36 +8,14 @@
 
 //B
 #include "Barrier.h"
+
 //C
 #include "ConduitManager.h"
+#include "ConduitBase.h"
 #include "Conduit.h"
-//D
-
-//E
-
-//F
-
-//G
-
-//H
 
 //I
-
-//J
-
-//K
-
-//L
-
-//M
-
-//N
-
-//O
-
-//P
-
-//Q
+#include "InprocConduit.h"
 
 //R
 #include "RankList.h"
@@ -56,6 +34,7 @@
 
 //U
 #include "UtcBase.h"
+#include "UtcBasics.h"
 #include "UtcContext.h"
 #include "UtcException.h"
 #include "UtcMpi.h"
@@ -65,6 +44,7 @@
 //W
 
 //X
+#include "XprocConduit.h"
 
 //Y
 

@@ -32,9 +32,11 @@ vpath %.cc ./src
 default: test
 
 ### utc targets
-obj:= UtcContext.o UtcMpi.o RankList.o RootTask.o  TaskBase.o TaskManager.o \
-	  Task.o  ConduitManager.o Conduit.o Conduit_Write.o Conduit_BWrite.o Conduit_PWrite.o\
-	  Conduit_Read.o Timer.o  Barrier.o SharedDataLock.o
+obj:= 	UtcContext.o UtcMpi.o RankList.o \
+		RootTask.o  TaskBase.o TaskManager.o Task.o  \
+		ConduitManager.o Conduit.o InprocConduit.o XprocConduit.o\
+		InprocConduit_Write.o InprocConduit_BWrite.o InprocConduit_PWrite.o	InprocConduit_Read.o \
+		Timer.o  Barrier.o SharedDataLock.o
 LIB_UTC := libutc.a
 
 	  
@@ -71,14 +73,18 @@ Task.o: Task.cc
 ConduitManager.o: ConduitManager.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 Conduit.o: Conduit.cc
+	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+InprocConduit.o: InprocConduit.cc
 	$(G++)	-o $@ -c $^ $(CCFLAG) $(INCLUDE)
-Conduit_Write.o: Conduit_Write.cc
+XprocConduit.o: XprocConduit.cc
 	$(G++)	-o $@ -c $^ $(CCFLAG) $(INCLUDE)
-Conduit_BWrite.o: Conduit_BWrite.cc
+InprocConduit_Write.o: InprocConduit_Write.cc
 	$(G++)	-o $@ -c $^ $(CCFLAG) $(INCLUDE)
-Conduit_PWrite.o: Conduit_PWrite.cc
+InprocConduit_BWrite.o: InprocConduit_BWrite.cc
 	$(G++)	-o $@ -c $^ $(CCFLAG) $(INCLUDE)
-Conduit_Read.o: Conduit_Read.cc
+InprocConduit_PWrite.o: InprocConduit_PWrite.cc
+	$(G++)	-o $@ -c $^ $(CCFLAG) $(INCLUDE)
+InprocConduit_Read.o: InprocConduit_Read.cc
 	$(G++)	-o $@ -c $^ $(CCFLAG) $(INCLUDE)
 Timer.o: Timer.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)

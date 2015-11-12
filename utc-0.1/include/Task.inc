@@ -369,6 +369,7 @@ void Task<T>::threadExit(ThreadRank trank)
 #endif
 			m_threadOstream->close();
 		}
+		delete m_threadOstream;
 	}
 	m_threadPrivateData.reset();  // clear TSS data
 
@@ -425,6 +426,8 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 			m_numLocalThreads = plist[i].size();
 		}
 	}
+	//the first process is set to be the main reside process for a task
+	m_mainResideProcess = inc_rank[0];
 #ifdef USE_MPI_BASE
 	MPI_Group_incl(*(root->getWorldGroup()), m_numProcesses, inc_rank, &m_taskmpiGroup);
 	MPI_Comm_create(*(root->getWorldComm()), m_taskmpiGroup, &m_taskComm);
@@ -481,7 +484,7 @@ void Task<T>::LaunchThreads(std::vector<ThreadRank> &tRankList)
 		trank=tRankList[i];
 #ifdef USE_DEBUG_LOG
 		boost::filesystem::path log_path("./log");
-		if(!exists(log_path))
+		if(!boost::filesystem::exists(log_path))
 			boost::filesystem::create_directory(log_path);
 		std::string filename = "./log/";
 		filename.append(m_Name);

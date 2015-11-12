@@ -1,4 +1,4 @@
-#include "Conduit.h"
+#include "InprocConduit.h"
 #include "TaskManager.h"
 #include "Task.h"
 #include "Task_Utilities.h"
@@ -15,7 +15,7 @@ namespace iUtc{
  * Unbuffered Blocking write operation.
  * Do not user intermediate buffer, pass address.
  */
-int Conduit::PWrite(void* DataPtr, int DataSize, int tag)
+int InprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -353,7 +353,7 @@ int Conduit::PWrite(void* DataPtr, int DataSize, int tag)
 }// end pwrite()
 
 
-int Conduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
+int InprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -539,7 +539,7 @@ int Conduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
 }// end pwriteby()
 
 
-void Conduit::PWriteBy_Finish(int tag)
+void InprocConduit::PWriteBy_Finish(int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
