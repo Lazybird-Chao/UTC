@@ -29,11 +29,12 @@ class InprocConduit: public ConduitBase
 	struct BuffInfo
 	{
 		void *dataPtr = nullptr;
+		void *bufferPtr = nullptr;
 		int buffIdx = 0;
 		int callingWriteThreadCount =0;
 		int callingReadThreadCount = 0;
-		bool safeReleaseAfterRead = false;
-		bool isBuffered = true;
+		int buffSize = 0;
+
 	};
 
 public:
@@ -126,6 +127,7 @@ private:
 	//std::string m_Name;
 	int m_conduitId;
 	int m_capacity;
+	int m_noFinishedOpCapacity;  // different meaning as m_capacity!!!
 
 	int m_numSrcLocalThreads;
 	int m_numDstLocalThreads;
@@ -140,6 +142,7 @@ private:
 	 */
 
 	int m_srcAvailableBuffCount;
+	BuffInfo* m_srcAvailableBuff;
 	std::map<MessageTag, BuffInfo*> m_srcBuffPool;
 	std::map<MessageTag, int> m_srcBuffPoolWaitlist;
 	/*std::condition_variable m_srcBuffPoolWaitlistCond;*/
@@ -154,7 +157,9 @@ private:
 	std::vector<int> m_srcBuffDataReadFlag;
 	// when all write threads finish write, use this to signal reader to release buffer,
 	// changer this var from every buffer's to one, may cause more compete use
-	std::condition_variable m_srcBuffSafeReleaseCond;
+	/*std::condition_variable m_srcBuffSafeReleaseCond;
+	std::mutex m_srcBuffSafeReleaseMutex;
+	std::vector<int> m_srcBuffReleaseQueue;*/
 	// used to control buffer allocate and update buffer related info
 	std::mutex m_srcBuffManagerMutex;
 	// src thread wait for this cond when buff full, dst thread notify this cond when
@@ -163,7 +168,9 @@ private:
 	//src thread notify this cond when insert a new buff item to pool in write, dst thread
 	//wait this cond when can't find request message in pool in read
 	std::condition_variable m_srcNewBuffInsertedCond;
-	// used for thread to check if need do the real write op
+
+
+	/*// used for thread to check if need do the real write op
 	std::mutex m_srcWriteOpCheckMutex;
 	std::mutex m_srcReadOpCheckMutex;
 	// each counter is used to record how many threads called current write op
@@ -180,10 +187,20 @@ private:
 	//  used by late coming thread to wait the real write op finish, and first coming thread will
 	//  use for notify
 	std::condition_variable m_srcWriteOpFinishCond;
-	std::condition_variable m_srcReadOpFinishCond;
+	std::condition_variable m_srcReadOpFinishCond;*/
+
+	std::mutex m_srcOpCheckMutex;
+	int *m_srcOpRotateCounter;
+	int *m_srcOpRotateCounterIdx;
+	int *m_srcOpRotateFinishFlag;
+	std::condition_variable m_srcOpFinishCond;
+	std::condition_variable m_srcAvailableNoFinishedOpCond;
+	int m_srcAvailableNoFinishedOpCount;
+
 
 
 	int m_dstAvailableBuffCount;
+	BuffInfo* m_dstAvailableBuff;
     std::map<MessageTag, BuffInfo*> m_dstBuffPool;
     std::map<MessageTag, int> m_dstBuffPoolWaitlist;
    /* std::condition_variable m_dstBuffPoolWaitlistCond;*/
@@ -193,11 +210,14 @@ private:
     std::vector<std::condition_variable> m_dstBuffDataReadCond;
     std::vector<int> m_dstBuffDataWrittenFlag;
     std::vector<int> m_dstBuffDataReadFlag;
-    std::condition_variable m_dstBuffSafeReleaseCond;
+    /*std::condition_variable m_dstBuffSafeReleaseCond;
+    std::mutex m_dstBuffSafeReleaseMutex;
+    std::vector<int> m_dstBuffReleaseQueue;*/
     std::mutex m_dstBuffManagerMutex;
     std::condition_variable m_dstBuffAvailableCond;
     std::condition_variable m_dstNewBuffInsertedCond;
-    std::mutex m_dstWriteOpCheckMutex;
+
+    /*std::mutex m_dstWriteOpCheckMutex;
     int *m_dstWriteOpRotateCounter;
     int *m_dstWriteOpRotateCounterIdx;
     int *m_dstWriteOpRotateFinishFlag;
@@ -207,7 +227,14 @@ private:
     int *m_dstReadOpRotateCounterIdx;
     int *m_dstReadOpRotateFinishFlag;
     std::condition_variable m_dstReadOpFinishCond;
-
+*/
+    std::mutex m_dstOpCheckMutex;
+    int *m_dstOpRotateCounter;
+    int *m_dstOpRotateCounterIdx;
+    int *m_dstOpRotateFinishFlag;
+    std::condition_variable m_dstOpFinishCond;
+    std::condition_variable m_dstAvailableNoFinishedOpCond;
+    int m_dstAvailableNoFinishedOpCount;
 
     /*used by writeby and readby to set a flag for check and waiting
     as only asigned thread do the op, other threads will go one their process,

@@ -76,6 +76,7 @@ InprocConduit::InprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId, in
     m_numSrcLocalThreads = srctask->getNumLocalThreads();
     m_numDstLocalThreads = dsttask->getNumLocalThreads();
     m_capacity = capacity;
+    m_noFinishedOpCapacity = NO_FINISHED_OP_MAX;
     /*if(capacity > CONDUIT_CAPACITY_MAX)
     {
     	m_capacity = CONDUIT_CAPACITY_MAX;
@@ -105,6 +106,12 @@ void InprocConduit::initInprocConduit()
 
 
 	m_srcAvailableBuffCount = m_capacity;
+	m_srcAvailableBuff = new BuffInfo[m_capacity];
+	for(int i=0; i<m_capacity; i++)
+	{
+	    m_srcAvailableBuff[i].buffSize = CONDUIT_BUFFER_SIZE_DEFAULT;
+	    m_srcAvailableBuff[i].bufferPtr = malloc(CONDUIT_BUFFER_SIZE_DEFAULT);
+	}
 	m_srcBuffPool.clear();
 	m_srcBuffPoolWaitlist.clear();
 	m_srcBuffIdx.clear();
@@ -123,7 +130,7 @@ void InprocConduit::initInprocConduit()
 		m_srcBuffDataWrittenFlag.push_back(0);
 		m_srcBuffDataReadFlag.push_back(0);
 	}
-	m_srcWriteOpRotateCounter = new int[m_capacity+1];
+	/*m_srcWriteOpRotateCounter = new int[m_capacity+1];
 	m_srcReadOpRotateCounter = new int[m_capacity +1];
 	m_srcWriteOpRotateFinishFlag = new int[m_capacity+1];
 	m_srcReadOpRotateFinishFlag = new int[m_capacity+1];
@@ -141,10 +148,32 @@ void InprocConduit::initInprocConduit()
 	{
 		m_srcWriteOpRotateCounterIdx[i] = 0;
 		m_srcReadOpRotateCounterIdx[i]=0;
+	}*/
+	m_srcAvailableNoFinishedOpCount = m_noFinishedOpCapacity;
+	m_srcOpRotateCounter = new int[m_noFinishedOpCapacity+1];
+	m_srcOpRotateFinishFlag = new int[m_noFinishedOpCapacity+1];
+	for(int i =0; i<m_noFinishedOpCapacity; i++)
+	{
+	    m_srcOpRotateCounter[i]=0;
+	    m_srcOpRotateCounter[i]=0;
 	}
+	m_srcOpRotateCounterIdx = new int[m_srcTask->getNumTotalThreads()];
+    for(int i =0; i<m_srcTask->getNumTotalThreads();i++)
+    {
+        m_srcOpRotateCounterIdx[i] = 0;
+    }
+
+
+
 
 
 	m_dstAvailableBuffCount = m_capacity;
+	m_dstAvailableBuff = new BuffInfo[m_capacity];
+    for(int i=0; i<m_capacity; i++)
+    {
+        m_dstAvailableBuff[i].buffSize = CONDUIT_BUFFER_SIZE_DEFAULT;
+        m_dstAvailableBuff[i].bufferPtr = malloc(CONDUIT_BUFFER_SIZE_DEFAULT);
+    }
 	m_dstBuffPool.clear();
 	m_dstBuffPoolWaitlist.clear();
 	m_dstBuffIdx.clear();
@@ -163,6 +192,7 @@ void InprocConduit::initInprocConduit()
 		m_dstBuffDataWrittenFlag.push_back(0);
 		m_dstBuffDataReadFlag.push_back(0);
 	}
+/*
 	m_dstWriteOpRotateCounter = new int[m_capacity+1];
 	m_dstReadOpRotateCounter = new int[m_capacity +1];
 	m_dstWriteOpRotateFinishFlag = new int[m_capacity+1];
@@ -181,6 +211,20 @@ void InprocConduit::initInprocConduit()
 		m_dstWriteOpRotateCounterIdx[i] = 0;
 		m_dstReadOpRotateCounterIdx[i]=0;
 	}
+*/
+	m_dstAvailableNoFinishedOpCount = m_noFinishedOpCapacity;
+    m_dstOpRotateCounter = new int[m_noFinishedOpCapacity+1];
+    m_dstOpRotateFinishFlag = new int[m_noFinishedOpCapacity+1];
+    for(int i =0; i<m_noFinishedOpCapacity; i++)
+    {
+        m_dstOpRotateCounter[i]=0;
+        m_dstOpRotateCounter[i]=0;
+    }
+    m_dstOpRotateCounterIdx = new int[m_dstTask->getNumTotalThreads()];
+    for(int i =0; i<m_dstTask->getNumTotalThreads();i++)
+    {
+        m_dstOpRotateCounterIdx[i] = 0;
+    }
 
 
 	m_readbyFinishSet.clear();
@@ -247,12 +291,16 @@ void InprocConduit::clear()
     m_srcBuffDataReadCond.clear();
     m_srcBuffDataWrittenFlag.clear();
     m_srcBuffDataReadFlag.clear();
-    delete m_srcWriteOpRotateCounter;
+   /* delete m_srcWriteOpRotateCounter;
     delete m_srcReadOpRotateCounter;
     delete m_srcWriteOpRotateCounterIdx;
     delete m_srcReadOpRotateCounterIdx;
     delete m_srcWriteOpRotateFinishFlag;
-    delete m_srcReadOpRotateFinishFlag;
+    delete m_srcReadOpRotateFinishFlag;*/
+    delete m_srcOpRotateCounter;
+    delete m_srcOpRotateCounterIdx;
+    delete m_srcOpRotateFinishFlag;
+
 
     m_dstBuffIdx.clear();
     m_dstBuffAccessMutex.clear();
@@ -260,32 +308,45 @@ void InprocConduit::clear()
     m_dstBuffDataReadCond.clear();
     m_dstBuffDataWrittenFlag.clear();
     m_dstBuffDataReadFlag.clear();
-    delete m_dstWriteOpRotateCounter;
+   /* delete m_dstWriteOpRotateCounter;
     delete m_dstReadOpRotateCounter;
     delete m_dstWriteOpRotateCounterIdx;
     delete m_dstReadOpRotateCounterIdx;
     delete m_dstWriteOpRotateFinishFlag;
-    delete m_dstReadOpRotateFinishFlag;
+    delete m_dstReadOpRotateFinishFlag;*/
+    delete m_srcOpRotateCounter;
+    delete m_srcOpRotateCounterIdx;
+    delete m_srcOpRotateFinishFlag;
 
-    for(std::map<MessageTag, BuffInfo*>::iterator it = m_srcBuffPool.begin();
+    /*for(std::map<MessageTag, BuffInfo*>::iterator it = m_srcBuffPool.begin();
             it != m_srcBuffPool.end(); ++it)
     {
         if((it->second)->dataPtr)
             free((it->second)->dataPtr);
         delete it->second;
-    }
+    }*/
     m_srcBuffPool.clear();
     m_srcBuffPoolWaitlist.clear();
+    for(int i=0; i<m_capacity; i++)
+    {
+        free(m_srcAvailableBuff[i].bufferPtr);
+    }
+    delete m_srcAvailableBuff;
 
-    for(std::map<MessageTag, BuffInfo*>::iterator it = m_dstBuffPool.begin();
+    /*for(std::map<MessageTag, BuffInfo*>::iterator it = m_dstBuffPool.begin();
             it != m_dstBuffPool.end(); ++it)
     {
         if((it->second)->dataPtr)
             free((it->second)->dataPtr);
         delete it->second;
-    }
+    }*/
     m_dstBuffPool.clear();
     m_dstBuffPoolWaitlist.clear();
+    for(int i=0; i<m_capacity; i++)
+    {
+        free(m_srcAvailableBuff[i].bufferPtr);
+    }
+    delete m_srcAvailableBuff;
 
 /*
 #ifdef USE_DEBUG_LOG

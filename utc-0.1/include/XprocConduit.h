@@ -50,11 +50,10 @@ private:
 	int m_srcMainResideProc;
 	int m_dstMainResideProc;
 
-	// this has different meaning as inproc conduit. There, the capacity is the number of
-	// msg that sender write into conduit but hasn't be read by receiver.
-	// here it means how many msg can be send or recv when not all threads finish
-	// the operation
-	int m_capacity;
+
+	// this  means how many msg can be send or recv by different threads when not all threads finish
+	// that operation
+	int m_noFinishedOpCapacity;
 	//
 	int m_availableNoFinishedWriteOpCount;
 	std::condition_variable m_availableNoFinishedWriteCond;

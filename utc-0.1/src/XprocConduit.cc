@@ -27,15 +27,15 @@ XprocConduit::XprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId)
 	m_srcMainResideProc = srctask->getMainResideProcess();
 	m_dstMainResideProc = dsttask->getMainResideProcess();
 
-	m_capacity = 16; // This may be a bug point. TODO:
+	m_noFinishedOpCapacity = NO_FINISHED_OP_MAX; //  TODO:
 
-	m_availableNoFinishedReadOpCount = m_capacity;
-	m_availableNoFinishedWriteOpCount = m_capacity;
-	m_WriteOpRotateCounter = new int[m_capacity+1];
-	m_ReadOpRotateCounter = new int[m_capacity +1];
-	m_WriteOpRotateFinishFlag = new int[m_capacity+1];
-	m_ReadOpRotateFinishFlag = new int[m_capacity+1];
-	for(int i =0;i<m_capacity+1; i++)
+	m_availableNoFinishedReadOpCount = m_noFinishedOpCapacity;
+	m_availableNoFinishedWriteOpCount = m_noFinishedOpCapacity;
+	m_WriteOpRotateCounter = new int[m_noFinishedOpCapacity+1];
+	m_ReadOpRotateCounter = new int[m_noFinishedOpCapacity +1];
+	m_WriteOpRotateFinishFlag = new int[m_noFinishedOpCapacity+1];
+	m_ReadOpRotateFinishFlag = new int[m_noFinishedOpCapacity+1];
+	for(int i =0;i<m_noFinishedOpCapacity+1; i++)
 	{
 		m_WriteOpRotateCounter[i]=0;
 		m_ReadOpRotateCounter[i]=0;
@@ -133,13 +133,13 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
 			m_availableNoFinishedWriteCond.notify_one();
 
 			// update counter idx to next one
-			m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_capacity+1);
+			m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
 			LCK1.unlock();
 		}
 		else
 		{
 			// update counter idx to next one
-			m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_capacity+1);
+			m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
 			LCK1.unlock();
 		}
 
@@ -199,7 +199,7 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
 		// set finish flag
 		m_WriteOpRotateFinishFlag[counteridx]++;
 		// update counter idx to next one
-		m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_capacity+1);
+		m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
 		// notify other late coming threads to exit
 		m_WriteOpFinishCond.notify_all();
 		LCK1.unlock();
@@ -454,13 +454,13 @@ int XprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 			m_availableNoFinishedWriteCond.notify_one();
 
 			// update counter idx to next one
-			m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_capacity+1);
+			m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
 			LCK1.unlock();
 		}
 		else
 		{
 			// update counter idx to next one
-			m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_capacity+1);
+			m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
 			LCK1.unlock();
 		}
 
@@ -515,7 +515,7 @@ int XprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 		// set finish flag
 		m_WriteOpRotateFinishFlag[counteridx]++;
 		// update counter idx to next one
-		m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_capacity+1);
+		m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
 		// notify other late coming threads to exit
 		m_WriteOpFinishCond.notify_all();
 		LCK1.unlock();
@@ -742,7 +742,7 @@ int XprocConduit::Read(void* DataPtr, int DataSize, int tag)
 			//last leaving thread
 			m_ReadOpRotateFinishFlag[counteridx]=0;
 			m_ReadOpRotateCounter[counteridx]=0;
-			m_ReadOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_capacity +1);
+			m_ReadOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
 
 			m_availableNoFinishedReadOpCount++;
 			m_availableNoFinishedReadCond.notify_one();
@@ -751,7 +751,7 @@ int XprocConduit::Read(void* DataPtr, int DataSize, int tag)
 		}
 		else
 		{
-			m_ReadOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_capacity +1);
+			m_ReadOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
 			LCK1.unlock();
 		}
 
@@ -804,7 +804,7 @@ int XprocConduit::Read(void* DataPtr, int DataSize, int tag)
 #endif
 		m_ReadOpRotateFinishFlag[counteridx]++;
 		m_ReadOpFinishCond.notify_all();
-		m_ReadOpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_capacity+1);
+		m_ReadOpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_noFinishedOpCapacity+1);
 		LCK1.unlock();
 
 #ifdef USE_DEBUG_LOG
