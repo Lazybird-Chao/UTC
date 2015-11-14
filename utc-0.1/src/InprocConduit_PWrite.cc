@@ -95,6 +95,20 @@ int InprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
                         [=](){return m_srcBuffDataReadFlag[tmp_idx] == 1;});
                 // wakeup when reader finish copy data
                 LCK3.unlock();
+
+                LCK2.lock();
+                m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
+                m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
+                tmp_buffinfo->dataPtr= nullptr;
+                tmp_buffinfo->callingReadThreadCount=0;
+                tmp_buffinfo->callingWriteThreadCount=0;
+                tmp_buffinfo->reduceBuffsizeSensor=0;
+                m_srcBuffIdx.push_back(tmp_buffinfo->buffIdx);
+                tmp_buffinfo->buffIdx = -1;
+                m_srcAvailableBuffCount++;
+                m_srcBuffPool.erase(tag);
+                m_srcBuffAvailableCond.notify_one();
+                LCK2.unlock();
             }
         } // end for only one local thread
         else
@@ -150,7 +164,7 @@ int InprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
                 // firsrt coming thread
                 while(m_srcAvailableNoFinishedOpCount ==0)
                 {
-                    m_srcAvailableNoFinishedOpCond.wait();
+                    m_srcAvailableNoFinishedOpCond.wait(LCK1);
                 }
                 m_srcAvailableNoFinishedOpCount--;
                 LCK1.unlock();
@@ -213,10 +227,25 @@ int InprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
                     // wakeup when reader finish copy data
                     LCK3.unlock();
 
+                    // release buff
+                    LCK2.lock();
+                    m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
+                    m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
+                    tmp_buffinfo->dataPtr= nullptr;
+                    tmp_buffinfo->callingReadThreadCount=0;
+                    tmp_buffinfo->callingWriteThreadCount=0;
+                    tmp_buffinfo->reduceBuffsizeSensor=0;
+                    m_srcBuffIdx.push_back(tmp_buffinfo->buffIdx);
+                    tmp_buffinfo->buffIdx = -1;
+                    m_srcAvailableBuffCount++;
+                    m_srcBuffPool.erase(tag);
+                    m_srcBuffAvailableCond.notify_one();
+                    LCK2.unlock();
+
                     // first coming thread finish write, change finishflag
 				    LCK1.lock();
 #ifdef USE_DEBUG_ASSERT
-				    assert(m_srcWriteOpRotateFinishFlag[counteridx] == 0);
+				    assert(m_srcOpRotateFinishFlag[counteridx] == 0);
 #endif
 				    // set finish flag
 				    m_srcOpRotateFinishFlag[counteridx]++;
@@ -298,6 +327,21 @@ int InprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
                         [=](){return m_dstBuffDataReadFlag[tmp_idx] == 1;});
                 LCK3.unlock();
 
+                // release buff
+                LCK2.lock();
+                m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
+                m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
+                tmp_buffinfo->dataPtr= nullptr;
+                tmp_buffinfo->callingReadThreadCount=0;
+                tmp_buffinfo->callingWriteThreadCount=0;
+                tmp_buffinfo->reduceBuffsizeSensor=0;
+                m_dstBuffIdx.push_back(tmp_buffinfo->buffIdx);
+                tmp_buffinfo->buffIdx = -1;
+                m_dstAvailableBuffCount++;
+                m_dstBuffPool.erase(tag);
+                m_dstBuffAvailableCond.notify_one();
+                LCK2.unlock();
+
             }
         }// end for only one thread
         else
@@ -351,7 +395,7 @@ int InprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
                 // the first coming thread, who will do real write
                 while(m_dstAvailableNoFinishedOpCount==0)
                 {
-                    m_dstAvailableNoFinishedOpCond.wait();
+                    m_dstAvailableNoFinishedOpCond.wait(LCK1);
                 }
                 m_dstAvailableNoFinishedOpCount--;
                 LCK1.unlock();
@@ -409,10 +453,25 @@ int InprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
                             [=](){return m_dstBuffDataReadFlag[tmp_idx] == 1;});
                     LCK3.unlock();
 
+                    // release buff
+                    LCK2.lock();
+                    m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
+                    m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
+                    tmp_buffinfo->dataPtr= nullptr;
+                    tmp_buffinfo->callingReadThreadCount=0;
+                    tmp_buffinfo->callingWriteThreadCount=0;
+                    tmp_buffinfo->reduceBuffsizeSensor=0;
+                    m_dstBuffIdx.push_back(tmp_buffinfo->buffIdx);
+                    tmp_buffinfo->buffIdx = -1;
+                    m_dstAvailableBuffCount++;
+                    m_dstBuffPool.erase(tag);
+                    m_dstBuffAvailableCond.notify_one();
+                    LCK2.unlock();
+
                     // the first thread finish real write
                     LCK1.lock();
 #ifdef USE_DEBUG_ASSERT
-                    assert(m_dstWriteOpRotateFinishFlag[counteridx] == 0);
+                    assert(m_dstOpRotateFinishFlag[counteridx] == 0);
 #endif
                     // set finish flag
                     m_dstOpRotateFinishFlag[counteridx]++;
@@ -534,6 +593,21 @@ int InprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int 
 				m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = m_numSrcLocalThreads;
 				m_writebyFinishCond.notify_all();
 
+				// release buff
+                LCK2.lock();
+                m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
+                m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
+                tmp_buffinfo->dataPtr= nullptr;
+                tmp_buffinfo->callingReadThreadCount=0;
+                tmp_buffinfo->callingWriteThreadCount=0;
+                tmp_buffinfo->reduceBuffsizeSensor=0;
+                m_srcBuffIdx.push_back(tmp_buffinfo->buffIdx);
+                tmp_buffinfo->buffIdx = -1;
+                m_srcAvailableBuffCount++;
+                m_srcBuffPool.erase(tag);
+                m_srcBuffAvailableCond.notify_one();
+                LCK2.unlock();
+
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"src-thread "<<myThreadRank<<" finish Pwriteby!:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
@@ -567,10 +641,7 @@ int InprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int 
 				{
 					m_dstBuffPoolWaitlist.erase(tag);
 				}
-				BuffInfo* tmp_buffinfo = new BuffInfo;
-				// get buff id
-				tmp_buffinfo->buffIdx = m_dstBuffIdx.back();
-				m_dstBuffIdx.pop_back();
+
 				int tmp_idx = m_dstBuffIdx.back();
 				m_dstBuffIdx.pop_back();
 				BuffInfo* tmp_buffinfo= &(m_dstAvailableBuff[tmp_idx]);
@@ -592,6 +663,21 @@ int InprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int 
 				m_dstBuffDataReadCond[tmp_idx].wait(LCK3,
 						[=](){return m_dstBuffDataReadFlag[tmp_idx] == 1;});
 				LCK3.unlock();
+
+				// release buff
+                LCK2.lock();
+                m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
+                m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
+                tmp_buffinfo->dataPtr= nullptr;
+                tmp_buffinfo->callingReadThreadCount=0;
+                tmp_buffinfo->callingWriteThreadCount=0;
+                tmp_buffinfo->reduceBuffsizeSensor=0;
+                m_dstBuffIdx.push_back(tmp_buffinfo->buffIdx);
+                tmp_buffinfo->buffIdx = -1;
+                m_dstAvailableBuffCount++;
+                m_dstBuffPool.erase(tag);
+                m_dstBuffAvailableCond.notify_one();
+                LCK2.unlock();
 
 				// record this op to readby finish set
 				std::lock_guard<std::mutex> LCK4(m_writebyFinishMutex);

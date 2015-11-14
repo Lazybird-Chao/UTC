@@ -36,84 +36,14 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
     if(myTaskid == m_srcId)
     {
         // src task calling read()
-
-        // get read op lock and check if need do real read
-        std::unique_lock<std::mutex> LCK1(m_srcReadOpCheckMutex);
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"src-thread "<<myThreadRank<<" call read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
-        int counteridx = m_srcReadOpRotateCounterIdx[myThreadRank];
-        m_srcReadOpRotateCounter[counteridx]++;
-        if(m_srcReadOpRotateCounter[counteridx] > 1)
+        if(m_numSrcLocalThreads == 1)
         {
-            // a late coming thread
-#ifdef USE_DEBUG_ASSERT
-            assert(m_srcReadOpRotateCounter[counteridx] <= m_numSrcLocalThreads);
-#endif
-            while(m_srcReadOpRotateFinishFlag[counteridx] ==0)
-            {
-                m_srcReadOpFinishCond.wait(LCK1);
-            }
-
-            // wake up after real read finish
-            m_srcReadOpRotateFinishFlag[counteridx]++;
-            if(m_srcReadOpRotateFinishFlag[counteridx] == m_numSrcLocalThreads)
-            {
-                // last read thread that is leaving
-                m_srcReadOpRotateCounter[counteridx]=0;
-                m_srcReadOpRotateFinishFlag[counteridx] = 0;
-                // update counter idx to next one
-                m_srcReadOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_capacity +1);
-                // avoid prohibiting other threads go on their reading while this thread is waiting
-                LCK1.unlock();
-
-                // last thread release this buffer
-#ifdef USE_DEBUG_ASSERt
-                assert(m_dstBuffPool.find(tag) != m_dstBuffPool.end());
-                assert(m_dstBuffPool[tag]->callingReadThreadCount == 1);
-#endif
-                std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[m_dstBuffPool[tag]->buffIdx]);
-                while(m_dstBuffPool[tag]->safeReleaseAfterRead == false)
-				{
-					m_dstBuffSafeReleaseCond.wait(LCK3);
-
-				}
-                LCK3.unlock();
-                std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
-                BuffInfo *tmp_buff = m_dstBuffPool[tag];
-#ifdef USE_DEBUG_ASSERT
-                assert(tmp_buff->dataPtr!=nullptr);
-#endif
-                if(tmp_buff->isBuffered)
-                	free(tmp_buff->dataPtr);
-                tmp_buff->dataPtr = nullptr;
-                m_dstBuffDataWrittenFlag[tmp_buff->buffIdx] =0;
-                m_dstBuffDataReadFlag[tmp_buff->buffIdx] =0;
-                m_dstBuffIdx.push_back(tmp_buff->buffIdx);
-                delete tmp_buff;
-                m_dstAvailableBuffCount++;
-                m_dstBuffPool.erase(tag);
-                // a buffer released, notify writer there are available buff now
-                m_dstBuffAvailableCond.notify_one();
-                LCK2.unlock();
-            }
-            else
-            {
-                // update counter idx to next one
-                m_srcReadOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_capacity +1);
-                LCK1.unlock();
-            }
-#ifdef USE_DEBUG_LOG
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"src-thread "<<myThreadRank<<" exit read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
-#endif
-            return 0;
-        }// end late coming read thread
-        else
-        {
-            // the first coming thread, do real read
-            LCK1.unlock();
+            // only one local thread, no need for op lock
+            // check if msg tag is in the pool
             BuffInfo* tmp_buffinfo;
             std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
             if(m_dstBuffPool.find(tag) == m_dstBuffPool.end())
@@ -124,21 +54,18 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
                 assert(m_dstBuffPoolWaitlist.find(tag) == m_dstBuffPoolWaitlist.end());
 #endif
                 m_dstBuffPoolWaitlist[tag] = 1;
-                // this useful for Pwrite, as he may wait for a reader come
-                /*m_dstBuffPoolWaitlistCond.notify_one();*/
                 // go on waiting for this tag-buffer come from writer
                 std::cv_status w_ret= std::cv_status::no_timeout;
                 while(m_dstBuffPool.find(tag) == m_dstBuffPool.end())
                 {
                     w_ret = m_dstNewBuffInsertedCond.wait_for(LCK2, std::chrono::seconds(TIME_OUT));
-                   if(w_ret == std::cv_status::timeout)
-                   {
-                       std::cerr<<"Error, reader wait time out!"<<"src-thread "<<myThreadRank<<std::endl;
-                       LCK2.unlock();
-                       exit(1);
-                   }
+                    if(w_ret == std::cv_status::timeout)
+                    {
+                        std::cerr<<"Error, reader wait time out!"<<"src-thread "<<myThreadRank<<std::endl;
+                        LCK2.unlock();
+                        exit(1);
+                    }
                 }
-
                 // wake up when writer comes
 #ifdef USE_DEBUG_ASSERT
                 assert(m_dstBuffPoolWaitlist.find(tag) == m_dstBuffPoolWaitlist.end());
@@ -150,41 +77,57 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
 #endif
                 tmp_buffinfo->callingReadThreadCount =1;
                 LCK2.unlock();
-                if(DataSize<SMALL_MESSAGE_CUTOFF)
-                {
-                	// for small msg, do not use two-phase msg copy
 #ifdef USE_DEBUG_LOG
-	PRINT_TIME_NOW(*m_threadOstream)
-	*m_threadOstream<<"src-thread "<<myThreadRank<<" doing read small msg...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+    PRINT_TIME_NOW(*m_threadOstream)
+    *m_threadOstream<<"src-thread "<<myThreadRank<<" doing read msg...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
-					std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
-                	memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-                	m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-                	LCK3.unlock();
-                	m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                if(tmp_buffinfo->bufferPtr == tmp_buffinfo->dataPtr)
+                {
+                    // use inter buffer for write
+                    if(DataSize < SMALL_MESSAGE_CUTOFF)
+                    {
+#ifdef USE_DEBUG_ASSERT
+                        assert(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==1);
+#endif
+                        memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                    }
+                    else
+                    {
+                        std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
+                        while(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+                        {
+                            m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
+                        }
+                        // real data transfer
+                        memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                        LCK3.unlock();
+                    }
+
+                    // release buff
+                    LCK2.lock();
+                    m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
+                    //m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
+                    tmp_buffinfo->dataPtr= nullptr;
+                    tmp_buffinfo->callingReadThreadCount=0;
+                    tmp_buffinfo->callingWriteThreadCount=0;
+                    tmp_buffinfo->reduceBuffsizeSensor=0;
+                    m_dstBuffIdx.push_back(tmp_buffinfo->buffIdx);
+                    tmp_buffinfo->buffIdx = -1;
+                    m_dstAvailableBuffCount++;
+                    m_dstBuffPool.erase(tag);
+                    m_dstBuffAvailableCond.notify_one();
+                    LCK2.unlock();
+
                 }
                 else
                 {
-                	// for big msg, use two-phase copy
-					// go on check if data is ready for copy
-					std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
-					while(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
-					{
-						m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
-					}
-					// wake up when the data is filled
-#ifdef USE_DEBUG_LOG
-	PRINT_TIME_NOW(*m_threadOstream)
-	*m_threadOstream<<"src-thread "<<myThreadRank<<" doing read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
-#endif
-					// real data transfer
-					memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-					m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-					LCK3.unlock();
-					// notify writer that read finish
-					m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                    // use address for write
+                    memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                    m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+                    // notify writer that read finish
+                    m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
                 }
-            }
+            }// end for tag not in the pool
             else
             {
                 // find tag, means writer already comes
@@ -207,335 +150,470 @@ int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
 #endif
                 tmp_buffinfo->callingReadThreadCount =1;
                 LCK2.unlock();
-                if(DataSize<SMALL_MESSAGE_CUTOFF)
-                {
 #ifdef USE_DEBUG_LOG
-	PRINT_TIME_NOW(*m_threadOstream)
-	*m_threadOstream<<"src-thread "<<myThreadRank<<" doing read small msg...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+    PRINT_TIME_NOW(*m_threadOstream)
+    *m_threadOstream<<"src-thread "<<myThreadRank<<" doing read msg...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
-					std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
-                	memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-                	m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-                	LCK3.unlock();
-                	m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                if(tmp_buffinfo->bufferPtr == tmp_buffinfo->dataPtr)
+                {
+                    // use inter buffer for write
+                    if(DataSize < SMALL_MESSAGE_CUTOFF)
+                    {
+#ifdef USE_DEBUG_ASSERT
+                        assert(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==1);
+#endif
+                        memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                    }
+                    else
+                    {
+                        std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
+                        while(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+                        {
+                            m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
+                        }
+                        // real data transfer
+                        memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                        //m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+                        LCK3.unlock();
+                    }
+
+                    // release buff
+                    LCK2.lock();
+                    m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
+                    //m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
+                    tmp_buffinfo->dataPtr= nullptr;
+                    tmp_buffinfo->callingReadThreadCount=0;
+                    tmp_buffinfo->callingWriteThreadCount=0;
+                    tmp_buffinfo->reduceBuffsizeSensor=0;
+                    m_dstBuffIdx.push_back(tmp_buffinfo->buffIdx);
+                    tmp_buffinfo->buffIdx = -1;
+                    m_dstAvailableBuffCount++;
+                    m_dstBuffPool.erase(tag);
+                    m_dstBuffAvailableCond.notify_one();
+                    LCK2.unlock();
+
                 }
                 else
                 {
-					// go on check if data is filled
-					std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
-					while(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
-					{
-						m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
-					}
-					// wake up when the data is filled
-#ifdef USE_DEBUG_LOG
-	PRINT_TIME_NOW(*m_threadOstream)
-	*m_threadOstream<<"src-thread "<<myThreadRank<<" doing read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
-#endif
-					// real data transfer
-					memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-					m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-					LCK3.unlock();
-					// notify writer that read finish
-					m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                    // use address for write
+                    memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                    m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+                    // notify writer that read finish
+                    m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
                 }
-            }
 
-            // the first thread finish real read need change the readfinishflag
-            LCK1.lock();
-#ifdef USE_DEBUG_ASSERT
-            assert(m_srcReadOpRotateFinishFlag[counteridx] ==0);
-#endif
-            if(m_numSrcLocalThreads ==1)
+            }//end for tag in the pool
+
+        }// end for one thread
+        else
+        {
+            // there are several local threads
+            // get op check lock
+            std::unique_lock<std::mutex> LCK1(m_srcOpCheckMutex);
+            int counteridx = m_srcOpRotateCounterIdx[myThreadRank];
+            m_srcOpRotateCounter[counteridx]++;
+            if(m_srcOpRotateCounter[counteridx] > 1)
             {
-                // only one local thread read
-                m_srcReadOpRotateCounter[counteridx] = 0;
-                //m_srcReadOpRotateFinishFlag[counteridx] = 0;
-                m_srcReadOpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_capacity+1);
-                LCK1.unlock();
-
-                //need release buff after read
-                std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
-                while(tmp_buffinfo->safeReleaseAfterRead == false)
-				{
-					m_dstBuffSafeReleaseCond.wait(LCK3);
-				}
-                LCK3.unlock();
-                LCK2.lock();
+                // a late coming thread
 #ifdef USE_DEBUG_ASSERT
-                assert(tmp_buffinfo->dataPtr!=nullptr);
+                assert(m_srcOpRotateCounter[counteridx] <= m_numSrcLocalThreads);
 #endif
-                if(tmp_buffinfo->isBuffered)
-                		free(tmp_buffinfo->dataPtr);
-                tmp_buffinfo->dataPtr = nullptr;
-                m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =0;
-                m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =0;
-                m_dstBuffIdx.push_back(tmp_buffinfo->buffIdx);
-                delete tmp_buffinfo;
-                m_dstAvailableBuffCount++;
-                m_dstBuffPool.erase(tag);
-                // a buffer released, notify writer there are available buff now
-                m_dstBuffAvailableCond.notify_one();
-                LCK2.unlock();
+                while(m_srcOpRotateFinishFlag[counteridx] ==0)
+                {
+                    m_srcOpFinishCond.wait(LCK1);
+                }
 
-            }
+                // wake up after real read finish
+                m_srcOpRotateFinishFlag[counteridx]++;
+                if(m_srcOpRotateFinishFlag[counteridx] == m_numSrcLocalThreads)
+                {
+                    // last leaving thread
+                    m_srcOpRotateCounter[counteridx]=0;
+                    m_srcOpRotateFinishFlag[counteridx]=0;
+                    m_srcOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
+                    m_srcAvailableNoFinishedOpCount++;
+                    m_srcAvailableNoFinishedOpCond.notify_one();
+                    LCK1.unlock();
+                }
+                else
+                {
+                    m_srcOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
+                    LCK1.unlock();
+                }
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" exit read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+#endif
+                return 0;
+            }// end for late thread
             else
             {
-                m_srcReadOpRotateFinishFlag[counteridx]++;
-                m_srcReadOpFinishCond.notify_all();
-                m_srcReadOpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_capacity+1);
+                // the first coming thread
+                while(m_srcAvailableNoFinishedOpCount==0)
+                {
+                    m_srcAvailableNoFinishedOpCond.wait(LCK1);
+                }
+                m_srcAvailableNoFinishedOpCount--;
                 LCK1.unlock();
-            }
+
+                BuffInfo* tmp_buffinfo;
+                std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
+                if(m_dstBuffPool.find(tag) == m_dstBuffPool.end())
+                {
+                    // tag not exist, means writer haven't come yet
+                    // add this tag to buffpoolwaitlist
+#ifdef USE_DEBUG_ASSERT
+                    assert(m_dstBuffPoolWaitlist.find(tag) == m_dstBuffPoolWaitlist.end());
+#endif
+                    m_dstBuffPoolWaitlist[tag] = 1;
+                }
+                // go on waiting for this tag-buffer come from writer
+                std::cv_status w_ret= std::cv_status::no_timeout;
+                while(m_dstBuffPool.find(tag) == m_dstBuffPool.end())
+                {
+                    w_ret = m_dstNewBuffInsertedCond.wait_for(LCK2, std::chrono::seconds(TIME_OUT));
+                    if(w_ret == std::cv_status::timeout)
+                    {
+                        std::cerr<<"Error, reader wait time out!"<<"src-thread "<<myThreadRank<<std::endl;
+                        LCK2.unlock();
+                        exit(1);
+                    }
+                }
+                // wake up when writer comes
+#ifdef USE_DEBUG_ASSERT
+                assert(m_dstBuffPoolWaitlist.find(tag) == m_dstBuffPoolWaitlist.end());
+#endif
+                tmp_buffinfo = m_dstBuffPool[tag];
+#ifdef USE_DEBUG_ASSERT
+                assert(tmp_buffinfo->callingReadThreadCount == 0);
+                assert(tmp_buffinfo->callingWriteThreadCount >0);
+#endif
+                tmp_buffinfo->callingReadThreadCount =1;
+                LCK2.unlock();
+#ifdef USE_DEBUG_LOG
+PRINT_TIME_NOW(*m_threadOstream)
+*m_threadOstream<<"src-thread "<<myThreadRank<<" doing read msg...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+#endif
+                if(tmp_buffinfo->bufferPtr == tmp_buffinfo->dataPtr)
+                {
+                    // use inter buffer for write
+                    if(DataSize < SMALL_MESSAGE_CUTOFF)
+                    {
+#ifdef USE_DEBUG_ASSERT
+                        assert(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx]==1);
+#endif
+                        memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                    }
+                    else
+                    {
+                        std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
+                        while(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+                        {
+                            m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
+                        }
+                        // real data transfer
+                        memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                        //m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+                        LCK3.unlock();
+                    }
+
+                    // release buff
+                    LCK2.lock();
+                    m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
+                    //m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
+                    tmp_buffinfo->dataPtr= nullptr;
+                    tmp_buffinfo->callingReadThreadCount=0;
+                    tmp_buffinfo->callingWriteThreadCount=0;
+                    tmp_buffinfo->reduceBuffsizeSensor=0;
+                    m_dstBuffIdx.push_back(tmp_buffinfo->buffIdx);
+                    tmp_buffinfo->buffIdx = -1;
+                    m_dstAvailableBuffCount++;
+                    m_dstBuffPool.erase(tag);
+                    m_dstBuffAvailableCond.notify_one();
+                    LCK2.unlock();
+
+                }
+                else
+                {
+                    // use address for write
+                    memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                    m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+                    // notify writer that read finish
+                    m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                }
+
+                // first thread finish read, need chang opfinishflag
+                LCK1.lock();
+#ifdef USE_DEBUG_ASSERT
+                assert(m_srcOpRotateFinishFlag[counteridx] ==0);
+#endif
+                m_srcOpRotateFinishFlag[counteridx]++;
+                m_srcOpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_noFinishedOpCapacity+1);
+                m_srcOpFinishCond.notify_all();
+                LCK1.unlock();
+            }// end for first thread
+
+        }// end for several threads
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"src-thread "<<myThreadRank<<" finish read:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
-
-            return 0;
-        }// end real read
+        return 0;
 
     }// end src read
     else if(myTaskid == m_dstId)
     {
         // dst task calling read()
-
-        // get read op lock and check if need do real read
-        std::unique_lock<std::mutex> LCK1(m_dstReadOpCheckMutex);
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"dst-thread "<<myThreadRank<<" call read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 #endif
-        int counteridx = m_dstReadOpRotateCounterIdx[myThreadRank];
-        m_dstReadOpRotateCounter[counteridx]++;
-        if(m_dstReadOpRotateCounter[counteridx] > 1)
+        if(m_numDstLocalThreads == 1)
         {
-            // a late coming thread
-#ifdef USE_DEBUG_ASSERT
-            assert(m_dstReadOpRotateCounter[counteridx] <= m_numDstLocalThreads);
-#endif
-            while(m_dstReadOpRotateFinishFlag[counteridx] ==0)
-            {
-                m_dstReadOpFinishCond.wait(LCK1);
-            }
-            // wake up after real read finish
-            m_dstReadOpRotateFinishFlag[counteridx]++;
-            if(m_dstReadOpRotateFinishFlag[counteridx] == m_numDstLocalThreads)
-            {
-                // last read thread that is leaving
-                m_dstReadOpRotateCounter[counteridx]=0;
-                m_dstReadOpRotateFinishFlag[counteridx] = 0;
-                // update counter idx to next one
-                m_dstReadOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_capacity +1);
-                LCK1.unlock();
-
-                // also need do the buff release
-#ifdef USE_DEBUG_ASSERT
-                assert(m_srcBuffPool.find(tag) != m_srcBuffPool.end());
-                assert(m_srcBuffPool[tag]->callingReadThreadCount == 1);
-#endif
-                std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[m_srcBuffPool[tag]->buffIdx]);
-                while(m_srcBuffPool[tag]->safeReleaseAfterRead == false)
-				{
-					m_srcBuffSafeReleaseCond.wait(LCK3);
-
-				}
-                LCK3.unlock();
-                // last read thread will release the buff
-                std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);
-                BuffInfo *tmp_buffinfo = m_srcBuffPool[tag];
-#ifdef USE_DEBUG_ASSERT
-                assert(tmp_buffinfo->dataPtr!=nullptr);
-#endif
-                if(tmp_buffinfo->isBuffered)
-                	free(tmp_buffinfo->dataPtr);
-                tmp_buffinfo->dataPtr = nullptr;
-                m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =0;
-                m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =0;
-                m_srcBuffIdx.push_back(tmp_buffinfo->buffIdx);
-                delete tmp_buffinfo;
-                m_srcAvailableBuffCount++;
-                m_srcBuffPool.erase(tag);
-                // a buffer released, notify writer there are available buff now
-                m_srcBuffAvailableCond.notify_one();
-                LCK2.unlock();
-            }
-            else
-            {
-                // update counter idx to next one
-                m_dstReadOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_capacity +1);
-                LCK1.unlock();
-            }
-#ifdef USE_DEBUG_LOG
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"dst-thread "<<myThreadRank<<" exit read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
-#endif
-            return 0;
-        }// end late coming read thread
-        else
-        {
-            // the first coming thread, do real read
-            LCK1.unlock();
+            // only one local thread, no need for op lock
+            // check if msg tag is in the pool
             BuffInfo* tmp_buffinfo;
-            // check if tag is in buffpool
             std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);
             if(m_srcBuffPool.find(tag) == m_srcBuffPool.end())
             {
                 // tag not exist, means writer haven't come yet
                 // add this tag to buffpoolwaitlist
 #ifdef USE_DEBUG_ASSERT
-                assert(m_srcBuffPoolWaitlist.find(tag)==m_srcBuffPoolWaitlist.end());
+                assert(m_srcBuffPoolWaitlist.find(tag) == m_srcBuffPoolWaitlist.end());
 #endif
-                m_srcBuffPoolWaitlist[tag]=1;
-                /*m_srcBuffPoolWaitlistCond.notify_one();*/
-                // go one wait for the msg come
-                bool w_ret = m_srcNewBuffInsertedCond.wait_for(LCK2, std::chrono::seconds(TIME_OUT),
-                                           [=](){return m_srcBuffPool.find(tag) !=m_srcBuffPool.end(); });
-                if(w_ret == false)
+                m_srcBuffPoolWaitlist[tag] = 1;
+            }
+            // go on waiting for this tag-buffer come from writer
+            std::cv_status w_ret= std::cv_status::no_timeout;
+            while(m_srcBuffPool.find(tag) == m_srcBuffPool.end())
+            {
+                w_ret = m_srcNewBuffInsertedCond.wait_for(LCK2, std::chrono::seconds(TIME_OUT));
+                if(w_ret == std::cv_status::timeout)
                 {
-                    std::cerr<<"Error, reader wait time out!"<<"src-thread "<<myThreadRank<<std::endl;
+                    std::cerr<<"Error, reader wait time out!"<<"dst-thread "<<myThreadRank<<std::endl;
                     LCK2.unlock();
                     exit(1);
                 }
-                //wake up when msg comes
+            }
+            // wake up when writer comes
 #ifdef USE_DEBUG_ASSERT
-                assert(m_srcBuffPoolWaitlist.find(tag)==m_srcBuffPoolWaitlist.end());
+            assert(m_srcBuffPoolWaitlist.find(tag) == m_srcBuffPoolWaitlist.end());
 #endif
-                tmp_buffinfo = m_srcBuffPool[tag];
+            tmp_buffinfo = m_srcBuffPool[tag];
 #ifdef USE_DEBUG_ASSERT
-                assert(tmp_buffinfo->callingReadThreadCount == 0);
-                assert(tmp_buffinfo->callingWriteThreadCount >0);
+            assert(tmp_buffinfo->callingReadThreadCount == 0);
+            assert(tmp_buffinfo->callingWriteThreadCount >0);
 #endif
-                tmp_buffinfo->callingReadThreadCount = 1;
-                LCK2.unlock();
+            tmp_buffinfo->callingReadThreadCount =1;
+            LCK2.unlock();
+#ifdef USE_DEBUG_LOG
+PRINT_TIME_NOW(*m_threadOstream)
+*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+#endif
+            if(tmp_buffinfo->bufferPtr == tmp_buffinfo->dataPtr)
+            {
+                // use inter buffer for write
                 if(DataSize < SMALL_MESSAGE_CUTOFF)
                 {
-#ifdef USE_DEBUG_LOG
-    PRINT_TIME_NOW(*m_threadOstream)
-    *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read small msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+#ifdef USE_DEBUG_ASSERT
+                    assert(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx]==1);
 #endif
-    				std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
-                	memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-                	m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-                	LCK3.unlock();
-                	m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                    memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
                 }
                 else
                 {
-                	// wait for data if ready to copy
-				   std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
-				   while(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
-				   {
-					   m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
-				   }
-				   // wake up when the data is filled
-#ifdef USE_DEBUG_LOG
-	PRINT_TIME_NOW(*m_threadOstream)
-	*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
-#endif
-					// real data transfer
-					memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-					m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-					LCK3.unlock();
-					// notify writer that read finish
-					m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                    std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
+                    while(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+                    {
+                        m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
+                    }
+                    // real data transfer
+                    memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                    //m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+                    LCK3.unlock();
                 }
-            }
-            else
-            {
-                // writer already comes
-                tmp_buffinfo = m_srcBuffPool[tag];
-#ifdef USE_DEBUG_ASSERT
-                assert(tmp_buffinfo->callingReadThreadCount == 0);
-                assert(tmp_buffinfo->callingWriteThreadCount >0);
-#endif
-                tmp_buffinfo->callingReadThreadCount = 1;
-                LCK2.unlock();
-                if(DataSize < SMALL_MESSAGE_CUTOFF)
-                {
-#ifdef USE_DEBUG_LOG
-    PRINT_TIME_NOW(*m_threadOstream)
-    *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read small msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
-#endif
-    				std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
-    				memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-    				m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-    				LCK3.unlock();
-    				m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
-                }
-                else
-                {
-					// go on check if data is filled
-					std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
-					while(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
-					{
-						m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
-					}
-					// wake up when the data is filled
-#ifdef USE_DEBUG_LOG
-	PRINT_TIME_NOW(*m_threadOstream)
-	*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
-#endif
-					// real data transfer
-					memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-					m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-					LCK3.unlock();
-					// notify writer that read finish
-					m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
-                }
-            }
 
-            // the first thread finish real read need change the readfinishflag
-            LCK1.lock();
-#ifdef USE_DEBUG_ASSERT
-            assert(m_dstReadOpRotateFinishFlag[counteridx] ==0);
-#endif
-            if(m_numDstLocalThreads ==1)
-            {
-                // only one local thread read
-                m_dstReadOpRotateCounter[counteridx] = 0;
-                //m_dstReadOpRotateFinishFlag[counteridx] = 0;
-                m_dstReadOpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_capacity+1);
-                LCK1.unlock();
-
-                // need release buff after read
-                std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
-                while(tmp_buffinfo->safeReleaseAfterRead == false)
-				{
-					m_srcBuffSafeReleaseCond.wait(LCK3);
-				}
-                LCK3.unlock();
+                // release buff
                 LCK2.lock();
-#ifdef USE_DEBUG_ASSERT
-                assert(tmp_buffinfo->dataPtr!=nullptr);
-#endif
-                if(tmp_buffinfo->isBuffered)
-                	free(tmp_buffinfo->dataPtr);
-                tmp_buffinfo->dataPtr = nullptr;
-                m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =0;
-                m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =0;
+                m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
+                //m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
+                tmp_buffinfo->dataPtr= nullptr;
+                tmp_buffinfo->callingReadThreadCount=0;
+                tmp_buffinfo->callingWriteThreadCount=0;
+                tmp_buffinfo->reduceBuffsizeSensor=0;
                 m_srcBuffIdx.push_back(tmp_buffinfo->buffIdx);
-                delete tmp_buffinfo;
+                tmp_buffinfo->buffIdx = -1;
                 m_srcAvailableBuffCount++;
                 m_srcBuffPool.erase(tag);
-                // a buffer released, notify writer there are available buff now
                 m_srcBuffAvailableCond.notify_one();
                 LCK2.unlock();
 
             }
             else
             {
-                m_dstReadOpRotateFinishFlag[counteridx]++;
-                m_dstReadOpFinishCond.notify_all();
-                m_dstReadOpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_capacity+1);
-                LCK1.unlock();
+                // use address for write
+                memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+                // notify writer that read finish
+                m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
             }
+
+        }// end for one thread
+        else
+        {
+            // there are several local threads
+            // get op check lock
+            std::unique_lock<std::mutex> LCK1(m_dstOpCheckMutex);
+            int counteridx = m_dstOpRotateCounterIdx[myThreadRank];
+            m_dstOpRotateCounter[counteridx]++;
+            if(m_dstOpRotateCounter[counteridx] > 1)
+            {
+                // a late coming thread
+#ifdef USE_DEBUG_ASSERT
+                assert(m_dstOpRotateCounter[counteridx] <= m_numDstLocalThreads);
+#endif
+                while(m_dstOpRotateFinishFlag[counteridx] ==0)
+                {
+                    m_dstOpFinishCond.wait(LCK1);
+                }
+
+                // wake up after real read finish
+                m_dstOpRotateFinishFlag[counteridx]++;
+                if(m_dstOpRotateFinishFlag[counteridx] == m_numDstLocalThreads)
+                {
+                    // last leaving thread
+                    m_dstOpRotateCounter[counteridx]=0;
+                    m_dstOpRotateFinishFlag[counteridx]=0;
+                    m_dstOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
+                    m_dstAvailableNoFinishedOpCount++;
+                    m_dstAvailableNoFinishedOpCond.notify_one();
+                    LCK1.unlock();
+                }
+                else
+                {
+                    m_dstOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
+                    LCK1.unlock();
+                }
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" exit read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+#endif
+                return 0;
+            }// end for late thread
+            else
+            {
+                // the first coming thread
+                while(m_dstAvailableNoFinishedOpCount==0)
+                {
+                    m_dstAvailableNoFinishedOpCond.wait(LCK1);
+                }
+                m_dstAvailableNoFinishedOpCount--;
+                LCK1.unlock();
+
+                BuffInfo* tmp_buffinfo;
+                std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);
+                if(m_srcBuffPool.find(tag) == m_srcBuffPool.end())
+                {
+                    // tag not exist, means writer haven't come yet
+                    // add this tag to buffpoolwaitlist
+#ifdef USE_DEBUG_ASSERT
+                    assert(m_srcBuffPoolWaitlist.find(tag) == m_srcBuffPoolWaitlist.end());
+#endif
+                    m_srcBuffPoolWaitlist[tag] = 1;
+                }
+                // go on waiting for this tag-buffer come from writer
+                std::cv_status w_ret= std::cv_status::no_timeout;
+                while(m_srcBuffPool.find(tag) == m_srcBuffPool.end())
+                {
+                    w_ret = m_srcNewBuffInsertedCond.wait_for(LCK2, std::chrono::seconds(TIME_OUT));
+                    if(w_ret == std::cv_status::timeout)
+                    {
+                        std::cerr<<"Error, reader wait time out!"<<"dst-thread "<<myThreadRank<<std::endl;
+                        LCK2.unlock();
+                        exit(1);
+                    }
+                }
+                // wake up when writer comes
+#ifdef USE_DEBUG_ASSERT
+                assert(m_srcBuffPoolWaitlist.find(tag) == m_srcBuffPoolWaitlist.end());
+#endif
+                tmp_buffinfo = m_srcBuffPool[tag];
+#ifdef USE_DEBUG_ASSERT
+                assert(tmp_buffinfo->callingReadThreadCount == 0);
+                assert(tmp_buffinfo->callingWriteThreadCount >0);
+#endif
+                tmp_buffinfo->callingReadThreadCount =1;
+                LCK2.unlock();
+#ifdef USE_DEBUG_LOG
+PRINT_TIME_NOW(*m_threadOstream)
+*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+#endif
+                if(tmp_buffinfo->bufferPtr == tmp_buffinfo->dataPtr)
+                {
+                    // use inter buffer for write
+                    if(DataSize < SMALL_MESSAGE_CUTOFF)
+                    {
+#ifdef USE_DEBUG_ASSERT
+                        assert(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx]==1);
+#endif
+                        memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                    }
+                    else
+                    {
+                        std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
+                        while(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+                        {
+                            m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
+                        }
+                        // real data transfer
+                        memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                        //m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+                        LCK3.unlock();
+                    }
+
+                    // release buff
+                    LCK2.lock();
+                    m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
+                    //m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
+                    tmp_buffinfo->dataPtr= nullptr;
+                    tmp_buffinfo->callingReadThreadCount=0;
+                    tmp_buffinfo->callingWriteThreadCount=0;
+                    tmp_buffinfo->reduceBuffsizeSensor=0;
+                    m_srcBuffIdx.push_back(tmp_buffinfo->buffIdx);
+                    tmp_buffinfo->buffIdx = -1;
+                    m_srcAvailableBuffCount++;
+                    m_srcBuffPool.erase(tag);
+                    m_srcBuffAvailableCond.notify_one();
+                    LCK2.unlock();
+
+                }
+                else
+                {
+                    // use address for write
+                    memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                    m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+                    // notify writer that read finish
+                    m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                }
+
+                // first thread finish read, need chang opfinishflag
+                LCK1.lock();
+#ifdef USE_DEBUG_ASSERT
+                assert(m_dstOpRotateFinishFlag[counteridx] ==0);
+#endif
+                m_dstOpRotateFinishFlag[counteridx]++;
+                m_dstOpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_noFinishedOpCapacity+1);
+                m_dstOpFinishCond.notify_all();
+                LCK1.unlock();
+            }// end for first thread
+
+        }// end for several threads
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"dst-thread "<<myThreadRank<<" finish read:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 #endif
-            return 0;
+        return 0;
 
-        }// end real read
     }// end dst read
     else
     {
@@ -593,131 +671,81 @@ int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
             assert(m_dstBuffPoolWaitlist.find(tag) == m_dstBuffPoolWaitlist.end());
 #endif
             m_dstBuffPoolWaitlist.insert(std::pair<MessageTag,int>(tag, 1));
-            // signal writer that reader has come
-            /*m_dstBuffPoolWaitlistCond.notify_one();*/
-            // go on waiting for this tag-buffer come from writer
-            std::cv_status w_ret= std::cv_status::no_timeout;
-            while(m_dstBuffPool.find(tag) == m_dstBuffPool.end())
-            {
-                w_ret = m_dstNewBuffInsertedCond.wait_for(LCK2, std::chrono::seconds(TIME_OUT));
-                if(w_ret == std::cv_status::timeout)
-                {
-                  std::cerr<<"Error, reader wait time out!"<<"src-thread "<<myThreadRank<<std::endl;
-                  LCK2.unlock();
-                  exit(1);
-                }
-            }
-            // wake up when writer comes
+        }
+
+        // go on waiting for this tag-buffer come from writer
+        bool w_ret = m_dstNewBuffInsertedCond.wait_for(LCK2, std::chrono::seconds(TIME_OUT),
+                      [=](){return m_dstBuffPool.find(tag) !=m_dstBuffPool.end();});
+        if(w_ret)
+        {
+          std::cerr<<"Error, reader wait time out!"<<"src-thread "<<myThreadRank<<std::endl;
+          LCK2.unlock();
+          exit(1);
+        }
+
+        // wake up when writer comes
 #ifdef USE_DEBUG_ASSERT
-            assert(m_dstBuffPoolWaitlist.find(tag) == m_dstBuffPoolWaitlist.end());
+        assert(m_dstBuffPoolWaitlist.find(tag) == m_dstBuffPoolWaitlist.end());
 #endif
-            tmp_buffinfo = m_dstBuffPool[tag];
+        tmp_buffinfo = m_dstBuffPool[tag];
 #ifdef USE_DEBUG_ASSERT
-            assert(tmp_buffinfo->callingReadThreadCount == 0);
-            assert(tmp_buffinfo->callingWriteThreadCount >0);
+        assert(tmp_buffinfo->callingReadThreadCount == 0);
+        assert(tmp_buffinfo->callingWriteThreadCount >0);
 #endif
-            tmp_buffinfo->callingReadThreadCount =1;
-            LCK2.unlock();
-            if(DataSize<SMALL_MESSAGE_CUTOFF)
-            {
+        tmp_buffinfo->callingReadThreadCount =1;
+        LCK2.unlock();
+
 #ifdef USE_DEBUG_LOG
-    PRINT_TIME_NOW(*m_threadOstream)
-    *m_threadOstream<<"src-thread "<<myThreadRank<<" doing readby small msg...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+PRINT_TIME_NOW(*m_threadOstream)
+*m_threadOstream<<"src-thread "<<myThreadRank<<" doing readby msg...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
-    			std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
-    			memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-    			m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-    			LCK3.unlock();
-    			m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+        if(tmp_buffinfo->bufferPtr == tmp_buffinfo->dataPtr)
+        {
+            // use inter buffer for write
+            if(DataSize < SMALL_MESSAGE_CUTOFF)
+            {
+#ifdef USE_DEBUG_ASSERT
+                assert(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx]==1);
+#endif
+                memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
             }
             else
             {
-				// wait for writer fill in the data
-				std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
-				while(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
-				{
-					m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
-				}
-				// wake up when the data is filled
-#ifdef USE_DEBUG_LOG
-	PRINT_TIME_NOW(*m_threadOstream)
-	*m_threadOstream<<"src-thread "<<myThreadRank<<" doing readby...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
-#endif
-				// real data transfer
-				memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-				m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-				LCK3.unlock();
-				// notify reader copy complete
-				m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
+                while(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+                {
+                    m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
+                }
+                // real data transfer
+                memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                //m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+                LCK3.unlock();
             }
+
+            // release buff
+            LCK2.lock();
+            m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
+            //m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
+            tmp_buffinfo->dataPtr= nullptr;
+            tmp_buffinfo->callingReadThreadCount=0;
+            tmp_buffinfo->callingWriteThreadCount=0;
+            tmp_buffinfo->reduceBuffsizeSensor=0;
+            m_dstBuffIdx.push_back(tmp_buffinfo->buffIdx);
+            tmp_buffinfo->buffIdx = -1;
+            m_dstAvailableBuffCount++;
+            m_dstBuffPool.erase(tag);
+            m_dstBuffAvailableCond.notify_one();
+            LCK2.unlock();
+
         }
         else
         {
-            // tag is already in buffpool
-            tmp_buffinfo = m_dstBuffPool[tag];
-#ifdef USE_DEBUG_ASSERT
-            assert(tmp_buffinfo->callingReadThreadCount == 0);
-            assert(tmp_buffinfo->callingWriteThreadCount >0);
-#endif
-            tmp_buffinfo->callingReadThreadCount = 1;
-            LCK2.unlock();
-            if(DataSize<SMALL_MESSAGE_CUTOFF)
-            {
-#ifdef USE_DEBUG_LOG
-    PRINT_TIME_NOW(*m_threadOstream)
-    *m_threadOstream<<"src-thread "<<myThreadRank<<" doing readby small msg...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
-#endif
-    			std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
-    			memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-    			m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-    			LCK3.unlock();
-    			m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
-            }
-            else
-            {
-				// go on check if data is filled
-				std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
-				while(m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
-				{
-					m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
-				}
-				// data is filled in
-	#ifdef USE_DEBUG_LOG
-		PRINT_TIME_NOW(*m_threadOstream)
-		*m_threadOstream<<"src-thread "<<myThreadRank<<" doing readby...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
-	#endif
-				// real data transfer
-				memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-				m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
-				LCK3.unlock();
-				// notify reader copy complete
-				m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
-            }
+            // use address for write
+            memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+            m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+            // notify writer that read finish
+            m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
         }
-
-        // as only this assigned thread do read, so release buff after read
-        std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
-        while(tmp_buffinfo->safeReleaseAfterRead == false)
-        {
-            m_dstBuffSafeReleaseCond.wait(LCK3);
-        }
-        LCK3.unlock();
-        LCK2.lock();
-#ifdef USE_DEBUG_ASSERT
-        assert(tmp_buffinfo->dataPtr!=nullptr);
-#endif
-        if(tmp_buffinfo->isBuffered)
-        	free(tmp_buffinfo->dataPtr);
-        tmp_buffinfo->dataPtr = nullptr;
-        m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =0;
-        m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =0;
-        m_dstBuffIdx.push_back(tmp_buffinfo->buffIdx);
-        delete tmp_buffinfo;
-        m_dstAvailableBuffCount++;
-        m_dstBuffPool.erase(tag);
-        // a buffer released, notify writer there are available buff now
-        m_dstBuffAvailableCond.notify_one();
-        LCK2.unlock();
 
         // record this op in finish set
         std::lock_guard<std::mutex> LCK4(m_readbyFinishMutex);
@@ -739,130 +767,84 @@ int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
             assert(m_srcBuffPoolWaitlist.find(tag)==m_srcBuffPoolWaitlist.end());
 #endif
             m_srcBuffPoolWaitlist.insert(std::pair<MessageTag, int>(tag, 1));
-            /*m_srcBuffPoolWaitlistCond.notify_one();*/
-            // go on waiting for the msg come
-            bool w_ret = m_srcNewBuffInsertedCond.wait_for(LCK2, std::chrono::seconds(TIME_OUT),
-                                       [=](){return m_srcBuffPool.find(tag) !=m_srcBuffPool.end();});
-            if(w_ret == false)
-            {
-                std::cerr<<"Error, reader wait time out!"<<"src-thread "<<myThreadRank<<std::endl;
-                LCK2.unlock();
-                exit(1);
-            }
-            //wake up when msg comes
-#ifdef USE_DEBUG_ASSERT
-            assert(m_srcBuffPoolWaitlist.find(tag)==m_srcBuffPoolWaitlist.end());
-#endif
-            tmp_buffinfo = m_srcBuffPool[tag];
-#ifdef USE_DEBUG_ASSERT
-            assert(tmp_buffinfo->callingReadThreadCount == 0);
-            assert(tmp_buffinfo->callingWriteThreadCount >0);
-#endif
-            tmp_buffinfo->callingReadThreadCount = 1;
-            LCK2.unlock();
+        }
 
-            if(DataSize<SMALL_MESSAGE_CUTOFF)
-            {
-#ifdef USE_DEBUG_LOG
-    PRINT_TIME_NOW(*m_threadOstream)
-    *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing readby small msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+        // go on waiting for the msg come
+        bool w_ret = m_srcNewBuffInsertedCond.wait_for(LCK2, std::chrono::seconds(TIME_OUT),
+                                   [=](){return m_srcBuffPool.find(tag) !=m_srcBuffPool.end();});
+        if(w_ret == false)
+        {
+            std::cerr<<"Error, reader wait time out!"<<"src-thread "<<myThreadRank<<std::endl;
+            LCK2.unlock();
+            exit(1);
+        }
+        //wake up when msg comes
+#ifdef USE_DEBUG_ASSERT
+        assert(m_srcBuffPoolWaitlist.find(tag)==m_srcBuffPoolWaitlist.end());
 #endif
-    			std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
-    			memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-				m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] = 1;
-				LCK3.unlock();
-				m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+        tmp_buffinfo = m_srcBuffPool[tag];
+#ifdef USE_DEBUG_ASSERT
+        assert(tmp_buffinfo->callingReadThreadCount == 0);
+        assert(tmp_buffinfo->callingWriteThreadCount >0);
+#endif
+        tmp_buffinfo->callingReadThreadCount = 1;
+        LCK2.unlock();
+
+#ifdef USE_DEBUG_LOG
+PRINT_TIME_NOW(*m_threadOstream)
+*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+#endif
+        if(tmp_buffinfo->bufferPtr == tmp_buffinfo->dataPtr)
+        {
+            // use inter buffer for write
+            if(DataSize < SMALL_MESSAGE_CUTOFF)
+            {
+#ifdef USE_DEBUG_ASSERT
+                assert(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx]==1);
+#endif
+                memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
             }
             else
             {
-			   // wait for writer come and fill in the data
-			   std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
-			   while(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
-			   {
-				   m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
-			   }
-			   // wake up when the data is filled
-	#ifdef USE_DEBUG_LOG
-		PRINT_TIME_NOW(*m_threadOstream)
-		*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing readby...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
-	#endif
-				// real data transfer
-				memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-				m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] = 1;
-				LCK3.unlock();
-				m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+                std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
+                while(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
+                {
+                    m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
+                }
+                // real data transfer
+                memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+                //m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+                LCK3.unlock();
             }
+
+            // release buff
+            LCK2.lock();
+            m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
+            //m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
+            tmp_buffinfo->dataPtr= nullptr;
+            tmp_buffinfo->callingReadThreadCount=0;
+            tmp_buffinfo->callingWriteThreadCount=0;
+            tmp_buffinfo->reduceBuffsizeSensor=0;
+            m_srcBuffIdx.push_back(tmp_buffinfo->buffIdx);
+            tmp_buffinfo->buffIdx = -1;
+            m_srcAvailableBuffCount++;
+            m_srcBuffPool.erase(tag);
+            m_srcBuffAvailableCond.notify_one();
+            LCK2.unlock();
+
         }
         else
         {
-            // writer already comes
-            tmp_buffinfo = m_srcBuffPool[tag];
-#ifdef USE_DEBUG_ASSERT
-            assert(tmp_buffinfo->callingReadThreadCount == 0);
-            assert(tmp_buffinfo->callingWriteThreadCount >0);
-#endif
-            tmp_buffinfo->callingReadThreadCount = 1;
-            LCK2.unlock();
-            if(DataSize<SMALL_MESSAGE_CUTOFF)
-            {
-#ifdef USE_DEBUG_LOG
-    PRINT_TIME_NOW(*m_threadOstream)
-    *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing readby small msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
-#endif
-    			std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
-    			memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-                m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] = 1;
-                LCK3.unlock();
-                m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
-            }
-            else
-            {
-				// go on check if data is filled
-				std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
-				while(m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] ==0)
-				{
-					m_srcBuffDataWrittenCond[tmp_buffinfo->buffIdx].wait(LCK3);
-				}
-				// wake up when the data is filled
-#ifdef USE_DEBUG_LOG
-	PRINT_TIME_NOW(*m_threadOstream)
-	*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing readby...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
-#endif
-				// real data transfer
-				memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
-				m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] = 1;
-				LCK3.unlock();
-				m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
-            }
+            // use address for write
+            memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+            m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
+            // notify writer that read finish
+            m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
         }
-
-        // need release buff after read
-        std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
-        while(tmp_buffinfo->safeReleaseAfterRead == false)
-		{
-			m_srcBuffSafeReleaseCond.wait(LCK2);
-		}
-        LCK3.unlock();
-        LCK2.lock();
-#ifdef USE_DEBUG_ASSERT
-        assert(tmp_buffinfo->dataPtr!=nullptr);
-#endif
-        if(tmp_buffinfo->isBuffered)
-        	free(tmp_buffinfo->dataPtr);
-        tmp_buffinfo->dataPtr = nullptr;
-        m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx] =0;
-        m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =0;
-        m_srcBuffIdx.push_back(tmp_buffinfo->buffIdx);
-        delete tmp_buffinfo;
-        m_srcAvailableBuffCount++;
-        m_srcBuffPool.erase(tag);
-        // a buffer released, notify writer there are available buff now
-        m_srcBuffAvailableCond.notify_one();
-        LCK2.unlock();
 
         // record this op in finish set
         std::lock_guard<std::mutex> LCK4(m_readbyFinishMutex);
-        m_readbyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = m_numSrcLocalThreads;
+        m_readbyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = m_numDstLocalThreads;
         m_readbyFinishCond.notify_all();
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)

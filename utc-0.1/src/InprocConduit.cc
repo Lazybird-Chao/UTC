@@ -13,60 +13,12 @@ namespace iUtc
 
 thread_local std::ofstream *InprocConduit::m_threadOstream = nullptr;
 
-/*InprocConduit::InprocConduit()
-:ConduitBase()
-{
-    m_srcTask = nullptr;
-    m_dstTask = nullptr;
-    m_srcId = -1;
-    m_dstId = -1;
 
-    m_numSrcLocalThreads = 0;
-    m_numDstLocalThreads = 0;
-    m_capacity = CONDUIT_CAPACITY_DEFAULT;
-#ifdef USE_DEBUG_LOG
-    std::ofstream *procOstream = getProcOstream();
-    PRINT_TIME_NOW(*procOstream)
-	*procOstream<<"Conduit: [dummy conduit] constructed..."<<std::endl;
-#endif
-    //initConduit();   call init through connect()
-
-}
-void InprocConduit::checkOnSameProc(TaskBase* src, TaskBase* dst)
-{
-	if((src->isActiveOnCurrentProcess()== false && dst->isActiveOnCurrentProcess()== true) ||
-			(src->isActiveOnCurrentProcess()== true && dst->isActiveOnCurrentProcess()==false))
-	{
-		std::cout<<"Error, two Tasks are not running on same process!"<<std::endl;
-		exit(1);
-	}
-}
-InprocConduit::InprocConduit(TaskBase* srctask, TaskBase* dsttask)
-:ConduitBase()
-{
-	checkOnSameProc(srctask, dsttask);
-    m_srcTask = srctask;
-    m_dstTask = dsttask;
-    m_srcId = m_srcTask->getTaskId();
-    m_dstId = m_dstTask->getTaskId();
-
-    m_numSrcLocalThreads = srctask->getNumLocalThreads();
-    m_numDstLocalThreads = dsttask->getNumLocalThreads();
-    m_capacity = CONDUIT_CAPACITY_DEFAULT;
-#ifdef USE_DEBUG_LOG
-	std::ofstream* procOstream = getProcOstream();
-	PRINT_TIME_NOW(*procOstream)
-	*procOstream<<"Conduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
-				<<"] constructed..."<<std::endl;
-#endif
-    initInprocConduit();
-
-}*/
 
 InprocConduit::InprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId, int capacity)
 :ConduitBase()
 {
-	/*checkOnSameProc(srctask,dsttask);*/
+
 	m_conduitId = cdtId;
     m_srcTask = srctask;
     m_dstTask = dsttask;
@@ -77,18 +29,6 @@ InprocConduit::InprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId, in
     m_numDstLocalThreads = dsttask->getNumLocalThreads();
     m_capacity = capacity;
     m_noFinishedOpCapacity = NO_FINISHED_OP_MAX;
-    /*if(capacity > CONDUIT_CAPACITY_MAX)
-    {
-    	m_capacity = CONDUIT_CAPACITY_MAX;
-    }
-    else
-    	m_capacity = capacity;
-#ifdef USE_DEBUG_LOG
-	std::ofstream* procOstream = getProcOstream();
-	PRINT_TIME_NOW(*procOstream)
-	*procOstream<<"Conduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
-				<<"] constructed..."<<std::endl;
-#endif*/
 
     initInprocConduit();
 
@@ -109,13 +49,12 @@ void InprocConduit::initInprocConduit()
 	m_srcAvailableBuff = new BuffInfo[m_capacity];
 	for(int i=0; i<m_capacity; i++)
 	{
-	    m_srcAvailableBuff[i].buffSize = CONDUIT_BUFFER_SIZE_DEFAULT;
-	    m_srcAvailableBuff[i].bufferPtr = malloc(CONDUIT_BUFFER_SIZE_DEFAULT);
+	    m_srcAvailableBuff[i].buffSize = CONDUIT_BUFFER_SIZE;
+	    m_srcAvailableBuff[i].bufferPtr = malloc(CONDUIT_BUFFER_SIZE);
 	}
 	m_srcBuffPool.clear();
 	m_srcBuffPoolWaitlist.clear();
 	m_srcBuffIdx.clear();
-	//m_srcBuffAccessMutex.clear();
 	std::vector<std::mutex> *tmp1_mutexlist = new std::vector<std::mutex>(m_capacity);
 	m_srcBuffAccessMutex.swap(*tmp1_mutexlist);
 	std::vector<std::condition_variable> *tmp1_condlist = new std::vector<std::condition_variable>(m_capacity);
@@ -130,25 +69,7 @@ void InprocConduit::initInprocConduit()
 		m_srcBuffDataWrittenFlag.push_back(0);
 		m_srcBuffDataReadFlag.push_back(0);
 	}
-	/*m_srcWriteOpRotateCounter = new int[m_capacity+1];
-	m_srcReadOpRotateCounter = new int[m_capacity +1];
-	m_srcWriteOpRotateFinishFlag = new int[m_capacity+1];
-	m_srcReadOpRotateFinishFlag = new int[m_capacity+1];
-	for(int i =0;i<m_capacity+1; i++)
-	{
-		m_srcWriteOpRotateCounter[i]=0;
-		m_srcReadOpRotateCounter[i]=0;
-		m_srcWriteOpRotateFinishFlag[i]=0;
-		m_srcReadOpRotateFinishFlag[i]=0;
-	}
-	m_srcWriteOpRotateCounterIdx = new int[m_srcTask->getNumTotalThreads()];
-	//actually only use the local threads in one process, other thread pos is not used
-	m_srcReadOpRotateCounterIdx = new int[m_srcTask->getNumTotalThreads()];
-	for(int i =0; i<m_srcTask->getNumTotalThreads();i++)
-	{
-		m_srcWriteOpRotateCounterIdx[i] = 0;
-		m_srcReadOpRotateCounterIdx[i]=0;
-	}*/
+
 	m_srcAvailableNoFinishedOpCount = m_noFinishedOpCapacity;
 	m_srcOpRotateCounter = new int[m_noFinishedOpCapacity+1];
 	m_srcOpRotateFinishFlag = new int[m_noFinishedOpCapacity+1];
@@ -171,8 +92,8 @@ void InprocConduit::initInprocConduit()
 	m_dstAvailableBuff = new BuffInfo[m_capacity];
     for(int i=0; i<m_capacity; i++)
     {
-        m_dstAvailableBuff[i].buffSize = CONDUIT_BUFFER_SIZE_DEFAULT;
-        m_dstAvailableBuff[i].bufferPtr = malloc(CONDUIT_BUFFER_SIZE_DEFAULT);
+        m_dstAvailableBuff[i].buffSize = CONDUIT_BUFFER_SIZE;
+        m_dstAvailableBuff[i].bufferPtr = malloc(CONDUIT_BUFFER_SIZE);
     }
 	m_dstBuffPool.clear();
 	m_dstBuffPoolWaitlist.clear();
@@ -192,26 +113,7 @@ void InprocConduit::initInprocConduit()
 		m_dstBuffDataWrittenFlag.push_back(0);
 		m_dstBuffDataReadFlag.push_back(0);
 	}
-/*
-	m_dstWriteOpRotateCounter = new int[m_capacity+1];
-	m_dstReadOpRotateCounter = new int[m_capacity +1];
-	m_dstWriteOpRotateFinishFlag = new int[m_capacity+1];
-	m_dstReadOpRotateFinishFlag = new int[m_capacity+1];
-	for(int i =0;i<m_capacity+1; i++)
-	{
-		m_dstWriteOpRotateCounter[i]=0;
-		m_dstReadOpRotateCounter[i]=0;
-		m_dstWriteOpRotateFinishFlag[i]=0;
-		m_dstReadOpRotateFinishFlag[i]=0;
-	}
-	m_dstWriteOpRotateCounterIdx = new int[m_dstTask->getNumTotalThreads()];
-	m_dstReadOpRotateCounterIdx = new int[m_dstTask->getNumTotalThreads()];
-	for(int i =0; i<m_dstTask->getNumTotalThreads();i++)
-	{
-		m_dstWriteOpRotateCounterIdx[i] = 0;
-		m_dstReadOpRotateCounterIdx[i]=0;
-	}
-*/
+
 	m_dstAvailableNoFinishedOpCount = m_noFinishedOpCapacity;
     m_dstOpRotateCounter = new int[m_noFinishedOpCapacity+1];
     m_dstOpRotateFinishFlag = new int[m_noFinishedOpCapacity+1];
@@ -231,10 +133,6 @@ void InprocConduit::initInprocConduit()
 	m_writebyFinishSet.clear();
 
 
-	/*ConduitManager* cdtMgr = ConduitManager::getInstance();
-	m_cdtMgr = cdtMgr;
-	cdtMgr->registerConduit(this, m_conduitId);*/
-
 
 #ifdef USE_DEBUG_LOG
 	std::ofstream* procOstream = getProcOstream();
@@ -248,25 +146,6 @@ void InprocConduit::initInprocConduit()
 
 InprocConduit::~InprocConduit()
 {
-    /*if(m_srcTask)
-    {
-        if(TaskManager::hasTaskItem(m_srcId))
-        {   // task not destroyed
-            if(m_srcTask->hasActiveLocalThread())
-            {
-                // there are task threads still running
-                m_srcTask->waitLocalThreadFinish();
-            }
-        }
-    }
-    if(m_dstTask)
-    {
-        if(TaskManager::hasTaskItem(m_dstId))
-            if(m_dstTask->hasActiveLocalThread())
-                m_dstTask->waitLocalThreadFinish();
-    }
-    // delete this conduit item from conduit registry
-	m_cdtMgr->unregisterConduit(this, m_conduitId);*/
 
 	clear();
 
@@ -291,12 +170,6 @@ void InprocConduit::clear()
     m_srcBuffDataReadCond.clear();
     m_srcBuffDataWrittenFlag.clear();
     m_srcBuffDataReadFlag.clear();
-   /* delete m_srcWriteOpRotateCounter;
-    delete m_srcReadOpRotateCounter;
-    delete m_srcWriteOpRotateCounterIdx;
-    delete m_srcReadOpRotateCounterIdx;
-    delete m_srcWriteOpRotateFinishFlag;
-    delete m_srcReadOpRotateFinishFlag;*/
     delete m_srcOpRotateCounter;
     delete m_srcOpRotateCounterIdx;
     delete m_srcOpRotateFinishFlag;
@@ -308,23 +181,10 @@ void InprocConduit::clear()
     m_dstBuffDataReadCond.clear();
     m_dstBuffDataWrittenFlag.clear();
     m_dstBuffDataReadFlag.clear();
-   /* delete m_dstWriteOpRotateCounter;
-    delete m_dstReadOpRotateCounter;
-    delete m_dstWriteOpRotateCounterIdx;
-    delete m_dstReadOpRotateCounterIdx;
-    delete m_dstWriteOpRotateFinishFlag;
-    delete m_dstReadOpRotateFinishFlag;*/
-    delete m_srcOpRotateCounter;
-    delete m_srcOpRotateCounterIdx;
-    delete m_srcOpRotateFinishFlag;
+    delete m_dstOpRotateCounter;
+    delete m_dstOpRotateCounterIdx;
+    delete m_dstOpRotateFinishFlag;
 
-    /*for(std::map<MessageTag, BuffInfo*>::iterator it = m_srcBuffPool.begin();
-            it != m_srcBuffPool.end(); ++it)
-    {
-        if((it->second)->dataPtr)
-            free((it->second)->dataPtr);
-        delete it->second;
-    }*/
     m_srcBuffPool.clear();
     m_srcBuffPoolWaitlist.clear();
     for(int i=0; i<m_capacity; i++)
@@ -333,112 +193,17 @@ void InprocConduit::clear()
     }
     delete m_srcAvailableBuff;
 
-    /*for(std::map<MessageTag, BuffInfo*>::iterator it = m_dstBuffPool.begin();
-            it != m_dstBuffPool.end(); ++it)
-    {
-        if((it->second)->dataPtr)
-            free((it->second)->dataPtr);
-        delete it->second;
-    }*/
+
     m_dstBuffPool.clear();
     m_dstBuffPoolWaitlist.clear();
     for(int i=0; i<m_capacity; i++)
     {
-        free(m_srcAvailableBuff[i].bufferPtr);
+        free(m_dstAvailableBuff[i].bufferPtr);
     }
-    delete m_srcAvailableBuff;
+    delete m_dstAvailableBuff;
 
-/*
-#ifdef USE_DEBUG_LOG
-    std::ofstream* procOstream = getProcOstream();
-    PRINT_TIME_NOW(*procOstream)
-    if(m_srcTask && m_dstTask)
-    {
-        *procOstream<<"Conduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
-                <<"] destroyed on proc "<<m_srcTask->getCurrentProcRank()<<"!!!"<<std::endl;
-    }
-    else
-    {
-        *procOstream<<"Conduit: [dummy conduit] destroyed on proc "<<m_srcTask->getCurrentProcRank()<<"!!!"<<std::endl;
-    }
-#endif
-*/
-}
-
-// can't change capacity after conduit is created
-/*void Conduit::setCapacity(int capacity)
-{
-    m_capacity = capacity;
-}*/
-
-/*int InprocConduit::getCapacity()
-{
-    return m_capacity;
-}
-
-std::string InprocConduit::getName()
-{
-	return m_Name;
-}
-
-TaskBase* InprocConduit::getSrcTask()
-{
-    return m_srcTask;
-}
-
-TaskBase* InprocConduit::getDstTask()
-{
-    return m_dstTask;
-}
-
-TaskBase* InprocConduit::getAnotherTask()
-{
-	static thread_local int myTaskid = -1;
-	if(myTaskid == -1)
-	{
-		myTaskid = TaskManager::getCurrentTaskId();
-	}
-	if(myTaskid == m_srcId)
-		return m_dstTask;
-	else if(myTaskid == m_dstId)
-		return m_srcTask;
-	else
-	{
-		std::cout<<"Error, conduit doesn't associated to calling task!"<<std::endl;
-		exit(1);
-	}
 
 }
-
-void InprocConduit::Connect(TaskBase* src, TaskBase* dst)
-{
-    if(m_srcTask || m_dstTask)
-    {
-        std::cout<<"Error, already connected to some Task"<<std::endl;
-        exit(1);
-    }
-    checkOnSameProc(src, dst);
-    m_srcTask = src;
-    m_dstTask = dst;
-    m_srcId = src->getTaskId();
-    m_dstId = dst->getTaskId();
-    m_numSrcLocalThreads = src->getNumLocalThreads();
-    m_numDstLocalThreads = dst->getNumLocalThreads();
-#ifdef USE_DEBUG_LOG
-	std::ofstream* procOstream = getProcOstream();
-	PRINT_TIME_NOW(*procOstream)
-	*procOstream<<"Conduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
-				<<"] connected..."<<std::endl;
-#endif
-    initInprocConduit();
-    return;
-}
-
-ConduitId InprocConduit::getConduitId()
-{
-    return m_conduitId;
-}*/
-
 
 
 

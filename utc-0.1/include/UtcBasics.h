@@ -5,7 +5,7 @@
 /*
  *
  */
-#define USE_DEBUG_LOG
+//#define USE_DEBUG_LOG
 //#define USE_DEBUG_ASSERT
 
 
@@ -89,9 +89,9 @@ const int MAX_CONDUITS = 1024;
 const int LOG_MAX_CONDUITS = 10;
 const int INPROC_CONDUIT_CAPACITY_DEFAULT = 8;
 const int INPROC_CONDUIT_CAPACITY_MAX = 32;
-const int SMALL_MESSAGE_CUTOFF = 1024*1024;
-const int NO_FINISHED_OP_MAX = 32;
-const int CONDUIT_BUFFER_SIZE_DEFAULT = 4096; // 4k bytes
+const int SMALL_MESSAGE_CUTOFF = (1024*1024);
+const int NO_FINISHED_OP_MAX = 16;
+const int CONDUIT_BUFFER_SIZE = 4096; // 4k bytes
 
 
 
