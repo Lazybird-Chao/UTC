@@ -4,8 +4,8 @@
 
 using namespace iUtc;
 
-#define TEST_WRITE
-//#define TEST_PWRITE
+//#define TEST_WRITE
+#define TEST_PWRITE
 
 #define SIZE (1024*1024)
 
@@ -117,8 +117,8 @@ int main()
     std::ofstream* pout= getProcOstream();
     *pout<<"proc rank:"<<ctx.getProcRank()<<" processor name:"<<pname.c_str()<<std::endl;
 
-    RankList r_list1(1,0); //1 thread on proc 0
-    RankList r_list2(1,0); //1 thread on proc 1
+    RankList r_list1(3,0); //1 thread on proc 0
+    RankList r_list2(5,1); //1 thread on proc 1
     Task<user_taskA> task1("ping", r_list1);
     Task<user_taskB> task2("pong", r_list2);
     Conduit cdt1(&task1, &task2);

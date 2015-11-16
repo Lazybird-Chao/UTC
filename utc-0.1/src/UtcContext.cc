@@ -91,7 +91,7 @@ void UtcContext::initialize(int& argc, char** argv)
 #ifdef USE_DEBUG_LOG
     std::ofstream *procOstream = root->getProcOstream();
     PRINT_TIME_NOW(*procOstream)
-    *procOstream<<"Utc context created on proc "<<pRank<<"..."<<std::endl;
+    *procOstream<<"Utc context created on proc "<<pRank<<" ("<<getpid()<<")..."<<std::endl;
 #endif
 }
 

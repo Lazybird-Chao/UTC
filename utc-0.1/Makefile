@@ -41,7 +41,7 @@ LIB_UTC := libutc.a
  
 	
 ## test target
-TARGET_SOURCE:= ./test/test_xprocess_conduit_pingpong.cc
+TARGET_SOURCE:= ./test/test_inprocess_conduit_RWby.cc
 TARGET_OBJ:= main.o	
 TARGET_EXE:= a.out
 

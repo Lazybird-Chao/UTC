@@ -5,8 +5,8 @@
 using namespace iUtc;
 
 //#define TEST_BWRITE
-#define TEST_WRITE
-//#define TEST_PWRITE
+//#define TEST_WRITE
+#define TEST_PWRITE
 
 #define SIZE (1024*1024)
 
@@ -55,7 +55,7 @@ public:
 			//intra_Barrier();
 		}
 		cdt_ptr->ReadBy_Finish(SIZE);
-#if defined(TEST_BWIRTE)
+#if defined(TEST_BWRITE)
 		cdt_ptr->BWriteBy_Finish(SIZE);
 #elif defined(TEST_WRITE)
 		cdt_ptr->WriteBy_Finish(SIZE);
@@ -127,9 +127,9 @@ int main()
 	std::ofstream* pout= getProcOstream();
 	*pout<<"proc rank:"<<ctx.getProcRank()<<" processor name:"<<pname.c_str()<<std::endl;
 
-	RankList r_list1(3);
+	RankList r_list1(3,0);
 	Task<user_taskA> task1("writer", r_list1);
-	RankList r_list2(2);
+	RankList r_list2(2,1);
 	Task<user_taskB> task2("reader", r_list2);
 	Conduit cdt1(&task1, &task2);
 	Timer timer(MILLISEC);

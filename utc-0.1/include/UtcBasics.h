@@ -5,8 +5,8 @@
 /*
  *
  */
-//#define USE_DEBUG_LOG
-//#define USE_DEBUG_ASSERT
+#define USE_DEBUG_LOG
+#define USE_DEBUG_ASSERT
 
 
 
@@ -80,8 +80,8 @@ typedef  int MessageTag; // >=0
  */
 const int MAX_PROCS=32;
 const int LOG_MAX_PROCS=5;
-const int MAX_TASKS=512;
-const int LOG_MAX_TASKS=9;
+const int MAX_TASKS=128;
+const int LOG_MAX_TASKS=7;
 const int MAX_THREADS=256;
 const int LOG_MAX_THREADS=8;
 

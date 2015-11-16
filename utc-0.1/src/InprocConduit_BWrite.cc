@@ -527,6 +527,7 @@ int InprocConduit::BWrite(void *DataPtr, int DataSize, int tag)
                     int tmp_idx = m_dstBuffIdx.back();
                     m_dstBuffIdx.pop_back();
                     BuffInfo* tmp_buffinfo=&(m_dstAvailableBuff[tmp_idx]);
+                    tmp_buffinfo->buffIdx = tmp_idx;
                     // set count to 1
                     tmp_buffinfo->callingWriteThreadCount = 1;
                     // insert this buff to buffpool
@@ -765,12 +766,15 @@ int InprocConduit::BWriteBy(ThreadRank thread, void *DataPtr, int DataSize, int 
 				m_srcBuffDataWrittenCond[tmp_idx].notify_one();
             }
 
-            // record this op to readby finish set
-            std::lock_guard<std::mutex> LCK4(m_writebyFinishMutex);
-            //m_writebyFinishSet.insert(std::pair<int, int>((tag<<LOG_MAX_TASKS)+myTaskid,
-            //      m_numSrcLocalThreads-1));
-            m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = m_numSrcLocalThreads;
-            m_writebyFinishCond.notify_all();
+            if(m_numSrcLocalThreads >1)
+            {
+				// record this op to readby finish set
+				std::lock_guard<std::mutex> LCK4(m_writebyFinishMutex);
+				//m_writebyFinishSet.insert(std::pair<int, int>((tag<<LOG_MAX_TASKS)+myTaskid,
+				//      m_numSrcLocalThreads-1));
+				m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = m_numSrcLocalThreads;
+				m_writebyFinishCond.notify_all();
+            }
 
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
@@ -880,12 +884,15 @@ int InprocConduit::BWriteBy(ThreadRank thread, void *DataPtr, int DataSize, int 
 				m_dstBuffDataWrittenCond[tmp_buffinfo->buffIdx].notify_one();
             }
 
-            // record this op to readby finish set
-            std::lock_guard<std::mutex> LCK4(m_writebyFinishMutex);
-            //m_writebyFinishSet.insert(std::pair<int, int>((tag<<LOG_MAX_TASKS)+myTaskid,
-            //      m_numDstLocalThreads-1));
-            m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = m_numDstLocalThreads;
-            m_writebyFinishCond.notify_all();
+            if(m_numDstLocalThreads > 1)
+            {
+				// record this op to readby finish set
+				std::lock_guard<std::mutex> LCK4(m_writebyFinishMutex);
+				//m_writebyFinishSet.insert(std::pair<int, int>((tag<<LOG_MAX_TASKS)+myTaskid,
+				//      m_numDstLocalThreads-1));
+				m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = m_numDstLocalThreads;
+				m_writebyFinishCond.notify_all();
+            }
 
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
@@ -917,6 +924,22 @@ void InprocConduit::BWriteBy_Finish(int tag)
         myTaskid = TaskManager::getCurrentTaskId();
         myThreadRank = TaskManager::getCurrentThreadRankinTask();
     }
+    if(myTaskid == m_srcId && m_numSrcLocalThreads == 1)
+	{
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"thread "<<myThreadRank<<" exit wait Bwriteby!"<<std::endl;
+#endif
+		return;
+	}
+	else if(myTaskid == m_dstId && m_numDstLocalThreads == 1)
+	{
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"thread "<<myThreadRank<<" exit wait Bwriteby!"<<std::endl;
+#endif
+		return;
+	}
 
     std::unique_lock<std::mutex> LCK1(m_writebyFinishMutex);
 #ifdef USE_DEBUG_LOG

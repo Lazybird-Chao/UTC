@@ -676,7 +676,7 @@ int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
         // go on waiting for this tag-buffer come from writer
         bool w_ret = m_dstNewBuffInsertedCond.wait_for(LCK2, std::chrono::seconds(TIME_OUT),
                       [=](){return m_dstBuffPool.find(tag) !=m_dstBuffPool.end();});
-        if(w_ret)
+        if(!w_ret)
         {
           std::cerr<<"Error, reader wait time out!"<<"src-thread "<<myThreadRank<<std::endl;
           LCK2.unlock();
@@ -747,10 +747,13 @@ PRINT_TIME_NOW(*m_threadOstream)
             m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
         }
 
-        // record this op in finish set
-        std::lock_guard<std::mutex> LCK4(m_readbyFinishMutex);
-        m_readbyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = m_numSrcLocalThreads;
-        m_readbyFinishCond.notify_all();
+        if(m_numSrcLocalThreads>1)
+        {
+			// record this op in finish set
+			std::lock_guard<std::mutex> LCK4(m_readbyFinishMutex);
+			m_readbyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = m_numSrcLocalThreads;
+			m_readbyFinishCond.notify_all();
+        }
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"src-thread "<<myThreadRank<<" finish readby:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
@@ -842,10 +845,13 @@ PRINT_TIME_NOW(*m_threadOstream)
             m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
         }
 
-        // record this op in finish set
-        std::lock_guard<std::mutex> LCK4(m_readbyFinishMutex);
-        m_readbyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = m_numDstLocalThreads;
-        m_readbyFinishCond.notify_all();
+        if(m_numDstLocalThreads>1)
+        {
+			// record this op in finish set
+			std::lock_guard<std::mutex> LCK4(m_readbyFinishMutex);
+			m_readbyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = m_numDstLocalThreads;
+			m_readbyFinishCond.notify_all();
+        }
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"dst-thread "<<myThreadRank<<" finish readby:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
@@ -874,6 +880,22 @@ void InprocConduit::ReadBy_Finish(int tag)
         myTaskid = TaskManager::getCurrentTaskId();
         myThreadRank = TaskManager::getCurrentThreadRankinTask();
     }
+    if(myTaskid == m_srcId && m_numSrcLocalThreads == 1)
+	{
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"thread "<<myThreadRank<<" exit wait readby!"<<std::endl;
+#endif
+		return;
+	}
+	else if(myTaskid == m_dstId && m_numDstLocalThreads == 1)
+	{
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"thread "<<myThreadRank<<" exit wait readby!"<<std::endl;
+#endif
+		return;
+	}
 
     std::unique_lock<std::mutex> LCK1(m_readbyFinishMutex);
 #ifdef USE_DEBUG_LOG

@@ -29,7 +29,7 @@ XprocConduit::XprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId)
 
 	m_noFinishedOpCapacity = NO_FINISHED_OP_MAX; //  TODO:
 
-	m_availableNoFinishedReadOpCount = m_noFinishedOpCapacity;
+	/*m_availableNoFinishedReadOpCount = m_noFinishedOpCapacity;
 	m_availableNoFinishedWriteOpCount = m_noFinishedOpCapacity;
 	m_WriteOpRotateCounter = new int[m_noFinishedOpCapacity+1];
 	m_ReadOpRotateCounter = new int[m_noFinishedOpCapacity +1];
@@ -41,14 +41,22 @@ XprocConduit::XprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId)
 		m_ReadOpRotateCounter[i]=0;
 		m_WriteOpRotateFinishFlag[i]=0;
 		m_ReadOpRotateFinishFlag[i]=0;
+	}*/
+	m_availableNoFinishedOpCount = m_noFinishedOpCapacity;
+	m_OpRotateCounter = new int[m_noFinishedOpCapacity+1];
+	m_OpRotateFinishFlag = new int[m_noFinishedOpCapacity+1];
+	for(int i =0;i<m_noFinishedOpCapacity+1; i++)
+	{
+		m_OpRotateCounter[i]=0;
+		m_OpRotateFinishFlag[i]=0;
 	}
 	//actually only use the local threads in one process, other thread pos is not used
-	m_WriteOpRotateCounterIdx = new int[m_srcTask->getNumTotalThreads()];
-	m_ReadOpRotateCounterIdx = new int[m_srcTask->getNumTotalThreads()];
-	for(int i =0; i<m_srcTask->getNumTotalThreads();i++)
+	int numLocalthreads = m_srcTask->getNumTotalThreads() > m_dstTask->getNumTotalThreads()?
+			m_srcTask->getNumTotalThreads():m_dstTask->getNumTotalThreads();
+	m_OpRotateCounterIdx = new int[numLocalthreads];
+	for(int i =0; i<numLocalthreads;i++)
 	{
-		m_WriteOpRotateCounterIdx[i] = 0;
-		m_ReadOpRotateCounterIdx[i]=0;
+		m_OpRotateCounterIdx[i] = 0;
 	}
 
 	m_readbyFinishSet.clear();
@@ -96,7 +104,7 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
 	}
 
 
-	std::unique_lock<std::mutex> LCK1(m_WriteOpCheckMutex);
+	std::unique_lock<std::mutex> LCK1(m_OpCheckMutex);
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
 	{
@@ -106,40 +114,40 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-			*m_threadOstream<<"dst-thread "<<myThreadRank<<" call write...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" call write...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 	}
 #endif
-	int counteridx = m_WriteOpRotateCounterIdx[myThreadRank];
-	m_WriteOpRotateCounter[counteridx]++;
-	if(m_WriteOpRotateCounter[counteridx]>1)
+	int counteridx = m_OpRotateCounterIdx[myThreadRank];
+	m_OpRotateCounter[counteridx]++;
+	if(m_OpRotateCounter[counteridx]>1)
 	{
 		// a late thread
 #ifdef USE_DEBUG_ASSERT
-		assert(m_WriteOpRotateCounter[counteridx] <= localNumthreads);
+		assert(m_OpRotateCounter[counteridx] <= localNumthreads);
 #endif
-		while(m_WriteOpRotateFinishFlag[counteridx] == 0)
+		while(m_OpRotateFinishFlag[counteridx] == 0)
 		{
-			m_WriteOpFinishCond.wait(LCK1);
+			m_OpFinishCond.wait(LCK1);
 		}
 		// wake up
-		m_WriteOpRotateFinishFlag[counteridx]++;
-		if(m_WriteOpRotateFinishFlag[counteridx]==localNumthreads)
+		m_OpRotateFinishFlag[counteridx]++;
+		if(m_OpRotateFinishFlag[counteridx]==localNumthreads)
 		{
 			//last leaving thread
-			m_WriteOpRotateFinishFlag[counteridx] = 0;
-			m_WriteOpRotateCounter[counteridx] = 0;
+			m_OpRotateFinishFlag[counteridx] = 0;
+			m_OpRotateCounter[counteridx] = 0;
 			//
-			m_availableNoFinishedWriteOpCount++;
-			m_availableNoFinishedWriteCond.notify_one();
+			m_availableNoFinishedOpCount++;
+			m_availableNoFinishedCond.notify_one();
 
 			// update counter idx to next one
-			m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
+			m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
 			LCK1.unlock();
 		}
 		else
 		{
 			// update counter idx to next one
-			m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
+			m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
 			LCK1.unlock();
 		}
 
@@ -152,7 +160,7 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-			*m_threadOstream<<"dst-thread "<<myThreadRank<<" exit write:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" exit write:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 	}
 #endif
 
@@ -161,11 +169,11 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
 	else
 	{
 		// first thread
-		while(m_availableNoFinishedWriteOpCount == 0)
+		while(m_availableNoFinishedOpCount == 0)
 		{
-			m_availableNoFinishedWriteCond.wait(LCK1);
+			m_availableNoFinishedCond.wait(LCK1);
 		}
-		m_availableNoFinishedWriteOpCount--;
+		m_availableNoFinishedOpCount--;
 		LCK1.unlock();
 
 #ifdef USE_DEBUG_LOG
@@ -177,7 +185,7 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-			*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing write...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing write...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 	}
 #endif
 
@@ -194,14 +202,14 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
 		// the first thread finish real write, change finishflag
 		LCK1.lock();
 #ifdef USE_DEBUG_ASSERT
-		assert(m_WriteOpRotateFinishFlag[counteridx] == 0);
+		assert(m_OpRotateFinishFlag[counteridx] == 0);
 #endif
 		// set finish flag
-		m_WriteOpRotateFinishFlag[counteridx]++;
+		m_OpRotateFinishFlag[counteridx]++;
 		// update counter idx to next one
-		m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
+		m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
 		// notify other late coming threads to exit
-		m_WriteOpFinishCond.notify_all();
+		m_OpFinishCond.notify_all();
 		LCK1.unlock();
 
 #ifdef USE_DEBUG_LOG
@@ -213,7 +221,7 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-			*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish write:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish write:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 	}
 #endif
 
@@ -259,7 +267,7 @@ int XprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
 
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
-	*m_threadOstream<<"thread "<<myThreadRank<<" call writeby...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+	*m_threadOstream<<"thread "<<myThreadRank<<" call writeby..."<<std::endl;
 #endif
 
 	if(myThreadRank != thread)
@@ -288,7 +296,7 @@ int XprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-			*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing writeby...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing writeby...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 	}
 #endif
 
@@ -299,9 +307,12 @@ int XprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
 #endif
 
 	// record this op to readby finish set
-	std::lock_guard<std::mutex> LCK4(m_writebyFinishMutex);
-	m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = localNumthreads;
-	m_writebyFinishCond.notify_all();
+	if(localNumthreads>1)
+	{
+		std::lock_guard<std::mutex> LCK4(m_writebyFinishMutex);
+		m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = localNumthreads;
+		m_writebyFinishCond.notify_all();
+	}
 
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
@@ -312,7 +323,7 @@ int XprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-			*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish writeby:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish writeby:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 	}
 #endif
 
@@ -333,6 +344,22 @@ void XprocConduit::WriteBy_Finish(int tag)
         myTaskid = TaskManager::getCurrentTaskId();
         myThreadRank = TaskManager::getCurrentThreadRankinTask();
     }
+    if(myTaskid == m_srcId && m_numSrcLocalThreads == 1)
+	{
+#ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"thread "<<myThreadRank<<" exit wait writeby!"<<std::endl;
+#endif
+		return;
+	}
+	else if(myTaskid == m_dstId && m_numDstLocalThreads == 1)
+	{
+#ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"thread "<<myThreadRank<<" exit wait writeby!"<<std::endl;
+#endif
+		return;
+	}
 
     std::unique_lock<std::mutex> LCK1(m_writebyFinishMutex);
 #ifdef USE_DEBUG_LOG
@@ -417,7 +444,7 @@ int XprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 	}
 
 
-	std::unique_lock<std::mutex> LCK1(m_WriteOpCheckMutex);
+	std::unique_lock<std::mutex> LCK1(m_OpCheckMutex);
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
 	{
@@ -427,40 +454,40 @@ int XprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-			*m_threadOstream<<"dst-thread "<<myThreadRank<<" call Pwrite...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" call Pwrite...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 	}
 #endif
-	int counteridx = m_WriteOpRotateCounterIdx[myThreadRank];
-	m_WriteOpRotateCounter[counteridx]++;
-	if(m_WriteOpRotateCounter[counteridx]>1)
+	int counteridx = m_OpRotateCounterIdx[myThreadRank];
+	m_OpRotateCounter[counteridx]++;
+	if(m_OpRotateCounter[counteridx]>1)
 	{
 		// a late thread
 #ifdef USE_DEBUG_ASSERT
-		assert(m_WriteOpRotateCounter[counteridx] <= localNumthreads);
+		assert(m_OpRotateCounter[counteridx] <= localNumthreads);
 #endif
-		while(m_WriteOpRotateFinishFlag[counteridx] == 0)
+		while(m_OpRotateFinishFlag[counteridx] == 0)
 		{
-			m_WriteOpFinishCond.wait(LCK1);
+			m_OpFinishCond.wait(LCK1);
 		}
 		// wake up
-		m_WriteOpRotateFinishFlag[counteridx]++;
-		if(m_WriteOpRotateFinishFlag[counteridx]==localNumthreads)
+		m_OpRotateFinishFlag[counteridx]++;
+		if(m_OpRotateFinishFlag[counteridx]==localNumthreads)
 		{
 			//last leaving thread
-			m_WriteOpRotateFinishFlag[counteridx] = 0;
-			m_WriteOpRotateCounter[counteridx] = 0;
+			m_OpRotateFinishFlag[counteridx] = 0;
+			m_OpRotateCounter[counteridx] = 0;
 			//
-			m_availableNoFinishedWriteOpCount++;
-			m_availableNoFinishedWriteCond.notify_one();
+			m_availableNoFinishedOpCount++;
+			m_availableNoFinishedCond.notify_one();
 
 			// update counter idx to next one
-			m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
+			m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
 			LCK1.unlock();
 		}
 		else
 		{
 			// update counter idx to next one
-			m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
+			m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
 			LCK1.unlock();
 		}
 
@@ -473,7 +500,7 @@ int XprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-			*m_threadOstream<<"dst-thread "<<myThreadRank<<" exit Pwrite:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" exit Pwrite:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 	}
 #endif
 
@@ -482,11 +509,11 @@ int XprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 	else
 	{
 		// first thread
-		while(m_availableNoFinishedWriteOpCount == 0)
+		while(m_availableNoFinishedOpCount == 0)
 		{
-			m_availableNoFinishedWriteCond.wait(LCK1);
+			m_availableNoFinishedCond.wait(LCK1);
 		}
-		m_availableNoFinishedWriteOpCount--;
+		m_availableNoFinishedOpCount--;
 		LCK1.unlock();
 
 #ifdef USE_DEBUG_LOG
@@ -498,7 +525,7 @@ int XprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-			*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Pwrite...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Pwrite...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 	}
 #endif
 
@@ -510,14 +537,14 @@ int XprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 		// the first thread finish real write, change finishflag
 		LCK1.lock();
 #ifdef USE_DEBUG_ASSERT
-		assert(m_WriteOpRotateFinishFlag[counteridx] == 0);
+		assert(m_OpRotateFinishFlag[counteridx] == 0);
 #endif
 		// set finish flag
-		m_WriteOpRotateFinishFlag[counteridx]++;
+		m_OpRotateFinishFlag[counteridx]++;
 		// update counter idx to next one
-		m_WriteOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
+		m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
 		// notify other late coming threads to exit
-		m_WriteOpFinishCond.notify_all();
+		m_OpFinishCond.notify_all();
 		LCK1.unlock();
 
 #ifdef USE_DEBUG_LOG
@@ -529,7 +556,7 @@ int XprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-			*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish Pwrite:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish Pwrite:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 	}
 #endif
 
@@ -574,7 +601,7 @@ int XprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
 
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
-	*m_threadOstream<<"thread "<<myThreadRank<<" call Pwriteby...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+	*m_threadOstream<<"thread "<<myThreadRank<<" call Pwriteby..."<<std::endl;
 #endif
 
 	if(myThreadRank != thread)
@@ -603,7 +630,7 @@ int XprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-			*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Pwriteby...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Pwriteby...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 	}
 #endif
 
@@ -613,10 +640,13 @@ int XprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
 				(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
 #endif
 
-	// record this op to readby finish set
-	std::lock_guard<std::mutex> LCK4(m_writebyFinishMutex);
-	m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = localNumthreads;
-	m_writebyFinishCond.notify_all();
+	if(localNumthreads >1)
+	{
+		// record this op to readby finish set
+		std::lock_guard<std::mutex> LCK4(m_writebyFinishMutex);
+		m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = localNumthreads;
+		m_writebyFinishCond.notify_all();
+	}
 
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
@@ -627,7 +657,7 @@ int XprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-			*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish Pwriteby:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish Pwriteby:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 	}
 #endif
 
@@ -647,6 +677,22 @@ void XprocConduit::PWriteBy_Finish(int tag)
         myTaskid = TaskManager::getCurrentTaskId();
         myThreadRank = TaskManager::getCurrentThreadRankinTask();
     }
+    if(myTaskid == m_srcId && m_numSrcLocalThreads == 1)
+	{
+#ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"thread "<<myThreadRank<<" exit wait Pwriteby!"<<std::endl;
+#endif
+		return;
+	}
+	else if(myTaskid == m_dstId && m_numDstLocalThreads == 1)
+	{
+#ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"thread "<<myThreadRank<<" exit wait Pwriteby!"<<std::endl;
+#endif
+		return;
+	}
 
     std::unique_lock<std::mutex> LCK1(m_writebyFinishMutex);
 #ifdef USE_DEBUG_LOG
@@ -718,40 +764,40 @@ int XprocConduit::Read(void* DataPtr, int DataSize, int tag)
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-		*m_threadOstream<<"dst-thread "<<myThreadRank<<" call read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+		*m_threadOstream<<"dst-thread "<<myThreadRank<<" call read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 	}
 #endif
 
-	std::unique_lock<std::mutex> LCK1(m_ReadOpCheckMutex);
-	int counteridx = m_ReadOpRotateCounterIdx[myThreadRank];
-	m_ReadOpRotateCounter[counteridx]++;
-	if(m_ReadOpRotateCounter[counteridx]>1)
+	std::unique_lock<std::mutex> LCK1(m_OpCheckMutex);
+	int counteridx = m_OpRotateCounterIdx[myThreadRank];
+	m_OpRotateCounter[counteridx]++;
+	if(m_OpRotateCounter[counteridx]>1)
 	{
 		// late coming thread
 #ifdef USE_DEBUG_ASSERT
-		assert(m_ReadOpRotateCounter[counteridx] <= localNumthreads);
+		assert(m_OpRotateCounter[counteridx] <= localNumthreads);
 #endif
-		while(m_ReadOpRotateFinishFlag[counteridx] ==0)
+		while(m_OpRotateFinishFlag[counteridx] ==0)
 		{
-			m_ReadOpFinishCond.wait(LCK1);
+			m_OpFinishCond.wait(LCK1);
 		}
 		// wake up after real read finish
-		m_ReadOpRotateFinishFlag[counteridx]++;
-		if(m_ReadOpRotateFinishFlag[counteridx] == localNumthreads)
+		m_OpRotateFinishFlag[counteridx]++;
+		if(m_OpRotateFinishFlag[counteridx] == localNumthreads)
 		{
 			//last leaving thread
-			m_ReadOpRotateFinishFlag[counteridx]=0;
-			m_ReadOpRotateCounter[counteridx]=0;
-			m_ReadOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
+			m_OpRotateFinishFlag[counteridx]=0;
+			m_OpRotateCounter[counteridx]=0;
+			m_OpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
 
-			m_availableNoFinishedReadOpCount++;
-			m_availableNoFinishedReadCond.notify_one();
+			m_availableNoFinishedOpCount++;
+			m_availableNoFinishedCond.notify_one();
 
 			LCK1.unlock();
 		}
 		else
 		{
-			m_ReadOpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
+			m_OpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
 			LCK1.unlock();
 		}
 
@@ -764,7 +810,7 @@ int XprocConduit::Read(void* DataPtr, int DataSize, int tag)
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-		*m_threadOstream<<"dst-thread "<<myThreadRank<<" exit read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+		*m_threadOstream<<"dst-thread "<<myThreadRank<<" exit read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 	}
 #endif
 		return 0;
@@ -772,11 +818,11 @@ int XprocConduit::Read(void* DataPtr, int DataSize, int tag)
 	else
 	{
 		// first coming thread
-		while(m_availableNoFinishedReadOpCount=0)
+		while(m_availableNoFinishedOpCount==0)
 		{
-			m_availableNoFinishedReadCond.wait(LCK1);
+			m_availableNoFinishedCond.wait(LCK1);
 		}
-		m_availableNoFinishedReadOpCount--;
+		m_availableNoFinishedOpCount--;
 		LCK1.unlock();
 
 #ifdef USE_DEBUG_LOG
@@ -788,7 +834,7 @@ int XprocConduit::Read(void* DataPtr, int DataSize, int tag)
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-		*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+		*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 	}
 #endif
 
@@ -800,11 +846,11 @@ int XprocConduit::Read(void* DataPtr, int DataSize, int tag)
 		// change readfinishflag
 		LCK1.lock();
 #ifdef USE_DEBUG_ASSERT
-		assert(m_ReadOpRotateFinishFlag[counteridx] ==0);
+		assert(m_OpRotateFinishFlag[counteridx] ==0);
 #endif
-		m_ReadOpRotateFinishFlag[counteridx]++;
-		m_ReadOpFinishCond.notify_all();
-		m_ReadOpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_noFinishedOpCapacity+1);
+		m_OpRotateFinishFlag[counteridx]++;
+		m_OpFinishCond.notify_all();
+		m_OpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_noFinishedOpCapacity+1);
 		LCK1.unlock();
 
 #ifdef USE_DEBUG_LOG
@@ -816,7 +862,7 @@ int XprocConduit::Read(void* DataPtr, int DataSize, int tag)
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-		*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish read:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+		*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish read:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 	}
 #endif
 
@@ -889,7 +935,7 @@ int XprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-			*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing readby...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing readby...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 	}
 #endif
 
@@ -898,10 +944,13 @@ int XprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag
 			(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 #endif
 
-	// record this op in finish set
-	std::lock_guard<std::mutex> LCK4(m_readbyFinishMutex);
-	m_readbyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = m_numSrcLocalThreads;
-	m_readbyFinishCond.notify_all();
+	if(localNumthreads>1)
+	{
+		// record this op in finish set
+		std::lock_guard<std::mutex> LCK4(m_readbyFinishMutex);
+		m_readbyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = localNumthreads;
+		m_readbyFinishCond.notify_all();
+	}
 
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
@@ -912,7 +961,7 @@ int XprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-			*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish readby:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish readby:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 	}
 #endif
 
@@ -932,6 +981,23 @@ void XprocConduit::ReadBy_Finish(int tag)
         myTaskid = TaskManager::getCurrentTaskId();
         myThreadRank = TaskManager::getCurrentThreadRankinTask();
     }
+    if(myTaskid == m_srcId && m_numSrcLocalThreads == 1)
+	{
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"thread "<<myThreadRank<<" exit wait readby!"<<std::endl;
+#endif
+		return;
+	}
+	else if(myTaskid == m_dstId && m_numDstLocalThreads == 1)
+	{
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"thread "<<myThreadRank<<" exit wait readby!"<<std::endl;
+#endif
+		return;
+	}
+
 
     std::unique_lock<std::mutex> LCK1(m_readbyFinishMutex);
 #ifdef USE_DEBUG_LOG
@@ -970,13 +1036,9 @@ void XprocConduit::ReadBy_Finish(int tag)
 
 XprocConduit::~XprocConduit()
 {
-	delete m_WriteOpRotateCounter;
-	delete m_WriteOpRotateCounterIdx;
-	delete m_WriteOpRotateFinishFlag;
-
-	delete m_ReadOpRotateCounter;
-	delete m_ReadOpRotateCounterIdx;
-	delete m_ReadOpRotateFinishFlag;
+	delete m_OpRotateCounter;
+	delete m_OpRotateCounterIdx;
+	delete m_OpRotateFinishFlag;
 
 	m_readbyFinishSet.clear();
 	m_writebyFinishSet.clear();

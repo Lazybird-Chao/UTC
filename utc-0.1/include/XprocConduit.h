@@ -55,7 +55,15 @@ private:
 	// that operation
 	int m_noFinishedOpCapacity;
 	//
-	int m_availableNoFinishedWriteOpCount;
+	int m_availableNoFinishedOpCount;
+	std::condition_variable m_availableNoFinishedCond;
+	std::mutex m_OpCheckMutex;
+	int *m_OpRotateCounter;
+	int *m_OpRotateCounterIdx;
+	int *m_OpRotateFinishFlag;
+	std::condition_variable m_OpFinishCond;
+
+	/*int m_availableNoFinishedWriteOpCount;
 	std::condition_variable m_availableNoFinishedWriteCond;
 	std::mutex m_WriteOpCheckMutex;
 	int *m_WriteOpRotateCounter;
@@ -69,7 +77,7 @@ private:
 	int *m_ReadOpRotateCounter;
 	int *m_ReadOpRotateCounterIdx;
 	int *m_ReadOpRotateFinishFlag;
-	std::condition_variable m_ReadOpFinishCond;
+	std::condition_variable m_ReadOpFinishCond;*/
 
 
 
