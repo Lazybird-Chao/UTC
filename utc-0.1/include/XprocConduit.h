@@ -18,21 +18,21 @@ public:
 	XprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId);
 
 
-	int BWrite(void* DataPtr, int DataSize, int tag);
-	int BWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag);
+	int BWrite(void* DataPtr, DataSize_t DataSize, int tag);
+	int BWriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag);
 	void BWriteBy_Finish(int tag);
 
-	int Write(void* DataPtr, int DataSize, int tag);
-	int WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag);
+	int Write(void* DataPtr, DataSize_t DataSize, int tag);
+	int WriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag);
 	void WriteBy_Finish(int tag);
 
-	int PWrite(void* DataPtr, int DataSize, int tag);
-	int PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag);
+	int PWrite(void* DataPtr, DataSize_t DataSize, int tag);
+	int PWriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag);
 	void PWriteBy_Finish(int tag);
 
 
-	int Read(void* DataPtr, int DataSize, int tag);
-	int ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag);
+	int Read(void* DataPtr, DataSize_t DataSize, int tag);
+	int ReadBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag);
 	void ReadBy_Finish(int tag);
 
 	~XprocConduit();

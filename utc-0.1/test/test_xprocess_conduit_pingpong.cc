@@ -4,8 +4,8 @@
 
 using namespace iUtc;
 
-//#define TEST_WRITE
-#define TEST_PWRITE
+#define TEST_WRITE
+//#define TEST_PWRITE
 
 #define SIZE (1024*1024)
 

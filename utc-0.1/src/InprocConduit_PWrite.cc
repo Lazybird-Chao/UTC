@@ -15,7 +15,7 @@ namespace iUtc{
  * Unbuffered Blocking write operation.
  * Do not user intermediate buffer, pass address.
  */
-int InprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
+int InprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -502,7 +502,7 @@ int InprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 }// end pwrite()
 
 
-int InprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
+int InprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)

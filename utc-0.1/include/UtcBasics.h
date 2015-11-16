@@ -59,12 +59,13 @@ extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
 /*
  *
  */
-typedef  int RankId;  // >=0
-typedef  int ProcRank; // >=0
-typedef  int ThreadRank; // >=0
-typedef  int TaskId; // >=0
-typedef  int ConduitId; // >=0
-typedef  int MessageTag; // >=0
+typedef  int	RankId;  // >=0
+typedef  int	ProcRank; // >=0
+typedef  int	ThreadRank; // >=0
+typedef  int	TaskId; // >=0
+typedef  int	ConduitId; // >=0
+typedef  int	MessageTag; // >=0
+typedef	 long	DataSize_t;
 
 #if defined(USE_CPLUS_THREAD_CREATION)
     typedef  std::thread::id ThreadId;

@@ -19,7 +19,7 @@ namespace iUtc
 /*
  *  Buffered & Blocking conduit write operation
  */
-int InprocConduit::BWrite(void *DataPtr, int DataSize, int tag)
+int InprocConduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -82,7 +82,7 @@ int InprocConduit::BWrite(void *DataPtr, int DataSize, int tag)
                 // decrease availabe buff
                 m_srcAvailableBuffCount--;
                 // alloc memory buffer for storing data
-                int tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
+                DataSize_t tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
                 tmp_size *= CONDUIT_BUFFER_SIZE;
                 if(tmp_buffinfo->buffSize == tmp_size)
                 {
@@ -243,7 +243,7 @@ int InprocConduit::BWrite(void *DataPtr, int DataSize, int tag)
                     // decrease availabe buff
                     m_srcAvailableBuffCount--;
                     // alloc memory
-                    int tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
+                    DataSize_t tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
                     tmp_size *= CONDUIT_BUFFER_SIZE;
                     if(tmp_buffinfo->buffSize == tmp_size)
                     {
@@ -289,7 +289,7 @@ int InprocConduit::BWrite(void *DataPtr, int DataSize, int tag)
                     {
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"src-thread "<<myThreadRank<<" doing Bwrite...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" doing Bwrite big msg...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
                         // release buffmanager lock to allow other threads to get buff
                         LCK2.unlock();
@@ -375,7 +375,7 @@ int InprocConduit::BWrite(void *DataPtr, int DataSize, int tag)
                 // decrease availabe buff
                 m_dstAvailableBuffCount--;
                 // alloc memory
-                int tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
+                DataSize_t tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
                 tmp_size *= CONDUIT_BUFFER_SIZE;
                 if(tmp_buffinfo->buffSize == tmp_size)
                 {
@@ -422,7 +422,7 @@ int InprocConduit::BWrite(void *DataPtr, int DataSize, int tag)
                 {
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Bwrite...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Bwrite big msg...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
                     // release buffmanager lock to allow other threads to get buff
                     LCK2.unlock();
@@ -534,7 +534,7 @@ int InprocConduit::BWrite(void *DataPtr, int DataSize, int tag)
                     m_dstBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
                     // decrease availabe buff
                     m_dstAvailableBuffCount--;
-                    int tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
+                    DataSize_t tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
                     tmp_size *= CONDUIT_BUFFER_SIZE;
                     if(tmp_buffinfo->buffSize == tmp_size)
                     {
@@ -580,7 +580,7 @@ int InprocConduit::BWrite(void *DataPtr, int DataSize, int tag)
                     {
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Bwrite...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Bwrite big msg...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
                         // release buffmanager lock to allow other threads to get buff
                         LCK2.unlock();
@@ -627,7 +627,7 @@ int InprocConduit::BWrite(void *DataPtr, int DataSize, int tag)
     }
 }// end Write()
 
-int InprocConduit::BWriteBy(ThreadRank thread, void *DataPtr, int DataSize, int tag)
+int InprocConduit::BWriteBy(ThreadRank thread, void *DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -703,7 +703,7 @@ int InprocConduit::BWriteBy(ThreadRank thread, void *DataPtr, int DataSize, int 
             m_srcBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
             // decrease availabe buff
             m_srcAvailableBuffCount--;
-            int tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
+            DataSize_t tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
             tmp_size *= CONDUIT_BUFFER_SIZE;
             if(tmp_buffinfo->buffSize == tmp_size)
             {
@@ -749,7 +749,7 @@ int InprocConduit::BWriteBy(ThreadRank thread, void *DataPtr, int DataSize, int 
             {
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"src-thread "<<myThreadRank<<" doing Bwriteby...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" doing Bwriteby big msg...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
 				// release buffmanager lock to allow other threads to get buff
 				LCK2.unlock();
@@ -820,7 +820,7 @@ int InprocConduit::BWriteBy(ThreadRank thread, void *DataPtr, int DataSize, int 
             // decrease availabe buff
             m_dstAvailableBuffCount--;
 
-            int tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
+            DataSize_t tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
             tmp_size *= CONDUIT_BUFFER_SIZE;
             if(tmp_buffinfo->buffSize == tmp_size)
             {
@@ -867,7 +867,7 @@ int InprocConduit::BWriteBy(ThreadRank thread, void *DataPtr, int DataSize, int 
             {
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Bwriteby...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Bwriteby big msg...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
 				// release buffmanager lock to allow other threads to get buff
 				LCK2.unlock();

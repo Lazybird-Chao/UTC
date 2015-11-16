@@ -17,7 +17,7 @@ namespace iUtc{
  * Standard Blocking write operation.
  * Do buffered message when it needs to.
  */
-int InprocConduit::Write(void* DataPtr, int DataSize, int tag)
+int InprocConduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -110,7 +110,7 @@ int InprocConduit::Write(void* DataPtr, int DataSize, int tag)
                 else
                 {
                     // alloc memory buffer for storing data
-                    int tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
+                	DataSize_t tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
                     tmp_size *= CONDUIT_BUFFER_SIZE;
                     if(tmp_buffinfo->buffSize == tmp_size)
                     {
@@ -303,7 +303,7 @@ int InprocConduit::Write(void* DataPtr, int DataSize, int tag)
                     else
                     {
                         // alloc memory
-                        int tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
+                    	DataSize_t tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
                         tmp_size *= CONDUIT_BUFFER_SIZE;
                         if(tmp_buffinfo->buffSize == tmp_size)
                         {
@@ -349,7 +349,7 @@ int InprocConduit::Write(void* DataPtr, int DataSize, int tag)
                         {
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"src-thread "<<myThreadRank<<" doing write...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" doing write big msg...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
                             // release buffmanager lock to allow other threads to get buff
                             LCK2.unlock();
@@ -472,7 +472,7 @@ int InprocConduit::Write(void* DataPtr, int DataSize, int tag)
                 else
                 {
                     // alloc memory
-                    int tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
+                	DataSize_t tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
                     tmp_size *= CONDUIT_BUFFER_SIZE;
                     if(tmp_buffinfo->buffSize == tmp_size)
                     {
@@ -519,7 +519,7 @@ int InprocConduit::Write(void* DataPtr, int DataSize, int tag)
                     {
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing write...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing write smal msg...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
                         // release buffmanager lock to allow other threads to get buff
                         LCK2.unlock();
@@ -665,7 +665,7 @@ int InprocConduit::Write(void* DataPtr, int DataSize, int tag)
                     }
                     else
                     {
-                        int tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
+                    	DataSize_t tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
                         tmp_size *= CONDUIT_BUFFER_SIZE;
                         if(tmp_buffinfo->buffSize == tmp_size)
                         {
@@ -711,7 +711,7 @@ int InprocConduit::Write(void* DataPtr, int DataSize, int tag)
                         {
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing write...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing write big msg...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
                             // release buffmanager lock to allow other threads to get buff
                             LCK2.unlock();
@@ -762,7 +762,7 @@ int InprocConduit::Write(void* DataPtr, int DataSize, int tag)
 }// end Write()
 
 
-int InprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
+int InprocConduit::WriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -865,7 +865,7 @@ int InprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
 			}
 			else
 			{
-			    int tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
+				DataSize_t tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
                 tmp_size *= CONDUIT_BUFFER_SIZE;
                 if(tmp_buffinfo->buffSize == tmp_size)
                 {
@@ -910,7 +910,7 @@ int InprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
 				{
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*m_threadOstream)
-		*m_threadOstream<<"src-thread "<<myThreadRank<<" doing writeby...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+		*m_threadOstream<<"src-thread "<<myThreadRank<<" doing writeby big msg...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
 					LCK2.unlock();
 					m_srcNewBuffInsertedCond.notify_all();
@@ -1009,7 +1009,7 @@ int InprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
 			}
 			else
 			{
-			    int tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
+				DataSize_t tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
                 tmp_size *= CONDUIT_BUFFER_SIZE;
                 if(tmp_buffinfo->buffSize == tmp_size)
                 {
@@ -1055,7 +1055,7 @@ int InprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
 				{
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*m_threadOstream)
-		*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing writeby...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+		*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing writeby big msg...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
 					LCK2.unlock();
 					m_dstNewBuffInsertedCond.notify_all();

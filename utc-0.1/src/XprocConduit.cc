@@ -71,7 +71,7 @@ XprocConduit::XprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId)
 #endif
 }
 
-int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
+int XprocConduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -103,8 +103,6 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
 		exit(1);
 	}
 
-
-	std::unique_lock<std::mutex> LCK1(m_OpCheckMutex);
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
 	{
@@ -117,39 +115,63 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
 			*m_threadOstream<<"dst-thread "<<myThreadRank<<" call write...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 	}
 #endif
-	int counteridx = m_OpRotateCounterIdx[myThreadRank];
-	m_OpRotateCounter[counteridx]++;
-	if(m_OpRotateCounter[counteridx]>1)
+	if(localNumthreads==1)
 	{
-		// a late thread
-#ifdef USE_DEBUG_ASSERT
-		assert(m_OpRotateCounter[counteridx] <= localNumthreads);
+#ifdef USE_DEBUG_LOG
+	if(myTaskid == m_srcId)
+	{
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"src-thread "<<myThreadRank<<" doing write...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+	}
+	else
+	{
+		PRINT_TIME_NOW(*m_threadOstream)
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing write...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+	}
 #endif
-		while(m_OpRotateFinishFlag[counteridx] == 0)
-		{
-			m_OpFinishCond.wait(LCK1);
-		}
-		// wake up
-		m_OpRotateFinishFlag[counteridx]++;
-		if(m_OpRotateFinishFlag[counteridx]==localNumthreads)
-		{
-			//last leaving thread
-			m_OpRotateFinishFlag[counteridx] = 0;
-			m_OpRotateCounter[counteridx] = 0;
-			//
-			m_availableNoFinishedOpCount++;
-			m_availableNoFinishedCond.notify_one();
 
-			// update counter idx to next one
-			m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
-			LCK1.unlock();
-		}
-		else
+#ifdef USE_MPI_BASE
+		// TODO: solving int(datasize) problem
+		MPI_Send(DataPtr, (int)DataSize, MPI_CHAR, mpiOtherEndProc,
+					(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
+#endif
+	}
+	else
+	{
+		std::unique_lock<std::mutex> LCK1(m_OpCheckMutex);
+		int counteridx = m_OpRotateCounterIdx[myThreadRank];
+		m_OpRotateCounter[counteridx]++;
+		if(m_OpRotateCounter[counteridx]>1)
 		{
-			// update counter idx to next one
-			m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
-			LCK1.unlock();
-		}
+			// a late thread
+#ifdef USE_DEBUG_ASSERT
+			assert(m_OpRotateCounter[counteridx] <= localNumthreads);
+#endif
+			while(m_OpRotateFinishFlag[counteridx] == 0)
+			{
+				m_OpFinishCond.wait(LCK1);
+			}
+			// wake up
+			m_OpRotateFinishFlag[counteridx]++;
+			if(m_OpRotateFinishFlag[counteridx]==localNumthreads)
+			{
+				//last leaving thread
+				m_OpRotateFinishFlag[counteridx] = 0;
+				m_OpRotateCounter[counteridx] = 0;
+				//
+				m_availableNoFinishedOpCount++;
+				m_availableNoFinishedCond.notify_one();
+
+				// update counter idx to next one
+				m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
+				LCK1.unlock();
+			}
+			else
+			{
+				// update counter idx to next one
+				m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
+				LCK1.unlock();
+			}
 
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
@@ -164,17 +186,17 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
 	}
 #endif
 
-		return 0;
-	}
-	else
-	{
-		// first thread
-		while(m_availableNoFinishedOpCount == 0)
-		{
-			m_availableNoFinishedCond.wait(LCK1);
+			return 0;
 		}
-		m_availableNoFinishedOpCount--;
-		LCK1.unlock();
+		else
+		{
+			// first thread
+			while(m_availableNoFinishedOpCount == 0)
+			{
+				m_availableNoFinishedCond.wait(LCK1);
+			}
+			m_availableNoFinishedOpCount--;
+			LCK1.unlock();
 
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
@@ -190,28 +212,31 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
 #endif
 
 #ifdef USE_MPI_BASE
-		// because in one proc, there may be several tasks, so two different mpi msg
-	    // could have same src/dst proc, if these two msg send by different tasks use
-	    // same tag, then mpi msg would has same msg-envelop, may cause msg matching
-	    // error. Here, we attach tag with conduitid, as each conduit has unque id,
-		// the mpi msg will have different new tag
-		MPI_Send(DataPtr, DataSize, MPI_CHAR, mpiOtherEndProc,
-				(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
+			// because in one proc, there may be several tasks, so two different mpi msg
+			// could have same src/dst proc, if these two msg send by different tasks use
+			// same tag, then mpi msg would has same msg-envelop, may cause msg matching
+			// error. Here, we attach tag with conduitid, as each conduit has unque id,
+			// the mpi msg will have different new tag
+			// TODO: solving int(datasize) problem
+			MPI_Send(DataPtr, (int)DataSize, MPI_CHAR, mpiOtherEndProc,
+					(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
 #endif
 
-		// the first thread finish real write, change finishflag
-		LCK1.lock();
+			// the first thread finish real write, change finishflag
+			LCK1.lock();
 #ifdef USE_DEBUG_ASSERT
-		assert(m_OpRotateFinishFlag[counteridx] == 0);
+			assert(m_OpRotateFinishFlag[counteridx] == 0);
 #endif
-		// set finish flag
-		m_OpRotateFinishFlag[counteridx]++;
-		// update counter idx to next one
-		m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
-		// notify other late coming threads to exit
-		m_OpFinishCond.notify_all();
-		LCK1.unlock();
+			// set finish flag
+			m_OpRotateFinishFlag[counteridx]++;
+			// update counter idx to next one
+			m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
+			// notify other late coming threads to exit
+			m_OpFinishCond.notify_all();
+			LCK1.unlock();
+		}
 
+	}
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
 	{
@@ -225,15 +250,10 @@ int XprocConduit::Write(void* DataPtr, int DataSize, int tag)
 	}
 #endif
 
-		return 0;
-
-	}
-
-
 	return 0;
 }
 
-int XprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
+int XprocConduit::WriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -302,7 +322,8 @@ int XprocConduit::WriteBy(ThreadRank thread, void* DataPtr, int DataSize, int ta
 
 	// doing real data write
 #ifdef USE_MPI_BASE
-	MPI_Send(DataPtr, DataSize, MPI_CHAR, mpiOtherEndProc,
+	// TODO: int-datasize limitation
+	MPI_Send(DataPtr, (int)DataSize, MPI_CHAR, mpiOtherEndProc,
 				(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
 #endif
 
@@ -392,12 +413,12 @@ void XprocConduit::WriteBy_Finish(int tag)
 
 
 ////////////////
-int XprocConduit::BWrite(void* DataPtr, int DataSize, int tag)
+int XprocConduit::BWrite(void* DataPtr, DataSize_t DataSize, int tag)
 {
 	std::cerr<<"Error, crossing process conduit doen't has 'BWrite' method."<<std::endl;
 	return 0;
 }
-int XprocConduit::BWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
+int XprocConduit::BWriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 	std::cerr<<"Error, crossing process conduit doen't has 'BWriteBy' method."<<std::endl;
 	return 0;
@@ -411,7 +432,7 @@ void XprocConduit::BWriteBy_Finish(int tag)
 
 
 ////////////////
-int XprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
+int XprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -443,8 +464,6 @@ int XprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 		exit(1);
 	}
 
-
-	std::unique_lock<std::mutex> LCK1(m_OpCheckMutex);
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
 	{
@@ -457,39 +476,64 @@ int XprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 			*m_threadOstream<<"dst-thread "<<myThreadRank<<" call Pwrite...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 	}
 #endif
-	int counteridx = m_OpRotateCounterIdx[myThreadRank];
-	m_OpRotateCounter[counteridx]++;
-	if(m_OpRotateCounter[counteridx]>1)
-	{
-		// a late thread
-#ifdef USE_DEBUG_ASSERT
-		assert(m_OpRotateCounter[counteridx] <= localNumthreads);
-#endif
-		while(m_OpRotateFinishFlag[counteridx] == 0)
-		{
-			m_OpFinishCond.wait(LCK1);
-		}
-		// wake up
-		m_OpRotateFinishFlag[counteridx]++;
-		if(m_OpRotateFinishFlag[counteridx]==localNumthreads)
-		{
-			//last leaving thread
-			m_OpRotateFinishFlag[counteridx] = 0;
-			m_OpRotateCounter[counteridx] = 0;
-			//
-			m_availableNoFinishedOpCount++;
-			m_availableNoFinishedCond.notify_one();
 
-			// update counter idx to next one
-			m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
-			LCK1.unlock();
-		}
-		else
+	if(localNumthreads == 1)
+	{
+#ifdef USE_DEBUG_LOG
+	if(myTaskid == m_srcId)
+	{
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"src-thread "<<myThreadRank<<" doing Pwrite...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+	}
+	else
+	{
+		PRINT_TIME_NOW(*m_threadOstream)
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Pwrite...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+	}
+#endif
+
+#ifdef USE_MPI_BASE
+		// TODO: int-datasize limitation
+		MPI_Ssend(DataPtr, (int)DataSize, MPI_CHAR, mpiOtherEndProc,
+				(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
+#endif
+	}
+	else
+	{	// there are several threads
+		std::unique_lock<std::mutex> LCK1(m_OpCheckMutex);
+		int counteridx = m_OpRotateCounterIdx[myThreadRank];
+		m_OpRotateCounter[counteridx]++;
+		if(m_OpRotateCounter[counteridx]>1)
 		{
-			// update counter idx to next one
-			m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
-			LCK1.unlock();
-		}
+			// a late thread
+#ifdef USE_DEBUG_ASSERT
+			assert(m_OpRotateCounter[counteridx] <= localNumthreads);
+#endif
+			while(m_OpRotateFinishFlag[counteridx] == 0)
+			{
+				m_OpFinishCond.wait(LCK1);
+			}
+			// wake up
+			m_OpRotateFinishFlag[counteridx]++;
+			if(m_OpRotateFinishFlag[counteridx]==localNumthreads)
+			{
+				//last leaving thread
+				m_OpRotateFinishFlag[counteridx] = 0;
+				m_OpRotateCounter[counteridx] = 0;
+				//
+				m_availableNoFinishedOpCount++;
+				m_availableNoFinishedCond.notify_one();
+
+				// update counter idx to next one
+				m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
+				LCK1.unlock();
+			}
+			else
+			{
+				// update counter idx to next one
+				m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
+				LCK1.unlock();
+			}
 
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
@@ -504,17 +548,17 @@ int XprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 	}
 #endif
 
-		return 0;
-	}
-	else
-	{
-		// first thread
-		while(m_availableNoFinishedOpCount == 0)
-		{
-			m_availableNoFinishedCond.wait(LCK1);
+			return 0;
 		}
-		m_availableNoFinishedOpCount--;
-		LCK1.unlock();
+		else
+		{
+			// first thread
+			while(m_availableNoFinishedOpCount == 0)
+			{
+				m_availableNoFinishedCond.wait(LCK1);
+			}
+			m_availableNoFinishedOpCount--;
+			LCK1.unlock();
 
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
@@ -530,44 +574,44 @@ int XprocConduit::PWrite(void* DataPtr, int DataSize, int tag)
 #endif
 
 #ifdef USE_MPI_BASE
-		MPI_Ssend(DataPtr, DataSize, MPI_CHAR, mpiOtherEndProc,
-				(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
+			// TODO: int-datasize limitation
+			MPI_Ssend(DataPtr, (int)DataSize, MPI_CHAR, mpiOtherEndProc,
+					(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
 #endif
 
-		// the first thread finish real write, change finishflag
-		LCK1.lock();
+			// the first thread finish real write, change finishflag
+			LCK1.lock();
 #ifdef USE_DEBUG_ASSERT
-		assert(m_OpRotateFinishFlag[counteridx] == 0);
+			assert(m_OpRotateFinishFlag[counteridx] == 0);
 #endif
-		// set finish flag
-		m_OpRotateFinishFlag[counteridx]++;
-		// update counter idx to next one
-		m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
-		// notify other late coming threads to exit
-		m_OpFinishCond.notify_all();
-		LCK1.unlock();
+			// set finish flag
+			m_OpRotateFinishFlag[counteridx]++;
+			// update counter idx to next one
+			m_OpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
+			// notify other late coming threads to exit
+			m_OpFinishCond.notify_all();
+			LCK1.unlock();
+		}// end for first thread
+
+	}// end for several threads
 
 #ifdef USE_DEBUG_LOG
-	if(myTaskid == m_srcId)
-	{
-		PRINT_TIME_NOW(*m_threadOstream)
-		*m_threadOstream<<"src-thread "<<myThreadRank<<" finish Pwrite:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
-	}
-	else
-	{
-		PRINT_TIME_NOW(*m_threadOstream)
-			*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish Pwrite:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
-	}
+		if(myTaskid == m_srcId)
+		{
+			PRINT_TIME_NOW(*m_threadOstream)
+			*m_threadOstream<<"src-thread "<<myThreadRank<<" finish Pwrite:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+		}
+		else
+		{
+			PRINT_TIME_NOW(*m_threadOstream)
+				*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish Pwrite:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+		}
 #endif
-
-		return 0;
-
-	}
 
 	return 0;
 }
 
-int XprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
+int XprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -636,7 +680,8 @@ int XprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, int DataSize, int t
 
 	// doing real data write
 #ifdef USE_MPI_BASE
-	MPI_Ssend(DataPtr, DataSize, MPI_CHAR, mpiOtherEndProc,
+	// TODO: int-datasize limitation
+	MPI_Ssend(DataPtr, (int)DataSize, MPI_CHAR, mpiOtherEndProc,
 				(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
 #endif
 
@@ -723,7 +768,7 @@ void XprocConduit::PWriteBy_Finish(int tag)
 }
 
 
-int XprocConduit::Read(void* DataPtr, int DataSize, int tag)
+int XprocConduit::Read(void* DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -768,68 +813,14 @@ int XprocConduit::Read(void* DataPtr, int DataSize, int tag)
 	}
 #endif
 
-	std::unique_lock<std::mutex> LCK1(m_OpCheckMutex);
-	int counteridx = m_OpRotateCounterIdx[myThreadRank];
-	m_OpRotateCounter[counteridx]++;
-	if(m_OpRotateCounter[counteridx]>1)
+	if(localNumthreads == 1)
 	{
-		// late coming thread
-#ifdef USE_DEBUG_ASSERT
-		assert(m_OpRotateCounter[counteridx] <= localNumthreads);
-#endif
-		while(m_OpRotateFinishFlag[counteridx] ==0)
-		{
-			m_OpFinishCond.wait(LCK1);
-		}
-		// wake up after real read finish
-		m_OpRotateFinishFlag[counteridx]++;
-		if(m_OpRotateFinishFlag[counteridx] == localNumthreads)
-		{
-			//last leaving thread
-			m_OpRotateFinishFlag[counteridx]=0;
-			m_OpRotateCounter[counteridx]=0;
-			m_OpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
-
-			m_availableNoFinishedOpCount++;
-			m_availableNoFinishedCond.notify_one();
-
-			LCK1.unlock();
-		}
-		else
-		{
-			m_OpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
-			LCK1.unlock();
-		}
 
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
-	{
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"src-thread "<<myThreadRank<<" exit read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
-	}
-	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-		*m_threadOstream<<"dst-thread "<<myThreadRank<<" exit read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
-	}
-#endif
-		return 0;
-	}
-	else
-	{
-		// first coming thread
-		while(m_availableNoFinishedOpCount==0)
-		{
-			m_availableNoFinishedCond.wait(LCK1);
-		}
-		m_availableNoFinishedOpCount--;
-		LCK1.unlock();
-
-#ifdef USE_DEBUG_LOG
-	if(myTaskid == m_srcId)
-	{
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"src-thread "<<myThreadRank<<" doing read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+		*m_threadOstream<<"src-thread "<<myThreadRank<<" doing read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 	}
 	else
 	{
@@ -839,40 +830,117 @@ int XprocConduit::Read(void* DataPtr, int DataSize, int tag)
 #endif
 
 #ifdef USE_MPI_BASE
-		MPI_Recv(DataPtr, DataSize, MPI_CHAR, mpiOtherEndProc,
+		// TODO:
+		MPI_Recv(DataPtr, (int)DataSize, MPI_CHAR, mpiOtherEndProc,
 				(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 #endif
-
-		// change readfinishflag
-		LCK1.lock();
+	} // end only one thread
+	else
+	{	// there are several threads
+		std::unique_lock<std::mutex> LCK1(m_OpCheckMutex);
+		int counteridx = m_OpRotateCounterIdx[myThreadRank];
+		m_OpRotateCounter[counteridx]++;
+		if(m_OpRotateCounter[counteridx]>1)
+		{
+			// late coming thread
 #ifdef USE_DEBUG_ASSERT
-		assert(m_OpRotateFinishFlag[counteridx] ==0);
+			assert(m_OpRotateCounter[counteridx] <= localNumthreads);
 #endif
-		m_OpRotateFinishFlag[counteridx]++;
-		m_OpFinishCond.notify_all();
-		m_OpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_noFinishedOpCapacity+1);
-		LCK1.unlock();
+			while(m_OpRotateFinishFlag[counteridx] ==0)
+			{
+				m_OpFinishCond.wait(LCK1);
+			}
+			// wake up after real read finish
+			m_OpRotateFinishFlag[counteridx]++;
+			if(m_OpRotateFinishFlag[counteridx] == localNumthreads)
+			{
+				//last leaving thread
+				m_OpRotateFinishFlag[counteridx]=0;
+				m_OpRotateCounter[counteridx]=0;
+				m_OpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
+
+				m_availableNoFinishedOpCount++;
+				m_availableNoFinishedCond.notify_one();
+
+				LCK1.unlock();
+			}
+			else
+			{
+				m_OpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
+				LCK1.unlock();
+			}
 
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
 	{
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"src-thread "<<myThreadRank<<" finish read:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"src-thread "<<myThreadRank<<" exit read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 	}
 	else
 	{
 		PRINT_TIME_NOW(*m_threadOstream)
-		*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish read:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+		*m_threadOstream<<"dst-thread "<<myThreadRank<<" exit read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+	}
+#endif
+			return 0;
+		}
+		else
+		{
+			// first coming thread
+			while(m_availableNoFinishedOpCount==0)
+			{
+				m_availableNoFinishedCond.wait(LCK1);
+			}
+			m_availableNoFinishedOpCount--;
+			LCK1.unlock();
+
+#ifdef USE_DEBUG_LOG
+	if(myTaskid == m_srcId)
+	{
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"src-thread "<<myThreadRank<<" doing read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+	}
+	else
+	{
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 	}
 #endif
 
-		return 0;
-	}
+#ifdef USE_MPI_BASE
+			// TODO:
+			MPI_Recv(DataPtr, (int)DataSize, MPI_CHAR, mpiOtherEndProc,
+					(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+#endif
 
+			// change readfinishflag
+			LCK1.lock();
+#ifdef USE_DEBUG_ASSERT
+			assert(m_OpRotateFinishFlag[counteridx] ==0);
+#endif
+			m_OpRotateFinishFlag[counteridx]++;
+			m_OpFinishCond.notify_all();
+			m_OpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_noFinishedOpCapacity+1);
+			LCK1.unlock();
+
+		}// end first thread
+	}// end several threads
+#ifdef USE_DEBUG_LOG
+		if(myTaskid == m_srcId)
+		{
+			PRINT_TIME_NOW(*m_threadOstream)
+			*m_threadOstream<<"src-thread "<<myThreadRank<<" finish read:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+		}
+		else
+		{
+			PRINT_TIME_NOW(*m_threadOstream)
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish read:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+		}
+#endif
 	return 0;
 }
 
-int XprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
+int XprocConduit::ReadBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)

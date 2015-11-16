@@ -94,7 +94,7 @@ protected:
     //
     void RegisterTask();
 
-    // used for conduit to check all reated task thread finish,
+    // used for conduit to check all running threads of a task are finish,
     // and can destroy the conduit
     int m_activeLocalThreadCount;
     std::mutex m_activeLocalThreadMutex;

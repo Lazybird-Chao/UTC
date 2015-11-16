@@ -18,7 +18,7 @@ namespace iUtc
 /*
  *  Blocking conduit read operation
  */
-int InprocConduit::Read(void *DataPtr, int DataSize, int tag)
+int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -626,7 +626,7 @@ PRINT_TIME_NOW(*m_threadOstream)
 }// end read
 
 
-int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, int DataSize, int tag)
+int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
