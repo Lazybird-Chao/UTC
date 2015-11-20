@@ -27,21 +27,8 @@ XprocConduit::XprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId)
 	m_srcMainResideProc = srctask->getMainResideProcess();
 	m_dstMainResideProc = dsttask->getMainResideProcess();
 
-	m_noFinishedOpCapacity = NO_FINISHED_OP_MAX; //  TODO:
+	m_noFinishedOpCapacity = NO_FINISHED_OP_MAX;
 
-	/*m_availableNoFinishedReadOpCount = m_noFinishedOpCapacity;
-	m_availableNoFinishedWriteOpCount = m_noFinishedOpCapacity;
-	m_WriteOpRotateCounter = new int[m_noFinishedOpCapacity+1];
-	m_ReadOpRotateCounter = new int[m_noFinishedOpCapacity +1];
-	m_WriteOpRotateFinishFlag = new int[m_noFinishedOpCapacity+1];
-	m_ReadOpRotateFinishFlag = new int[m_noFinishedOpCapacity+1];
-	for(int i =0;i<m_noFinishedOpCapacity+1; i++)
-	{
-		m_WriteOpRotateCounter[i]=0;
-		m_ReadOpRotateCounter[i]=0;
-		m_WriteOpRotateFinishFlag[i]=0;
-		m_ReadOpRotateFinishFlag[i]=0;
-	}*/
 	m_availableNoFinishedOpCount = m_noFinishedOpCapacity;
 	m_OpRotateCounter = new int[m_noFinishedOpCapacity+1];
 	m_OpRotateFinishFlag = new int[m_noFinishedOpCapacity+1];
@@ -59,9 +46,16 @@ XprocConduit::XprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId)
 		m_OpRotateCounterIdx[i] = 0;
 	}
 
+	//
 	m_readbyFinishSet.clear();
 	m_writebyFinishSet.clear();
 
+
+	//
+#ifdef USE_MPI_BASE
+	m_asyncReadFinishSet.clear();
+	m_asyncWriteFinishSet.clear();
+#endif
 
 #ifdef USE_DEBUG_LOG
 	std::ofstream* procOstream = getProcOstream();
@@ -1110,6 +1104,21 @@ XprocConduit::~XprocConduit()
 
 	m_readbyFinishSet.clear();
 	m_writebyFinishSet.clear();
+
+#ifdef USE_MPI_BASE
+	for(auto &it:m_asyncReadFinishSet)
+	{
+		free(it.second);
+	}
+	m_asyncReadFinishSet.clear();
+	for(auto &it:m_asyncWriteFinishSet)
+	{
+		free(it.second);
+	}
+	m_asyncWriteFinishSet.clear();
+
+#endif
+
 
 #ifdef USE_DEBUG_LOG
     std::ofstream* procOstream = getProcOstream();

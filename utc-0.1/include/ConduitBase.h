@@ -29,6 +29,14 @@ public:
 	virtual int ReadBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag)=0;
 	virtual void ReadBy_Finish(int tag)=0;
 
+	virtual int AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag)=0;
+	virtual void AsyncWrite_Finish(int tag)=0;
+
+
+	virtual int AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)=0;
+	virtual void AsyncRead_Finish(int tag)=0;
+
+
 	virtual ~ConduitBase(){}
 
 

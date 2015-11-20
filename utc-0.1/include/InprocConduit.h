@@ -5,9 +5,11 @@
 #include "ConduitBase.h"
 
 #include <vector>
+#include <deque>
 #include <map>
 #include <mutex>
 #include <condition_variable>
+#include <future>
 #include <fstream>
 
 
@@ -109,6 +111,17 @@ public:
 	void ReadBy_Finish(int tag);
 
 
+	/*
+	 *
+	 */
+	int AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag);
+	void AsyncWrite_Finish(int tag);
+
+
+	int AsyncRead(void* DataPtr, DataSize_t DataSize, int tag);
+	void AsyncRead_Finish(int tag);
+
+
 	//
 	~InprocConduit();
 	void clear();
@@ -116,9 +129,13 @@ public:
 private:
 	//
 	void initInprocConduit();
-	/*void checkOnSameProc(TaskBase* src, TaskBase* dst);
 
-	ConduitManager* m_cdtMgr;*/
+	void asyncWorkerImpl(int myTaskid);
+
+	int threadWriteImpl(void* DataPtr, DataSize_t DataSize, int tag, int myTaskid);
+
+	int threadReadImpl(void* DataPtr, DataSize_t DataSize, int tag, int myTaskid);
+
 	//
 	TaskBase* m_srcTask;
 	TaskBase* m_dstTask;
@@ -198,6 +215,7 @@ private:
     std::condition_variable m_dstAvailableNoFinishedOpCond;
     int m_dstAvailableNoFinishedOpCount;
 
+
     /*used by writeby and readby to set a flag for check and waiting
     as only asigned thread do the op, other threads will go one their process,
     use this to make sure all threads know the data transfer is complete,
@@ -212,9 +230,40 @@ private:
 	std::condition_variable m_writebyFinishCond;
 
 
+	/*
+	 * For async op
+	 */
+	struct AsyncWorkArgs
+	{
+		void* DataPtr = nullptr;
+		DataSize_t DataSize =0;
+		int tag = -1;
+		int WorkType = 0;  // 1: read, 2: write
+	};
+	std::map<int, std::promise<void>> m_srcAsyncReadFinishSet;
+	std::map<int, std::promise<void>> m_srcAsyncWriteFinishSet;
+	bool m_srcNewAsyncWork;
+	bool m_srcAsyncWorkerCloseSig;
+	bool m_srcAsyncWorkerOn;
+	std::deque<AsyncWorkArgs> m_srcAsyncWorkQueue;
+	std::condition_variable m_srcNewAsyncWorkCond;
+	std::mutex m_srcNewAsyncWorkMutex;
+
+	std::map<int, std::promise<void>> m_dstAsyncReadFinishSet;
+	std::map<int, std::promise<void>> m_dstAsyncWriteFinishSet;
+	bool m_dstNewAsyncWork;
+	bool m_dstAsyncWorkerCloseSig;
+	bool m_dstAsyncWorkerOn;
+	std::deque<AsyncWorkArgs> m_dstAsyncWorkQueue;
+	std::condition_variable m_dstNewAsyncWorkCond;
+	std::mutex m_dstNewAsyncWorkMutex;
+
 
     // the max time period in second that reader wait for writer transferring data
     int TIME_OUT = 100;
+    // the max time period in microsecods that an async worker wait for workload
+    int ASYNC_TIME_OUT = 3000;
+
     // output debug log to specific file
     static thread_local std::ofstream *m_threadOstream;
 

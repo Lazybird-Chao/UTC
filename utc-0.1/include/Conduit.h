@@ -57,6 +57,13 @@ public:
 	int ReadBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag);
 	void ReadBy_Finish(int tag);
 
+	int AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag);
+	void AsyncWrite_Finish(int tag);
+
+
+	int AsyncRead(void* DataPtr, DataSize_t DataSize, int tag);
+	void AsyncRead_Finish(int tag);
+
 	~Conduit();
 
 private:
@@ -74,6 +81,10 @@ private:
 
 	//
 	ConduitBase *m_realConduitPtr;
+
+	//
+	Conduit& operator=(const Conduit& other)=delete;
+	Conduit(const Conduit& other)=delete;
 
 
 };

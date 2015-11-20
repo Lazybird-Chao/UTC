@@ -519,7 +519,7 @@ int InprocConduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
                     {
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing write smal msg...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing write big msg...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
                         // release buffmanager lock to allow other threads to get buff
                         LCK2.unlock();

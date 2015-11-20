@@ -36,12 +36,13 @@ obj:= 	UtcContext.o UtcMpi.o RankList.o \
 		RootTask.o  TaskBase.o TaskManager.o Task.o  \
 		ConduitManager.o Conduit.o InprocConduit.o XprocConduit.o\
 		InprocConduit_Write.o InprocConduit_BWrite.o InprocConduit_PWrite.o	InprocConduit_Read.o \
+		InprocConduit_Async.o XprocConduit_Async.o \
 		Timer.o  Barrier.o SharedDataLock.o
 LIB_UTC := libutc.a
  
 	
 ## test target
-TARGET_SOURCE:= ./test/test_xprocess_conduit_pingpong.cc
+TARGET_SOURCE:= ./test/test_xprocess_conduit_async.cc
 TARGET_OBJ:= main.o	
 TARGET_EXE:= a.out
 
@@ -91,6 +92,10 @@ InprocConduit_PWrite.o: InprocConduit_PWrite.cc
 	$(G++)	-o $@ -c $^ $(CCFLAG) $(INCLUDE)
 InprocConduit_Read.o: InprocConduit_Read.cc
 	$(G++)	-o $@ -c $^ $(CCFLAG) $(INCLUDE)
+InprocConduit_Async.o: InprocConduit_Async.cc
+	$(G++)	-o $@ -c $^ $(CCFLAG) $(INCLUDE)
+XprocConduit_Async.o: XprocConduit_Async.cc
+	$(G++)	-o $@ -c $^ $(CCFLAG) $(INCLUDE)	
 Timer.o: Timer.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 Barrier.o: Barrier.cc

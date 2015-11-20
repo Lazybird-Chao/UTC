@@ -291,8 +291,8 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag)
                 tmp_buffinfo->callingReadThreadCount =1;
                 LCK2.unlock();
 #ifdef USE_DEBUG_LOG
-PRINT_TIME_NOW(*m_threadOstream)
-*m_threadOstream<<"src-thread "<<myThreadRank<<" doing read msg...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+	PRINT_TIME_NOW(*m_threadOstream)
+	*m_threadOstream<<"src-thread "<<myThreadRank<<" doing read msg...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
                 if(tmp_buffinfo->bufferPtr == tmp_buffinfo->dataPtr)
                 {
@@ -342,7 +342,7 @@ PRINT_TIME_NOW(*m_threadOstream)
                     m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
                 }
 
-                // first thread finish read, need chang opfinishflag
+                // first thread finish read, need change opfinishflag
                 LCK1.lock();
 #ifdef USE_DEBUG_ASSERT
                 assert(m_srcOpRotateFinishFlag[counteridx] ==0);
@@ -407,8 +407,8 @@ PRINT_TIME_NOW(*m_threadOstream)
             tmp_buffinfo->callingReadThreadCount =1;
             LCK2.unlock();
 #ifdef USE_DEBUG_LOG
-PRINT_TIME_NOW(*m_threadOstream)
-*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+	PRINT_TIME_NOW(*m_threadOstream)
+	*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 #endif
             if(tmp_buffinfo->bufferPtr == tmp_buffinfo->dataPtr)
             {
@@ -545,8 +545,8 @@ PRINT_TIME_NOW(*m_threadOstream)
                 tmp_buffinfo->callingReadThreadCount =1;
                 LCK2.unlock();
 #ifdef USE_DEBUG_LOG
-PRINT_TIME_NOW(*m_threadOstream)
-*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+	PRINT_TIME_NOW(*m_threadOstream)
+	*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 #endif
                 if(tmp_buffinfo->bufferPtr == tmp_buffinfo->dataPtr)
                 {
@@ -696,8 +696,8 @@ int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize,
         LCK2.unlock();
 
 #ifdef USE_DEBUG_LOG
-PRINT_TIME_NOW(*m_threadOstream)
-*m_threadOstream<<"src-thread "<<myThreadRank<<" doing readby msg...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+	PRINT_TIME_NOW(*m_threadOstream)
+	*m_threadOstream<<"src-thread "<<myThreadRank<<" doing readby msg...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
         if(tmp_buffinfo->bufferPtr == tmp_buffinfo->dataPtr)
         {
@@ -794,8 +794,8 @@ PRINT_TIME_NOW(*m_threadOstream)
         LCK2.unlock();
 
 #ifdef USE_DEBUG_LOG
-PRINT_TIME_NOW(*m_threadOstream)
-*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+	PRINT_TIME_NOW(*m_threadOstream)
+	*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 #endif
         if(tmp_buffinfo->bufferPtr == tmp_buffinfo->dataPtr)
         {

@@ -177,6 +177,43 @@ void Task<T>::init(T1 arg1, T2 arg2)
 
 	return;
 }
+template<class T>
+template<typename T1, typename T2, typename T3>
+void Task<T>::init(T1 arg1, T2 arg2, T3 arg3)
+{
+    // no task threads on this process, just return.
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
+	m_calledInit = 1;
+	//set up user task's init function
+	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3);
+	// ask all threads to do task.init
+	initImpl();
+
+	return;
+}
+template<class T>
+template<typename T1, typename T2, typename T3, typename T4>
+void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4)
+{
+    // no task threads on this process, just return.
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
+	m_calledInit = 1;
+	//set up user task's init function
+	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3, arg4);
+	// ask all threads to do task.init
+	initImpl();
+
+	return;
+}
+
 
 template<class T>
 void Task<T>::run()

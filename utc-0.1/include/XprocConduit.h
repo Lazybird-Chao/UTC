@@ -18,6 +18,9 @@ public:
 	XprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId);
 
 
+	/*
+	 *  Blocking operation
+	 */
 	int BWrite(void* DataPtr, DataSize_t DataSize, int tag);
 	int BWriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag);
 	void BWriteBy_Finish(int tag);
@@ -34,6 +37,18 @@ public:
 	int Read(void* DataPtr, DataSize_t DataSize, int tag);
 	int ReadBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag);
 	void ReadBy_Finish(int tag);
+
+
+	/*
+	 *  Nonblocking operation
+	 */
+	int AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag);
+	void AsyncWrite_Finish(int tag);
+
+
+	int AsyncRead(void* DataPtr, DataSize_t DataSize, int tag);
+	void AsyncRead_Finish(int tag);
+
 
 	~XprocConduit();
 
@@ -63,25 +78,8 @@ private:
 	int *m_OpRotateFinishFlag;
 	std::condition_variable m_OpFinishCond;
 
-	/*int m_availableNoFinishedWriteOpCount;
-	std::condition_variable m_availableNoFinishedWriteCond;
-	std::mutex m_WriteOpCheckMutex;
-	int *m_WriteOpRotateCounter;
-	int *m_WriteOpRotateCounterIdx;
-	int *m_WriteOpRotateFinishFlag;
-	std::condition_variable m_WriteOpFinishCond;
 
-	int m_availableNoFinishedReadOpCount;
-	std::condition_variable m_availableNoFinishedReadCond;
-	std::mutex m_ReadOpCheckMutex;
-	int *m_ReadOpRotateCounter;
-	int *m_ReadOpRotateCounterIdx;
-	int *m_ReadOpRotateFinishFlag;
-	std::condition_variable m_ReadOpFinishCond;*/
-
-
-
-	/////
+	///// for OpBy
 	std::map<int, int> m_readbyFinishSet;
 	std::mutex m_readbyFinishMutex;
 	std::condition_variable m_readbyFinishCond;
@@ -90,6 +88,17 @@ private:
 	std::condition_variable m_writebyFinishCond;
 
 
+	///// for Async op
+#ifdef USE_MPI_BASE
+	std::map<int, MPI_Request*> m_asyncReadFinishSet;
+	std::map<int, MPI_Request*> m_asyncWriteFinishSet;
+#endif
+
+
+
+
+
+	////
 	static thread_local std::ofstream *m_threadOstream;
 
 };

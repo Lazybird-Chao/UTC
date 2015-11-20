@@ -438,4 +438,53 @@ void Conduit::ReadBy_Finish(int tag)
 }
 
 
+int Conduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)
+{
+	if(m_realConduitPtr)
+	{
+		m_realConduitPtr->AsyncRead(DataPtr, DataSize, tag);
+	}
+	else
+	{
+		return 1;
+	}
+
+	return 0;
+}
+
+void Conduit::AsyncRead_Finish(int tag)
+{
+	if(m_realConduitPtr)
+	{
+		m_realConduitPtr->AsyncRead_Finish(tag);
+	}
+
+	return;
+}
+
+
+int Conduit::AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag)
+{
+	if(m_realConduitPtr)
+	{
+		m_realConduitPtr->AsyncWrite(DataPtr, DataSize, tag);
+	}
+	else
+	{
+		return 1;
+	}
+
+	return 0;
+}
+
+void Conduit::AsyncWrite_Finish(int tag)
+{
+	if(m_realConduitPtr)
+	{
+		m_realConduitPtr->AsyncWrite_Finish(tag);
+	}
+
+	return;
+}
+
 }// end namespace iUtc

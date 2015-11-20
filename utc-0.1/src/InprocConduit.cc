@@ -133,6 +133,20 @@ void InprocConduit::initInprocConduit()
 	m_writebyFinishSet.clear();
 
 
+	//
+	m_srcAsyncReadFinishSet.clear();
+	m_srcAsyncWriteFinishSet.clear();
+	m_srcNewAsyncWork=false;
+	m_srcAsyncWorkerCloseSig=false;
+	m_srcAsyncWorkerOn=false;
+	m_srcAsyncWorkQueue.clear();
+
+	m_dstAsyncReadFinishSet.clear();
+	m_dstAsyncWriteFinishSet.clear();
+	m_dstNewAsyncWork=false;
+	m_dstAsyncWorkerCloseSig=false;
+	m_dstAsyncWorkerOn=false;
+	m_dstAsyncWorkQueue.clear();
 
 #ifdef USE_DEBUG_LOG
 	std::ofstream* procOstream = getProcOstream();
@@ -202,6 +216,14 @@ void InprocConduit::clear()
     }
     delete m_dstAvailableBuff;
 
+
+    m_srcAsyncReadFinishSet.clear();
+	m_srcAsyncWriteFinishSet.clear();
+	m_srcAsyncWorkQueue.clear();
+
+	m_dstAsyncReadFinishSet.clear();
+	m_dstAsyncWriteFinishSet.clear();
+	m_dstAsyncWorkQueue.clear();
 
 }
 
