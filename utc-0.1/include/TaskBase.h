@@ -20,34 +20,34 @@ class TaskBase{
 public:
     std::string getName();
 
-    TaskId getTaskId();
+    TaskId_t getTaskId();
 
     TaskBase* getParentTask();
-    TaskId getParentTaskId();
+    TaskId_t getParentTaskId();
 
     //
-    std::vector<ProcRank> getTaskRankList();
+    std::vector<ProcRank_t> getTaskRankList();
 
     int getNumProcesses();
 
     // convert thread global rank(among all processes of a task) to local rank
     // (the rank on current process)
-    int toLocal(ThreadRank trank);
+    int toLocal(ThreadRank_t trank);
 
     //
     int getNumLocalThreads();
-    std::vector<ThreadId> getLocalThreadList();
+    std::vector<ThreadId_t> getLocalThreadList();
 
     int getNumTotalThreads();
 
-    ProcRank getCurrentProcRank();
+    ProcRank_t getCurrentProcRank();
 
-    ProcRank getMainResideProcess();
+    ProcRank_t getMainResideProcess();
 
     // return if thread with rank value 'tRank' is on current process
-    bool isLocal(ThreadRank tRank);
+    bool isLocal(ThreadRank_t tRank);
 
-    ThreadRank getThreadRankById(ThreadId tid);
+    ThreadRank_t getThreadRankById(ThreadId_t tid);
 
     static ThreadPrivateData* getThreadPrivateData();
     static void setThreadPrivateData(ThreadPrivateData* tpd);
@@ -57,15 +57,17 @@ public:
     bool hasActiveLocalThread();
     void waitLocalThreadFinish();
 
+    void display();
+
     //
     virtual ~TaskBase();
 
 protected:
     std::string m_Name;
 
-    TaskId m_TaskId;
+    TaskId_t m_TaskId;
 
-    TaskId m_ParentTaskId;
+    TaskId_t m_ParentTaskId;
 
     int    m_numProcesses;
 
@@ -75,17 +77,17 @@ protected:
 
     int    m_numTotalThreads;
 
-    ProcRank m_processRank;    // the current running process's rank value
+    ProcRank_t m_processRank;    // the current running process's rank value
 
-    ProcRank m_mainResideProcess;  // a main process rank that a task maped to
+    ProcRank_t m_mainResideProcess;  // a main process rank that a task maped to
 
-    std::vector<ProcRank> m_TaskRankList;  //how task threads map to proc
+    std::vector<ProcRank_t> m_TaskRankList;  //how task threads map to proc
 
-    std::vector<ThreadId> m_LocalThreadList;
+    std::vector<ThreadId_t> m_LocalThreadList;
 
-    std::map<ThreadId, ThreadRank> m_LocalThreadRegistry;
+    std::map<ThreadId_t, ThreadRank_t> m_LocalThreadRegistry;
 
-    std::map<ThreadRank, int> m_ThreadRank2Local;
+    std::map<ThreadRank_t, int> m_ThreadRank2Local;
 
     // output stream obj
     std::ofstream *m_procOstream;

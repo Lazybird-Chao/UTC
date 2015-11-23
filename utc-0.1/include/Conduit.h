@@ -37,24 +37,24 @@ public:
 	TaskBase* getSrcTask();
 	TaskBase* getDstTask();
 	TaskBase* getAnotherTask();
-	ConduitId getConduitId();
+	ConduitId_t getConduitId();
 
 	void Connect(TaskBase* src, TaskBase* dst);
 
 	int BWrite(void* DataPtr, DataSize_t DataSize, int tag);
-	int BWriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag);
+	int BWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
 	void BWriteBy_Finish(int tag);
 
 	int Write(void* DataPtr, DataSize_t DataSize, int tag);
-	int WriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag);
+	int WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
 	void WriteBy_Finish(int tag);
 
 	int PWrite(void* DataPtr, DataSize_t DataSize, int tag);
-	int PWriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag);
+	int PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
 	void PWriteBy_Finish(int tag);
 
 	int Read(void* DataPtr, DataSize_t DataSize, int tag);
-	int ReadBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag);
+	int ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
 	void ReadBy_Finish(int tag);
 
 	int AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag);
@@ -71,8 +71,8 @@ private:
 
 	TaskBase* m_srcTask;
 	TaskBase* m_dstTask;
-	TaskId m_srcId;
-	TaskId m_dstId;
+	TaskId_t m_srcId;
+	TaskId_t m_dstId;
 
 	std::string m_Name;
 	int m_conduitId;

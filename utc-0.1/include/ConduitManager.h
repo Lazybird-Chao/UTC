@@ -18,13 +18,13 @@ class ConduitManager{
 public:
 	static ConduitManager* getInstance();
 
-	static ConduitId registerConduit(Conduit* cdt);
+	static ConduitId_t registerConduit(Conduit* cdt);
 	static void registerConduit(Conduit* cdt, int id);
 
 	static void unregisterConduit(Conduit* cdt);
 	static void unregisterConduit(Conduit* cdt, int id);
 
-	static ConduitId getNewConduitId();
+	static ConduitId_t getNewConduitId();
 
 	static int getNumConduits();
 
@@ -33,12 +33,12 @@ public:
 private:
 	static ConduitManager* m_InstancePtr;
 
-	static ConduitId m_ConduitIdDealer;
+	static ConduitId_t m_ConduitIdDealer;
 
 	static std::mutex m_mutexConduitRegistry;
 	static std::mutex m_mutexConduitIdDealer;
 
-	static std::map<ConduitId, Conduit*> m_ConduitRegistry;
+	static std::map<ConduitId_t, Conduit*> m_ConduitRegistry;
 
 	ConduitManager();
 

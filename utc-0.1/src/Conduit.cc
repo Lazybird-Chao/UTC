@@ -177,7 +177,7 @@ TaskBase* Conduit::getAnotherTask()
 
 }
 
-ConduitId Conduit::getConduitId()
+ConduitId_t Conduit::getConduitId()
 {
     return m_conduitId;
 }
@@ -295,7 +295,7 @@ int Conduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag)
 	return 0;
 }
 
-int Conduit::BWriteBy(ThreadRank thread, void *DataPtr, DataSize_t DataSize, int tag)
+int Conduit::BWriteBy(ThreadRank_t thread, void *DataPtr, DataSize_t DataSize, int tag)
 {
 	if(m_realConduitPtr)
 	{
@@ -334,7 +334,7 @@ int Conduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
 	return 0;
 }
 
-int Conduit::WriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag)
+int Conduit::WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 	if(m_realConduitPtr)
 	{
@@ -373,7 +373,7 @@ int Conduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
 	return 0;
 }
 
-int Conduit::PWriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag)
+int Conduit::PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 	if(m_realConduitPtr)
 	{
@@ -413,7 +413,7 @@ int Conduit::Read(void* DataPtr, DataSize_t DataSize, int tag)
 	return 0;
 }
 
-int Conduit::ReadBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag)
+int Conduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 	if(m_realConduitPtr)
 	{

@@ -4,6 +4,7 @@
 #include <map>
 #include <mutex>
 #include <condition_variable>
+#include <iostream>
 
 namespace iUtc{
 
@@ -14,12 +15,12 @@ std::string TaskBase::getName()
     return m_Name;
 }
 
-TaskId TaskBase::getTaskId()
+TaskId_t TaskBase::getTaskId()
 {
     return m_TaskId;
 }
 
-TaskId TaskBase::getParentTaskId()
+TaskId_t TaskBase::getParentTaskId()
 {
     return m_ParentTaskId;
 }
@@ -30,7 +31,7 @@ TaskBase* TaskBase::getParentTask()
     return mgr->getParentTask();
 }
 
-std::vector<ProcRank> TaskBase::getTaskRankList()
+std::vector<ProcRank_t> TaskBase::getTaskRankList()
 {
     return m_TaskRankList;
 }
@@ -40,9 +41,9 @@ int TaskBase::getNumProcesses()
     return m_numProcesses;
 }
 
-int TaskBase::toLocal(ThreadRank trank)
+int TaskBase::toLocal(ThreadRank_t trank)
 {
-	std::map<ThreadRank, int>::iterator it=m_ThreadRank2Local.find(trank);
+	std::map<ThreadRank_t, int>::iterator it=m_ThreadRank2Local.find(trank);
 	if(it == m_ThreadRank2Local.end())
 	{
 		std::cerr<<"Error for calling toLocal, no this thread rank\n";
@@ -57,7 +58,7 @@ int TaskBase:: getNumLocalThreads()
     return m_numLocalThreads;
 }
 
-std::vector<ThreadId> TaskBase::getLocalThreadList()
+std::vector<ThreadId_t> TaskBase::getLocalThreadList()
 {
     return m_LocalThreadList;
 }
@@ -67,22 +68,22 @@ int TaskBase::getNumTotalThreads()
     return m_numTotalThreads;
 }
 
-ProcRank TaskBase::getCurrentProcRank()
+ProcRank_t TaskBase::getCurrentProcRank()
 {
     return m_processRank;
 }
 
-bool TaskBase::isLocal(ThreadRank tRank)
+bool TaskBase::isLocal(ThreadRank_t tRank)
 {
     return m_TaskRankList[tRank]==m_processRank;
 }
 
-ThreadRank TaskBase::getThreadRankById(ThreadId tid)
+ThreadRank_t TaskBase::getThreadRankById(ThreadId_t tid)
 {
-	std::map<ThreadId, ThreadRank>::iterator it = m_LocalThreadRegistry.find(tid);
+	std::map<ThreadId_t, ThreadRank_t>::iterator it = m_LocalThreadRegistry.find(tid);
 	if(it == m_LocalThreadRegistry.end())
 	{
-		std::cerr<<"Error for calling getThreadRankById, no this thread\n";
+		std::cerr<<"Error for calling getThreadRankById, no this thread!"<<std::endl;
 		return -1;
 	}
     return it->second; //m_LocalThreadRegistry[tid];
@@ -105,7 +106,7 @@ bool TaskBase::isActiveOnCurrentProcess()
 	return m_numLocalThreads!=0;
 }
 
-ProcRank TaskBase::getMainResideProcess()
+ProcRank_t TaskBase::getMainResideProcess()
 {
 	return m_mainResideProcess;
 }
@@ -162,6 +163,17 @@ void TaskBase::waitLocalThreadFinish()
     {
         m_activeLocalThreadCond.wait(LCK);
     }
+}
+
+void TaskBase::display()
+{
+	std::cout<<
+			"Name:"<< m_Name<<
+			", ProcessRank:"<<m_processRank<<
+			", NumLocalThreads:"<<m_numLocalThreads<<
+			", NumTotalThreads:"<<m_numTotalThreads<<
+			std::endl;
+	return;
 }
 
 } //namespace iUtc

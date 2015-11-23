@@ -78,7 +78,7 @@ int InprocConduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag)
                 // set write thread count to 1
                 tmp_buffinfo->callingWriteThreadCount = 1;
                 // insert this buff to buffpool
-                m_srcBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
+                m_srcBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
                 // decrease availabe buff
                 m_srcAvailableBuffCount--;
                 // alloc memory buffer for storing data
@@ -239,7 +239,7 @@ int InprocConduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag)
                     // set write thread count to 1
                     tmp_buffinfo->callingWriteThreadCount = 1;
                     // insert this buff to buffpool
-                    m_srcBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
+                    m_srcBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
                     // decrease availabe buff
                     m_srcAvailableBuffCount--;
                     // alloc memory
@@ -371,7 +371,7 @@ int InprocConduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag)
                 // set count to 1
                 tmp_buffinfo->callingWriteThreadCount = 1;
                 // insert this buff to buffpool
-                m_dstBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
+                m_dstBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
                 // decrease availabe buff
                 m_dstAvailableBuffCount--;
                 // alloc memory
@@ -531,7 +531,7 @@ int InprocConduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag)
                     // set count to 1
                     tmp_buffinfo->callingWriteThreadCount = 1;
                     // insert this buff to buffpool
-                    m_dstBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
+                    m_dstBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
                     // decrease availabe buff
                     m_dstAvailableBuffCount--;
                     DataSize_t tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
@@ -627,7 +627,7 @@ int InprocConduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag)
     }
 }// end Write()
 
-int InprocConduit::BWriteBy(ThreadRank thread, void *DataPtr, DataSize_t DataSize, int tag)
+int InprocConduit::BWriteBy(ThreadRank_t thread, void *DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -700,7 +700,7 @@ int InprocConduit::BWriteBy(ThreadRank thread, void *DataPtr, DataSize_t DataSiz
             // set count to 1
             tmp_buffinfo->callingWriteThreadCount = 1;
             // insert this buff to buffpool
-            m_srcBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
+            m_srcBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
             // decrease availabe buff
             m_srcAvailableBuffCount--;
             DataSize_t tmp_size = (DataSize+CONDUIT_BUFFER_SIZE-1)/CONDUIT_BUFFER_SIZE;
@@ -816,7 +816,7 @@ int InprocConduit::BWriteBy(ThreadRank thread, void *DataPtr, DataSize_t DataSiz
             // set count to 1
             tmp_buffinfo->callingWriteThreadCount = 1;
             // insert this buff to buffpool
-            m_dstBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
+            m_dstBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
             // decrease availabe buff
             m_dstAvailableBuffCount--;
 

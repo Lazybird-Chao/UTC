@@ -72,14 +72,14 @@ protected:
 
 private:
 	//
-	void threadImpl(ThreadRank trank, std::ofstream* output);
+	void threadImpl(ThreadRank_t trank, ThreadRank_t lrank, std::ofstream* output);
 
-	void threadExit(ThreadRank trank);
+	void threadExit(ThreadRank_t trank);
 
 	void CreateTask(const std::string name,
 			const RankList rList);
 
-	void LaunchThreads(std::vector<ThreadRank> &tRankList);
+	void LaunchThreads(std::vector<ThreadRank_t> &tRankList);
 
 
 	//

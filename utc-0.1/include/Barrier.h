@@ -18,7 +18,7 @@ public:
 
 	Barrier(int numLocalThreads, int taskid);
 
-	Barrier(int numLocalThreads, int taskid, MPI_Comm *comm);
+	Barrier(int numLocalThreads, int taskid, MPI_Comm* comm);
 
 	~Barrier();
 
@@ -32,10 +32,10 @@ private:
 	Barrier(const Barrier& other) = delete;
 	Barrier& operator=(const Barrier& other) = delete;
 
-	TaskId	m_taskId;
+	TaskId_t	m_taskId;
 
 #ifdef USE_MPI_BASE
-	MPI_Comm * m_taskCommPtr;
+	MPI_Comm*  m_taskCommPtr;
 #endif
 
 	//

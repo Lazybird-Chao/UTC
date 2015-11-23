@@ -104,7 +104,7 @@ Task<T>::~Task()
 	{
 		if(th.joinable())
 		{
-			ThreadId id = th.get_id();
+			ThreadId_t id = th.get_id();
 			th.join();
 #ifdef USE_DEBUG_LOG
 			PRINT_TIME_NOW(*m_procOstream)
@@ -282,7 +282,7 @@ int Task<T>::runImpl()
 }
 
 template<class T>
-void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
+void Task<T>::threadImpl(ThreadRank_t trank, ThreadRank_t lrank, std::ofstream *output)
 {
 	//
 	std::ofstream *m_threadOstream = output;
@@ -297,6 +297,7 @@ void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 	taskInfoPtr->pRank = m_processRank;
 	taskInfoPtr->parentTaskId = m_ParentTaskId;
 	taskInfoPtr->tRank = trank;
+	taskInfoPtr->lRank = lrank;
 	taskInfoPtr->taskId = m_TaskId;
 	taskInfoPtr->threadId = std::this_thread::get_id(); //same as m_LocalThreadList(local_rank)
 	taskInfoPtr->barrierObjPtr = m_taskBarrierObjPtr;
@@ -335,7 +336,7 @@ void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 	// TODO: notifying main thread that this user task.init is finished
 
 
-	// wait for all threads finishing init() call,
+	// wait for all local threads finishing init() call,
 	// here is an synchronization point for task threads
 	std::unique_lock<std::mutex> LCK_initsync(m_threadSyncInitMutex);
 	while(m_threadSyncInitCounterComing < m_numLocalThreads)
@@ -391,7 +392,7 @@ void Task<T>::threadImpl(ThreadRank trank, std::ofstream *output)
 }
 
 template<class T>
-void Task<T>::threadExit(ThreadRank trank)
+void Task<T>::threadExit(ThreadRank_t trank)
 {
 	// clear TSS data "m_taskInfo" defined in TaskManager
 	TaskManager::setTaskInfo(nullptr);
@@ -440,7 +441,7 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 	int currentProcRank = root->getCurrentProcRank();
 	m_processRank = currentProcRank;
 	int nProcWorld = root->getNumProcesses();
-	std::vector<std::vector<ThreadRank>> plist(nProcWorld);
+	std::vector<std::vector<ThreadRank_t>> plist(nProcWorld);
 	//std::vector<ThreadRank> plist[nProcWorld];
 	for(int i=0; i<m_numTotalThreads; i++)
 	{
@@ -508,7 +509,7 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 }
 
 template<class T>
-void Task<T>::LaunchThreads(std::vector<ThreadRank> &tRankList)
+void Task<T>::LaunchThreads(std::vector<ThreadRank_t> &tRankList)
 {
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_procOstream)
@@ -520,7 +521,7 @@ void Task<T>::LaunchThreads(std::vector<ThreadRank> &tRankList)
 	m_activeLocalThreadCount = m_numLocalThreads;
 	LCK.unlock();
 	int trank=0;
-	ThreadId id;
+	ThreadId_t id;
 	for(int i=0; i<m_numLocalThreads; i++)
 	{
 		trank=tRankList[i];
@@ -530,6 +531,8 @@ void Task<T>::LaunchThreads(std::vector<ThreadRank> &tRankList)
 			boost::filesystem::create_directory(log_path);
 		std::string filename = "./log/";
 		filename.append(m_Name);
+		filename.append("-");
+		filename.append(std::to_string(m_TaskId));
 		filename.append("-thread");
 		filename.append(std::to_string(trank));
 		filename.append(".log");
@@ -539,13 +542,13 @@ void Task<T>::LaunchThreads(std::vector<ThreadRank> &tRankList)
 		std::ofstream *output = nullptr;
 #endif
 
-		m_ThreadRank2Local.insert(std::pair<ThreadRank, int>(trank, i));
+		m_ThreadRank2Local.insert(std::pair<ThreadRank_t, int>(trank, i));
 		// crteate a thread
-		m_taskThreads.push_back(std::thread(&Task<T>::threadImpl, this, trank, output));
+		m_taskThreads.push_back(std::thread(&Task<T>::threadImpl, this, trank, i, output));
 		// record some info
 		id = m_taskThreads.back().get_id();
 		m_LocalThreadList.push_back(id);
-		m_LocalThreadRegistry.insert(std::pair<ThreadId, ThreadRank>(id, trank));
+		m_LocalThreadRegistry.insert(std::pair<ThreadId_t, ThreadRank_t>(id, trank));
 	}
 
 #ifdef USE_DEBUG_LOG

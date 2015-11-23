@@ -440,7 +440,7 @@ int InprocConduit::threadWriteImpl(void* DataPtr, DataSize_t DataSize, int tag, 
 			// set write thread count to 1
 			tmp_buffinfo->callingWriteThreadCount = 1;
 			// insert this buff to buffpool
-			m_srcBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
+			m_srcBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
 			// decrease availabe buff
 			m_srcAvailableBuffCount--;
 
@@ -568,7 +568,7 @@ int InprocConduit::threadWriteImpl(void* DataPtr, DataSize_t DataSize, int tag, 
 			// set count to 1
 			tmp_buffinfo->callingWriteThreadCount = 1;
 			// insert this buff to buffpool
-			m_dstBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
+			m_dstBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
 			// decrease availabe buff
 			m_dstAvailableBuffCount--;
 

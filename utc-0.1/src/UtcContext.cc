@@ -8,7 +8,7 @@
 namespace iUtc{
 
 UtcBase* UtcContext::Utcbase_provider=0;
-TaskId UtcContext::m_rootTaskId = 0;
+TaskId_t UtcContext::m_rootTaskId = -1;
 int UtcContext::m_nCount = 0;
 RootTask* UtcContext::root = nullptr;
 

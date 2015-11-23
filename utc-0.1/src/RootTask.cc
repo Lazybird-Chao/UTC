@@ -16,18 +16,19 @@ RootTask::RootTask(int WorldSize, int currentProcess)
 {
     m_numProcesses = WorldSize;
     m_numLocalThreads = 1;
+    m_numTotalThreads = m_numProcesses;
     m_Name = "RootTask";
-    ThreadRank tRank = 0;
-    ProcRank pRank = currentProcess;
+    ThreadRank_t tRank = currentProcess;
+    ProcRank_t pRank = currentProcess;
     m_TaskId = TaskManager::getNewTaskId();      // should get 0 for root
 #ifdef USE_DEBUG_ASSERT
     assert(m_TaskId ==0);
 #endif
-    ThreadId tid = TaskManager::getThreadId();   // main thread of current process,
+    ThreadId_t tid = TaskManager::getThreadId();   // main thread of current process,
                                                  // no other threads have been created yet
     m_LocalThreadList.push_back(tid);
-    m_LocalThreadRegistry.insert(std::pair<ThreadId, ThreadRank>(tid, tRank));
-    m_ThreadRank2Local.insert(std::pair<ThreadRank, int>(tRank, 0));
+    m_LocalThreadRegistry.insert(std::pair<ThreadId_t, ThreadRank_t>(tid, tRank));
+    m_ThreadRank2Local.insert(std::pair<ThreadRank_t, int>(tRank, 0));
     m_ParentTaskId= m_TaskId; //only for root
     m_processRank= pRank;
     m_mainResideProcess = 0;
@@ -48,21 +49,27 @@ RootTask::RootTask(int WorldSize, int currentProcess)
     m_procOstream = nullptr;
 #endif
 
+
+#ifdef USE_MPI_BASE
+    MPI_Comm_group(MPI_COMM_WORLD, &m_worldGroup);
+    m_worldComm = MPI_COMM_WORLD;
+#endif
+
     // create TaskInfo structure
     TaskInfo* taskInfoPtr = new TaskInfo();
     taskInfoPtr->pRank = pRank;
     taskInfoPtr->parentTaskId = m_ParentTaskId;
     taskInfoPtr->tRank = tRank;
+    taskInfoPtr->lRank = 0;
     taskInfoPtr->taskId = m_TaskId;
     taskInfoPtr->threadId = tid;
-    m_barrierObjPtr = new Barrier(1, 0);
+    m_barrierObjPtr = new Barrier(1, 0, &m_worldComm);
     taskInfoPtr->barrierObjPtr = m_barrierObjPtr;
 #ifdef USE_MPI_BASE
-    MPI_Comm_group(MPI_COMM_WORLD, &m_worldGroup);
-    m_worldComm = MPI_COMM_WORLD;
     taskInfoPtr->commPtr = &m_worldComm;
     taskInfoPtr->mpigroupPtr = &m_worldGroup;
 #endif
+
     TaskManager::setTaskInfo(taskInfoPtr);    // reside in main thread of current process, same as
                                               // TaskManager instance, only one instance in current
                                               // process.

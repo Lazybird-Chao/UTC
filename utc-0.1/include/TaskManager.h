@@ -21,7 +21,7 @@ namespace iUtc{
             //the sole instance of the class
             static TaskManager* getInstance();
 
-            static TaskId registerTask(TaskBase* task);
+            static TaskId_t registerTask(TaskBase* task);
             static void registerTask(TaskBase* task, int id);
 
             static void unregisterTask(TaskBase* task);
@@ -29,7 +29,7 @@ namespace iUtc{
 
             static bool hasTaskItem(int taskid);
 
-            static TaskId getNewTaskId();
+            static TaskId_t getNewTaskId();
 
             static int getNumTasks();
 
@@ -38,19 +38,22 @@ namespace iUtc{
             static TaskInfo* getTaskInfo(void);
             static void setTaskInfo(TaskInfo* InfoPtr);
 
-            static TaskId getCurrentTaskId();
+            static TaskId_t getCurrentTaskId();
 
-            static TaskId getParentTaskId();
+            static TaskId_t getParentTaskId();
 
             static TaskBase* getCurrentTask();
 
             static TaskBase* getParentTask();
 
-            static ThreadId getThreadId();
+            static ThreadId_t getThreadId();
 
-            static ThreadRank getCurrentThreadRankinTask();
+            static ThreadRank_t getCurrentThreadRankinTask();
 
-            static ProcRank getCurrentProcessRankinTask();
+            static ProcRank_t getCurrentProcessRankinTask();
+
+            static ThreadRank_t getCurrentThreadRankInLocal();
+
 #ifdef USE_MPI_BASE
             static MPI_Comm* getCurrentTaskComm();
             static MPI_Group* getCurrentTaskmpiGroup();
@@ -66,7 +69,7 @@ namespace iUtc{
         protected:
 
             //task registry
-            static std::map<TaskId, TaskBase*> m_TaskRegistry;
+            static std::map<TaskId_t, TaskBase*> m_TaskRegistry;
 
             // forbidden to use
             TaskManager();
@@ -78,7 +81,7 @@ namespace iUtc{
             static TaskManager* m_InstancePtr;
 
             //task id dealer
-            static TaskId m_TaskIdDealer;
+            static TaskId_t m_TaskIdDealer;
 
 
             static std::mutex m_mutexTaskRegistry;

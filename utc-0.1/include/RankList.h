@@ -15,7 +15,7 @@ namespace iUtc{
 
         /// \brief Constructor
         /// Construct a ThreadRankList, given an STL vector of ranks.
-        RankList(const std::vector<RankId> &);
+        RankList(const std::vector<RankId_t> &);
 
         /// \brief Constructor
         /// Construct a RankList, a number of ranks.  A ThreadRankList containing
@@ -25,7 +25,7 @@ namespace iUtc{
 
         /// \brief Constructor
         /// Construct a ThreadRankList, given a size and C-style array of RankIds.
-        RankList(int size, const RankId * ranks);
+        RankList(int size, const RankId_t * ranks);
 
         /// \brief Copy constructor
         /// Create a RankList, given another RankList.
@@ -36,7 +36,7 @@ namespace iUtc{
 
         /// \brief getElement
         /// Return the rank at the requested position.
-        RankId getRank(int index) const;
+        RankId_t getRank(int index) const;
 
         /// \brief getNumRanks
         /// Return the size of the RankList.
@@ -44,7 +44,7 @@ namespace iUtc{
 
         /// \brief getRankListVector
         /// Return the rank at the requested position.
-        void getRankListVector(std::vector<RankId> &) const;
+        void getRankListVector(std::vector<RankId_t> &) const;
 
         /// \brief hasRank
         /// Return a boolean indicating if the supplied rank is held in
@@ -69,7 +69,7 @@ namespace iUtc{
 
         /// \brief m_ranks
         /// Container for the ranks.
-        std::vector<RankId> m_rankList;
+        std::vector<RankId_t> m_rankList;
 
 
 

@@ -77,7 +77,7 @@ int InprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
                 // set write thread count to 1
                 tmp_buffinfo->callingWriteThreadCount = 1;
                 // insert this buff to buffpool
-                m_srcBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
+                m_srcBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
                 // decrease availabe buff
                 m_srcAvailableBuffCount--;
                 // pass the data address to pool, not malloc a buffer
@@ -208,7 +208,7 @@ int InprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
                     // set write thread count to 1
                     tmp_buffinfo->callingWriteThreadCount = 1;
                     // insert this buff to buffpool
-                    m_srcBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
+                    m_srcBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
                     // decrease availabe buff
                     m_srcAvailableBuffCount--;
                     // pass the data address to pool, not malloc a buffer
@@ -309,7 +309,7 @@ int InprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
                 // set count to 1
                 tmp_buffinfo->callingWriteThreadCount = 1;
                 // insert this buff to buffpool
-                m_dstBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
+                m_dstBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
                 // decrease availabe buff
                 m_dstAvailableBuffCount--;
                 // use address to pass msg
@@ -435,7 +435,7 @@ int InprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
                     // set count to 1
                     tmp_buffinfo->callingWriteThreadCount = 1;
                     // insert this buff to buffpool
-                    m_dstBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
+                    m_dstBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
                     // decrease availabe buff
                     m_dstAvailableBuffCount--;
                     // use address to pass msg
@@ -502,7 +502,7 @@ int InprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
 }// end pwrite()
 
 
-int InprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag)
+int InprocConduit::PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -571,7 +571,7 @@ int InprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSiz
 				// set count to 1
 				tmp_buffinfo->callingWriteThreadCount = 1;
 				// insert this buff to buffpool
-				m_srcBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
+				m_srcBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
 				// decrease availabe buff
 				m_srcAvailableBuffCount--;
 				// pass address
@@ -652,7 +652,7 @@ int InprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSiz
 				// set count to 1
 				tmp_buffinfo->callingWriteThreadCount = 1;
 				// insert this buff to buffpool
-				m_dstBuffPool.insert(std::pair<MessageTag, BuffInfo*>(tag, tmp_buffinfo));
+				m_dstBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
 				// decrease availabe buff
 				m_dstAvailableBuffCount--;
 				//

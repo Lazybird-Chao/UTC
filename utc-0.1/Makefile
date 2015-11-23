@@ -42,7 +42,7 @@ LIB_UTC := libutc.a
  
 	
 ## test target
-TARGET_SOURCE:= ./test/test_xprocess_conduit_async.cc
+TARGET_SOURCE:= ./test/bench/TaskTest.cc
 TARGET_OBJ:= main.o	
 TARGET_EXE:= a.out
 

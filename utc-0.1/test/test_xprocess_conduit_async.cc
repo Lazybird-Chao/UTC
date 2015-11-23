@@ -46,7 +46,11 @@ public:
             cdt_ptr->AsyncWrite(message_out, i*sizeof(float), i);
 
             cdt_ptr->AsyncRead(message_in, i*sizeof(float), i);
-            //std::this_thread::sleep_for(std::chrono::microseconds(i));
+            if(!mytrank)
+            	std::cout<<time_from_start()<<std::endl;
+            usleep_for(i*sizeof(float));
+            if(!mytrank)
+            	std::cout<<time_from_start()<<std::endl;
 
         }
         *output<<"taskA before wait async..."<<std::endl;

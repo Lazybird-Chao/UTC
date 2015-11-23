@@ -1,5 +1,8 @@
 #include "Timer.h"
+#include "Timer_Utilities.h"
+
 #include <iostream>
+#include <thread>
 
 namespace iUtc{
 
@@ -72,4 +75,38 @@ double Timer::stop(TimerValue& tv_in, TimerValue& tv_out)
 	return m_retTimeperiod;
 }
 
+
+
+
+/*
+ *  Some time utility functions
+ */
+
+void sleep_for(long n_seconds)
+{
+	std::this_thread::sleep_for(std::chrono::seconds(n_seconds));
 }
+
+void msleep_for(long n_mseconds)
+{
+	std::this_thread::sleep_for(std::chrono::milliseconds(n_mseconds));
+
+}
+
+void usleep_for(long n_useconds)
+{
+	std::this_thread::sleep_for(std::chrono::microseconds(n_useconds));
+}
+
+// return the time period in milliseconds from system start to current
+double time_from_start()
+{
+	 std::chrono::system_clock::time_point t_now=std::chrono::system_clock::now();
+	 //std::chrono::system_clock::duration dtn =t_now-SYSTEM_START_TIME;
+	 //return std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1,1000>>>(dtn).count();
+	 std::chrono::duration<double, std::ratio<1,1000>> dtn = t_now-SYSTEM_START_TIME;
+	 return dtn.count();
+}
+
+
+}// end namespace iUtc

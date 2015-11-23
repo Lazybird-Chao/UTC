@@ -73,7 +73,7 @@ public:
      *	   WriteBy_Finish()   check and wait finishing WriteBy() operation of a message
 	*/
 	int BWrite(void* DataPtr, DataSize_t DataSize, int tag);
-	int BWriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag);
+	int BWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
 	void BWriteBy_Finish(int tag);
 
 	/* Blocking & Buffered when needed write
@@ -85,7 +85,7 @@ public:
 	 * internal buffer like BWrite() does.
 	 */
 	int Write(void* DataPtr, DataSize_t DataSize, int tag);
-    int WriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag);
+    int WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
     void WriteBy_Finish(int tag);
 
 
@@ -96,7 +96,7 @@ public:
      * But it will not return until reader copied data away.
      */
     int PWrite(void* DataPtr, DataSize_t DataSize, int tag);
-    int PWriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag);
+    int PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
     void PWriteBy_Finish(int tag);
 
 
@@ -107,7 +107,7 @@ public:
 	 * thread-ops(in one process): same as write() operation.
 	 */
 	int Read(void* DataPtr, DataSize_t DataSize, int tag);
-	int ReadBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag);
+	int ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
 	void ReadBy_Finish(int tag);
 
 
@@ -139,8 +139,8 @@ private:
 	//
 	TaskBase* m_srcTask;
 	TaskBase* m_dstTask;
-	TaskId m_srcId;
-	TaskId m_dstId;
+	TaskId_t m_srcId;
+	TaskId_t m_dstId;
 
 	//std::string m_Name;
 	int m_conduitId;
@@ -161,8 +161,8 @@ private:
 
 	int m_srcAvailableBuffCount;
 	BuffInfo* m_srcAvailableBuff;
-	std::map<MessageTag, BuffInfo*> m_srcBuffPool;
-	std::map<MessageTag, int> m_srcBuffPoolWaitlist;
+	std::map<MessageTag_t, BuffInfo*> m_srcBuffPool;
+	std::map<MessageTag_t, int> m_srcBuffPoolWaitlist;
 	// use this idx to refer each buffer's access mutex and buffwritten flag
 	std::vector<int> m_srcBuffIdx;
 	std::vector<std::mutex> m_srcBuffAccessMutex;
@@ -194,8 +194,8 @@ private:
 
 	int m_dstAvailableBuffCount;
 	BuffInfo* m_dstAvailableBuff;
-    std::map<MessageTag, BuffInfo*> m_dstBuffPool;
-    std::map<MessageTag, int> m_dstBuffPoolWaitlist;
+    std::map<MessageTag_t, BuffInfo*> m_dstBuffPool;
+    std::map<MessageTag_t, int> m_dstBuffPoolWaitlist;
     std::vector<int> m_dstBuffIdx;
     std::vector<std::mutex> m_dstBuffAccessMutex;
     std::vector<std::condition_variable> m_dstBuffDataWrittenCond;

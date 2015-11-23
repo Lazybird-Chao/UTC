@@ -626,7 +626,7 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag)
 }// end read
 
 
-int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag)
+int InprocConduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -670,7 +670,7 @@ int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize,
 #ifdef USE_DEBUG_ASSERT
             assert(m_dstBuffPoolWaitlist.find(tag) == m_dstBuffPoolWaitlist.end());
 #endif
-            m_dstBuffPoolWaitlist.insert(std::pair<MessageTag,int>(tag, 1));
+            m_dstBuffPoolWaitlist.insert(std::pair<MessageTag_t,int>(tag, 1));
         }
 
         // go on waiting for this tag-buffer come from writer
@@ -769,7 +769,7 @@ int InprocConduit::ReadBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize,
 #ifdef USE_DEBUG_ASSERT
             assert(m_srcBuffPoolWaitlist.find(tag)==m_srcBuffPoolWaitlist.end());
 #endif
-            m_srcBuffPoolWaitlist.insert(std::pair<MessageTag, int>(tag, 1));
+            m_srcBuffPoolWaitlist.insert(std::pair<MessageTag_t, int>(tag, 1));
         }
 
         // go on waiting for the msg come

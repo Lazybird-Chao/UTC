@@ -55,6 +55,8 @@ std::ofstream* getThreadOstream()
 			boost::filesystem::create_directory(log_path);
 		std::string filename = "./log/";
 		filename.append((TaskManager::getCurrentTask())->getName());
+		filename.append("-");
+		filename.append(std::to_string(TaskManager::getCurrentTaskId()));
 		filename.append("-thread");
 		filename.append(std::to_string(TaskManager::getCurrentThreadRankinTask()));
 		filename.append(".log");
@@ -66,7 +68,7 @@ std::ofstream* getThreadOstream()
 
 }
 
-int getTid()
+int getTaskId()
 {
 	static thread_local int taskid = -1;
 	if(taskid == -1)
@@ -74,6 +76,16 @@ int getTid()
 		taskid = TaskManager::getCurrentTaskId();
 	}
 	return taskid;
+}
+
+int getParentTaskId()
+{
+	static thread_local int parentTid = -1;
+	if(parentTid == -1)
+	{
+		parentTid = TaskManager::getParentTaskId();
+	}
+	return parentTid;
 }
 
 int getTrank()
@@ -96,6 +108,17 @@ int getPrank()
 	return procrank;
 }
 
+int getLrank()
+{
+	static thread_local int localrank = -1;
+	if(localrank == -1)
+	{
+		localrank = TaskManager::getCurrentThreadRankInLocal();
+	}
+	return localrank;
+}
+
+
 int getLsize()
 {
 	static thread_local int localthreads = -1;
@@ -114,6 +137,27 @@ int getGsize()
 		globalthreads = TaskManager::getCurrentTask()->getNumTotalThreads();
 	}
 	return globalthreads;
+}
+
+
+TaskBase* getCurrentTask()
+{
+	static thread_local TaskBase* currentTaskPtr= nullptr;
+	if(!currentTaskPtr)
+	{
+		currentTaskPtr = TaskManager::getCurrentTask();
+	}
+	return currentTaskPtr;
+}
+
+TaskBase* getParentTask()
+{
+	static thread_local TaskBase* ParentTaskPtr= nullptr;
+	if(!ParentTaskPtr)
+	{
+		ParentTaskPtr = TaskManager::getParentTask();
+	}
+	return ParentTaskPtr;
 }
 
 

@@ -7,10 +7,10 @@
 namespace iUtc{
 
 ConduitManager* ConduitManager::m_InstancePtr = nullptr;
-ConduitId ConduitManager::m_ConduitIdDealer = 0;
+ConduitId_t ConduitManager::m_ConduitIdDealer = 0;
 std::mutex ConduitManager::m_mutexConduitRegistry;
 std::mutex ConduitManager::m_mutexConduitIdDealer;
-std::map<ConduitId, Conduit*> ConduitManager::m_ConduitRegistry;
+std::map<ConduitId_t, Conduit*> ConduitManager::m_ConduitRegistry;
 
 std::ofstream* getProcOstream();
 
@@ -48,24 +48,24 @@ ConduitManager* ConduitManager::getInstance()
 	return m_InstancePtr;
 }
 
-ConduitId ConduitManager::registerConduit(Conduit* cdt)
+ConduitId_t ConduitManager::registerConduit(Conduit* cdt)
 {
 	std::lock_guard<std::mutex> lock(m_mutexConduitRegistry);
-	TaskId  id = cdt->getConduitId();
-	m_ConduitRegistry.insert(std::pair<ConduitId, Conduit*>(id, cdt));
+	TaskId_t  id = cdt->getConduitId();
+	m_ConduitRegistry.insert(std::pair<ConduitId_t, Conduit*>(id, cdt));
 	return id;
 }
 void ConduitManager::registerConduit(Conduit* cdt, int id)
 {
     std::lock_guard<std::mutex> lock(m_mutexConduitRegistry);
-    m_ConduitRegistry.insert(std::pair<ConduitId, Conduit*>(id, cdt));
+    m_ConduitRegistry.insert(std::pair<ConduitId_t, Conduit*>(id, cdt));
     return;
 }
 
 void ConduitManager::unregisterConduit(Conduit* cdt)
 {
 	std::lock_guard<std::mutex> lock(m_mutexConduitRegistry);
-	ConduitId id = cdt->getConduitId();
+	ConduitId_t id = cdt->getConduitId();
 	if(id)
 	{
 		m_ConduitRegistry.erase(id);   // should check if in the map
@@ -81,10 +81,10 @@ void ConduitManager::unregisterConduit(Conduit* cdt, int id)
 
 }
 
-ConduitId ConduitManager::getNewConduitId()
+ConduitId_t ConduitManager::getNewConduitId()
 {
 	std::lock_guard<std::mutex> lock(m_mutexConduitIdDealer);
-	ConduitId id = m_ConduitIdDealer++;
+	ConduitId_t id = m_ConduitIdDealer++;
 	return id;
 
 }

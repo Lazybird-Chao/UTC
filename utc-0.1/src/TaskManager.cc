@@ -8,9 +8,9 @@ namespace iUtc{
 // initialize static variables
 TaskManager* TaskManager::m_InstancePtr = nullptr;
 
-std::map<TaskId, TaskBase*> TaskManager::m_TaskRegistry;
+std::map<TaskId_t, TaskBase*> TaskManager::m_TaskRegistry;
 
-TaskId TaskManager::m_TaskIdDealer = 0;
+TaskId_t TaskManager::m_TaskIdDealer = 0;
 
 RootTask* TaskManager::m_root = nullptr;
 
@@ -58,24 +58,24 @@ TaskManager* TaskManager::getInstance()
     return m_InstancePtr;
 }
 
-TaskId TaskManager::registerTask(TaskBase* task)
+TaskId_t TaskManager::registerTask(TaskBase* task)
 {
     std::lock_guard<std::mutex> lock(m_mutexTaskRegistry);
-    TaskId id = task->getTaskId();
-    m_TaskRegistry.insert(std::pair<TaskId, TaskBase*>(id, task));
+    TaskId_t id = task->getTaskId();
+    m_TaskRegistry.insert(std::pair<TaskId_t, TaskBase*>(id, task));
     return id;
 }
 void TaskManager::registerTask(TaskBase* task, int id)
 {
     std::lock_guard<std::mutex> lock(m_mutexTaskRegistry);
-    m_TaskRegistry.insert(std::pair<TaskId, TaskBase*>(id, task));
+    m_TaskRegistry.insert(std::pair<TaskId_t, TaskBase*>(id, task));
     return;
 }
 
 void TaskManager::unregisterTask(TaskBase* task)
 {
     std::lock_guard<std::mutex> lock(m_mutexTaskRegistry);
-    TaskId id = task->getTaskId();
+    TaskId_t id = task->getTaskId();
     if(id)
     {	// root will not be erased, root task id is 0
         m_TaskRegistry.erase(id);     // should check if in the map
@@ -103,10 +103,10 @@ bool TaskManager::hasTaskItem(int id)
 }
 
 
-TaskId TaskManager::getNewTaskId()
+TaskId_t TaskManager::getNewTaskId()
 {
     std::lock_guard<std::mutex> lock(m_mutexTaskIdDealer);
-    TaskId id = m_TaskIdDealer++;
+    TaskId_t id = m_TaskIdDealer++;
     return id;
 }
 
@@ -132,9 +132,9 @@ void TaskManager::setTaskInfo(TaskInfo* InfoPtr)
 		m_taskInfo.reset(InfoPtr);
 }
 
-TaskId TaskManager::getCurrentTaskId()
+TaskId_t TaskManager::getCurrentTaskId()
 {
-    TaskId taskId = -1;
+    TaskId_t taskId = -1;
     TaskInfo* taskInfo = m_taskInfo.get();
     if(taskInfo)
     {
@@ -144,9 +144,9 @@ TaskId TaskManager::getCurrentTaskId()
     return taskId;
 }
 
-TaskId TaskManager::getParentTaskId()
+TaskId_t TaskManager::getParentTaskId()
 {
-    TaskId taskId = -1;
+    TaskId_t taskId = -1;
     TaskInfo* taskInfo = m_taskInfo.get();
     if(taskInfo)
     {
@@ -167,21 +167,27 @@ TaskBase* TaskManager::getParentTask()
     return m_TaskRegistry[getParentTaskId()];
 }
 
-ThreadId TaskManager::getThreadId()
+ThreadId_t TaskManager::getThreadId()
 {
     return std::this_thread::get_id();
 }
 
-ThreadRank TaskManager::getCurrentThreadRankinTask()
+ThreadRank_t TaskManager::getCurrentThreadRankinTask()
 {
     TaskInfo* taskInfo = m_taskInfo.get();
     return taskInfo->tRank;
 }
 
-ProcRank TaskManager::getCurrentProcessRankinTask()
+ProcRank_t TaskManager::getCurrentProcessRankinTask()
 {
     TaskInfo* taskInfo = m_taskInfo.get();
     return taskInfo->pRank;
+}
+
+ThreadRank_t TaskManager::getCurrentThreadRankInLocal()
+{
+	TaskInfo* taskInfo = m_taskInfo.get();
+	return taskInfo->lRank;
 }
 
 #ifdef USE_MPI_BASE

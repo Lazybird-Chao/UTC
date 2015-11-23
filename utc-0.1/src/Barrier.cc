@@ -33,8 +33,9 @@ Barrier::Barrier(int numLocalThreads, int taskid)
 	for(int i=0; i<numLocalThreads; i++)
 		m_countIdx[i] = 0;
 }
-#ifdef USE_MPI_BASE
-Barrier::Barrier(int numLocalThreads, int taskid, MPI_Comm *comm)
+
+
+Barrier::Barrier(int numLocalThreads, int taskid, MPI_Comm* comm)
 {
 	m_numLocalThreads = numLocalThreads;
 	m_taskId = taskid;
@@ -48,7 +49,7 @@ Barrier::Barrier(int numLocalThreads, int taskid, MPI_Comm *comm)
 		m_countIdx[i] = 0;
 
 }
-#endif
+
 
 Barrier::~Barrier()
 {
@@ -106,6 +107,7 @@ void Barrier::synch_inter(int local_rank)
 #ifdef USE_MPI_BASE
 		// do barrier across the processes that this task mapped to
 		MPI_Barrier(*m_taskCommPtr);
+
 #endif
 		//do notify
 		m_intraThreadSyncCond.notify_all();
@@ -143,7 +145,8 @@ void intra_Barrier()
 		taskBarrierPtr = TaskManager::getTaskInfo()->barrierObjPtr;
 	static thread_local int local_rank =-1;
 	if(local_rank ==-1)
-		local_rank = TaskManager::getCurrentTask()->toLocal(TaskManager::getCurrentThreadRankinTask());
+		//local_rank = TaskManager::getCurrentTask()->toLocal(TaskManager::getCurrentThreadRankinTask());
+		local_rank = TaskManager::getCurrentThreadRankInLocal();
 #ifdef USE_DEBUG_LOG
 	std::ofstream *m_threadOstream = getThreadOstream();
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -168,18 +171,23 @@ void inter_Barrier()
 	static thread_local int local_rank =-1;
 		if(local_rank ==-1)
 			local_rank = TaskManager::getCurrentTask()->toLocal(TaskManager::getCurrentThreadRankinTask());
+
 #ifdef USE_DEBUG_LOG
-	std::ofstream *m_threadOstream = getThreadOstream();
-	PRINT_TIME_NOW(*m_threadOstream)
-	*m_threadOstream<<"thread "<<TaskManager::getCurrentThreadRankinTask()<<
-				" comes to inter sync point."<<std::endl;
+	std::ofstream *m_Ostream;
+	if(TaskManager::getCurrentTaskId() == 0)
+		 m_Ostream= getProcOstream();
+	else
+		m_Ostream = getThreadOstream();
+	PRINT_TIME_NOW(*m_Ostream)
+	*m_Ostream<<"thread "<<TaskManager::getCurrentThreadRankinTask()<<
+				" comes to inter sync point."<<local_rank<<std::endl;
 #endif
 
 	taskBarrierPtr->synch_inter(local_rank);
 
 #ifdef USE_DEBUG_LOG
-	PRINT_TIME_NOW(*m_threadOstream)
-	*m_threadOstream<<"thread "<<TaskManager::getCurrentThreadRankinTask()<<
+	PRINT_TIME_NOW(*m_Ostream)
+	*m_Ostream<<"thread "<<TaskManager::getCurrentThreadRankinTask()<<
 				" leaves inter sync point."<<std::endl;
 #endif
 

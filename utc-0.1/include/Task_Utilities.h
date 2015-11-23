@@ -8,21 +8,34 @@ namespace iUtc{
 
 // get the process's output file stream
 std::ofstream* getProcOstream();
+
 // get the task thread's output file stream
 std::ofstream* getThreadOstream();
 
 // return the current thread system id
-int getTid();
+int getTaskId();
+
+int getParentTaskId();
+
 // return the current thread rank in the task
 int getTrank();
+
 // return the current process rank
 int getPrank();
+
+// return the current thread rank in current local process
+int getLrank();
+
 // return the number of task threads in one process
 int getLsize();
+
 // return the number of task threads of the task
 int getGsize();
 
+// return the current task obj pointer
+TaskBase* getCurrentTask();
 
+TaskBase* getParentTask();
 
 }// end namespace iUtc
 

@@ -40,7 +40,7 @@ class UtcContext{
 
         static UtcBase* Utcbase_provider;
 
-        static TaskId m_rootTaskId;
+        static TaskId_t m_rootTaskId;
         static RootTask* root;
 
         static int m_nCount;    // may not be useful!

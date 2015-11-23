@@ -247,7 +247,7 @@ int XprocConduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
 	return 0;
 }
 
-int XprocConduit::WriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag)
+int XprocConduit::WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -412,7 +412,7 @@ int XprocConduit::BWrite(void* DataPtr, DataSize_t DataSize, int tag)
 	std::cerr<<"Error, crossing process conduit doen't has 'BWrite' method."<<std::endl;
 	return 0;
 }
-int XprocConduit::BWriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag)
+int XprocConduit::BWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 	std::cerr<<"Error, crossing process conduit doen't has 'BWriteBy' method."<<std::endl;
 	return 0;
@@ -605,7 +605,7 @@ int XprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
 	return 0;
 }
 
-int XprocConduit::PWriteBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag)
+int XprocConduit::PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
@@ -934,7 +934,7 @@ int XprocConduit::Read(void* DataPtr, DataSize_t DataSize, int tag)
 	return 0;
 }
 
-int XprocConduit::ReadBy(ThreadRank thread, void* DataPtr, DataSize_t DataSize, int tag)
+int XprocConduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)

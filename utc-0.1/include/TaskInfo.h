@@ -21,15 +21,17 @@ namespace iUtc{
  struct TaskInfo
  {
     //the task id that the current thread belongs to
-    TaskId  taskId = -1;   // same value in one task
+    TaskId_t  taskId = -1;   // same value in one task
     //the taskid of parent task
-    TaskId  parentTaskId = -1;  // same value in one task
+    TaskId_t  parentTaskId = -1;  // same value in one task
     //thread id of current thread
-    ThreadId   threadId;    // diff value in each thread
+    ThreadId_t   threadId;    // diff value in each thread
 
-    ThreadRank tRank = -1;  // thread rank in all threads that running for a task
+    ThreadRank_t tRank = -1;  // thread rank in all threads that running for a task
 
-    ProcRank pRank = -1;    // process rank in all processes that a task mapped to
+    ProcRank_t pRank = -1;    // process rank in all processes that a task mapped to
+
+    ThreadRank_t lRank = -1; // local thread rank of a task in one process
 
     Barrier* barrierObjPtr = nullptr;   // same value in one task
 

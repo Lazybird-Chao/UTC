@@ -59,34 +59,34 @@ extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
 /*
  *
  */
-typedef  int	RankId;  // >=0
-typedef  int	ProcRank; // >=0
-typedef  int	ThreadRank; // >=0
-typedef  int	TaskId; // >=0
-typedef  int	ConduitId; // >=0
-typedef  int	MessageTag; // >=0
+typedef  int	RankId_t;  // >=0
+typedef  int	ProcRank_t; // >=0
+typedef  int	ThreadRank_t; // >=0
+typedef  int	TaskId_t; // >=0
+typedef  int	ConduitId_t; // >=0
+typedef  int	MessageTag_t; // >=0
 typedef	 long	DataSize_t;
 
 #if defined(USE_CPLUS_THREAD_CREATION)
-    typedef  std::thread::id ThreadId;
+    typedef  std::thread::id ThreadId_t;
 #elif defined(USE_BOOST_THREAD_CREATION)
-    typedef boost::thread::id TreadId
+    typedef boost::thread::id TreadId_t
 #elif defined(USE_POSIX_THREAD_CREATION)
-    typedef  pthread_t ThreadId;
+    typedef  pthread_t ThreadId_t;
 #endif
 
 
 /*
  *
  */
-const int MAX_PROCS=32;
+const int MAX_PROCS_IN_WORLD=32;
 const int LOG_MAX_PROCS=5;
-const int MAX_TASKS=128;
+const int MAX_TASKS_IN_WORLD=128;
 const int LOG_MAX_TASKS=7;
-const int MAX_THREADS=256;
+const int MAX_THREADS_IN_WORLD=256;
 const int LOG_MAX_THREADS=8;
 
-const int MAX_CONDUITS = 1024;
+const int MAX_CONDUITS_IN_WORLD = 1024;
 const int LOG_MAX_CONDUITS = 10;
 const int INPROC_CONDUIT_CAPACITY_DEFAULT = 8;
 const int INPROC_CONDUIT_CAPACITY_MAX = 32;

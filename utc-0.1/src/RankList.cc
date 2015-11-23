@@ -25,15 +25,15 @@ namespace iUtc{
 	{
 		for(int i = 0; i < size; i++)
 		{
-			m_rankList.push_back(static_cast<RankId>(procrank));
+			m_rankList.push_back(static_cast<RankId_t>(procrank));
 		}
 	}
 
     // \brief Constructor
     // Construct a RankList, given a size and C-style array of RankIds.
-    RankList::RankList(int size, const RankId * ranks)
+    RankList::RankList(int size, const RankId_t * ranks)
     {
-        RankId * tmpPtr = const_cast<RankId *>(ranks);
+        RankId_t * tmpPtr = const_cast<RankId_t *>(ranks);
         for(int i = 0; i < size; i++)
         {
             m_rankList.push_back(*(tmpPtr++));
@@ -42,7 +42,7 @@ namespace iUtc{
 
     // \brief Constructor
     // Construct a RankList, given an STL vector of ranks.
-    RankList::RankList(const std::vector<RankId> & ranks)
+    RankList::RankList(const std::vector<RankId_t> & ranks)
     : m_rankList(ranks)
     {
     }
@@ -86,7 +86,7 @@ namespace iUtc{
 
     // \brief getElement
     // Return the rank at the requested position.
-    RankId RankList::getRank(int index) const
+    RankId_t RankList::getRank(int index) const
     {
             return m_rankList[index];
     }
@@ -100,7 +100,7 @@ namespace iUtc{
 
     // \brief getRankListVector
     // Return the rank at the requested position.
-    void RankList::getRankListVector(std::vector<RankId> & rankListCopy) const
+    void RankList::getRankListVector(std::vector<RankId_t> & rankListCopy) const
     {
            rankListCopy = m_rankList;
     }
