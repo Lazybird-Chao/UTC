@@ -54,8 +54,7 @@ void TaskTest::init(int testNum)
 	std::sprintf(preost, "TaskTest: Test-%d Name:%s : ProcId:[%d] : ThreadRank:[%d]",
 			testNum, tname.c_str(), my_proc, my_thread);
 
-	/* In one process for shared data members,
-	 * usually let one thread initialize them */
+	/* For shared data members,usually let one thread initialize them */
 	if(getLrank() == 0)
 	{
 		m_testNum = testNum;
@@ -145,7 +144,7 @@ int main(int argc, char**argv)
 	/********************************************/
 	if(nproc > MIN_PROCS)
 	{
-		/* construct a task map vector */
+		/* construct a task map rank list */
 		std::vector<RankId_t> rv;
 		for(int i=0; i<nproc; i++)
 		{
