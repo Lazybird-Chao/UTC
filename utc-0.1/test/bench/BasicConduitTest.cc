@@ -83,7 +83,8 @@ void RWtask::run()
 	sleep_for(m_time);
 	/* read message from conduit */
 	m_cdt->Read(recv_buff, 100, 1);
-	std::cout<<tname<<"got message:\n"<<"\t\t"<<recv_buff<<"\n"<<std::endl;
+	std::cout<<tname<<",thread:"<<my_thread<<" got message:\n"<<"\t"<<recv_buff
+	        <<std::endl;
 
 	return;
 }
@@ -94,7 +95,7 @@ void RWtask::run()
 int main()
 {
 	/* initialize UTC context */
-	UtcContext ctx();
+	UtcContext ctx;
 	/* get total procs of UTC runtime */
 	int nproc = ctx.numProcs();
 	if(nproc < 2)
@@ -106,13 +107,60 @@ int main()
 	// Test - 1
 	// Conduit between two tasks in one process
 	/***********************************************/
+	{
+        /* construct task map rank list */
+        int rvA[3]={0,0,0};
+        int rvB[2]={0,0};
+        RankList rlA(3, rvA);
+        RankList rlB(2, rvB);
+
+        /* define task */
+        Task<RWtask> taskA("TaskA", rlA);
+        Task<RWtask> taskB("TaskB", rlB);
+
+        /* define conduit */
+        Conduit cdt_AB(&taskA, &taskB);
+
+        /* call init() */
+        taskA.init(&cdt_AB, 1, 2);   // this is Test-1 and let this task sleep 2s
+        taskB.init(&cdt_AB, 1, 4);   // this is Test-1 and let this task sleep 4s
+
+        /* call run() */
+        taskA.run();
+        taskB.run();
+
+        /* wait for finish*/
+        taskA.waitTillDone();
+        taskB.waitTillDone();
+	}
+	std::cout<<std::endl;
+	inter_Barrier();
 
 
-
-	// Test - 1
+	// Test - 2
 	// Conduit between two tasks in two process
 	/***********************************************/
+	{
+	    int rvA[2]={0,0};
+        int rvB[3]={1,1,1};
+        RankList rlA(2, rvA);
+        RankList rlB(3, rvB);
 
+        Task<RWtask> taskA("TaskA", rlA);
+        Task<RWtask> taskB("TaskB", rlB);
+
+        Conduit cdt_AB(&taskA, &taskB);
+
+        taskA.init(&cdt_AB, 2, 2);
+        taskB.init(&cdt_AB, 2, 4);
+
+        taskA.run();
+        taskB.run();
+
+        taskA.waitTillDone();
+        taskB.waitTillDone();
+
+	}
 
 	return 0;
 }

@@ -11,14 +11,14 @@ public:
 
 	UserTaskBase(){}
 		// you can define or overload a meaning full constructor in derived class
-	virtual ~UserTaskBase(){}
+	~UserTaskBase(){}
 
 	/* necessary member functions */
-	virtual void init() =0;
+	void init(){}
 		// usually initialize data members and prepare for computation,
 		// you should implement this method and can overload with arguments
 		// in derived class
-	virtual void run() =0;
+	void run(){}
 		// usually implement the main algorithm, doing computation and communication,
 		// you should implement this method in derived class
 
