@@ -645,7 +645,7 @@ int InprocConduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSiz
 #endif
     if(myThreadRank != thread)
     {
-        if(myThreadRank >= TaskManager::getCurrentTask()->getNumTotalThreads())
+        if(thread >= TaskManager::getCurrentTask()->getNumTotalThreads())
         {
             std::cerr<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
             exit(1);

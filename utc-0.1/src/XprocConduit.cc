@@ -286,7 +286,7 @@ int XprocConduit::WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSiz
 
 	if(myThreadRank != thread)
 	{
-		if(myThreadRank >= TaskManager::getCurrentTask()->getNumTotalThreads())
+		if(thread >= TaskManager::getCurrentTask()->getNumTotalThreads())
 		{
 			std::cerr<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
 			exit(1);
@@ -644,7 +644,7 @@ int XprocConduit::PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSi
 
 	if(myThreadRank != thread)
 	{
-		if(myThreadRank >= TaskManager::getCurrentTask()->getNumTotalThreads())
+		if(thread >= TaskManager::getCurrentTask()->getNumTotalThreads())
 		{
 			std::cerr<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
 			exit(1);
@@ -973,7 +973,7 @@ int XprocConduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize
 
 	if(myThreadRank != thread)
 	{
-		if(myThreadRank >= TaskManager::getCurrentTask()->getNumTotalThreads())
+		if(thread >= TaskManager::getCurrentTask()->getNumTotalThreads())
 		{
 			std::cerr<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
 			exit(1);
