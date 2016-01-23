@@ -5,8 +5,8 @@
 /*
  *
  */
-#define USE_DEBUG_LOG
-#define USE_DEBUG_ASSERT
+//#define USE_DEBUG_LOG
+//#define USE_DEBUG_ASSERT
 
 
 
@@ -14,10 +14,11 @@
 /*
  *
  */
-#ifdef USE_DEBUG_LOG
+
 #include <chrono>
 #include <ctime>
 extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
+#ifdef USE_DEBUG_LOG
 #define PRINT_TIME_NOW(outstream) 	{ std::chrono::system_clock::time_point t_now=\
 											std::chrono::system_clock::now();\
 									time_t tt = std::chrono::system_clock::to_time_t(t_now);\

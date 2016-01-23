@@ -2,9 +2,9 @@
 #include "RootTask.h"
 #include "ConduitManager.h"
 
-#ifdef USE_DEBUG_LOG
-	std::chrono::system_clock::time_point SYSTEM_START_TIME = std::chrono::system_clock::now();
-#endif
+
+std::chrono::system_clock::time_point SYSTEM_START_TIME = std::chrono::system_clock::now();
+
 namespace iUtc{
 
 UtcBase* UtcContext::Utcbase_provider=0;

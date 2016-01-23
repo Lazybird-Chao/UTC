@@ -42,9 +42,9 @@ LIB_UTC := libutc.a
  
 	
 ## test target
-TARGET_SOURCE:= ./test/bench/BasicConduitTest.cc
+TARGET_SOURCE:= ./test/bench/latency/utc_latency.cc
 TARGET_OBJ:= main.o	
-TARGET_EXE:= a.out
+TARGET_EXE:= utc_latency.out
 
 $(TARGET_OBJ): $(TARGET_SOURCE)
 	$(G++)	-o $(TARGET_OBJ) -c $(TARGET_SOURCE)  $(CCFLAG) $(INCLUDE) 	
