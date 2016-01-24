@@ -115,7 +115,7 @@ void SendRecvWorker::run()
 			{
 				if(i==skip)
 					timer.start();
-				m_cdt->Write(s_buf, size, i);
+				m_cdt->PWrite(s_buf, size, i);
 				m_cdt->Read(r_buf, size, i);
 			}
 			//m_cdt->Read(&end_data, 1 , i);
@@ -145,7 +145,7 @@ void SendRecvWorker::run()
 			for(i=0; i<loop+skip; i++)
 			{
 				m_cdt->Read(r_buf, size, i);
-				m_cdt->Write(s_buf, size, i);
+				m_cdt->PWrite(s_buf, size, i);
 			}
 			//m_cdt->Write(&end_data, 1, i);
 		}
@@ -169,7 +169,7 @@ int main(int argc, char* argv[])
 	int myProc = ctx.getProcRank();
 
 	/* define sender and receiver task obj */
-	RankList rl1(1, 0);
+	RankList rl1(2, 0);
 	Task<SendRecvWorker> sender(rl1);
 	RankList rl2(1, 0);
 	Task<SendRecvWorker> receiver(rl2);

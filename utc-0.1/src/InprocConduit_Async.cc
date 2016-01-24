@@ -1251,9 +1251,11 @@ int InprocConduit::threadReadImpl(void* DataPtr, DataSize_t DataSize, int tag, i
 			{
 				// use address for write
 				memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+				std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
 				m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
 				// notify writer that read finish
 				m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+				LCK3.unlock();
 			}
 		}// end for tag not in the pool
 		else
@@ -1311,9 +1313,11 @@ int InprocConduit::threadReadImpl(void* DataPtr, DataSize_t DataSize, int tag, i
 			{
 				// use address for write
 				memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+				std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_buffinfo->buffIdx]);
 				m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
 				// notify writer that read finish
 				m_dstBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+				LCK3.unlock();
 			}
 
 		}//end for tag in the pool
@@ -1399,9 +1403,11 @@ int InprocConduit::threadReadImpl(void* DataPtr, DataSize_t DataSize, int tag, i
 		{
 			// use address for write
 			memcpy(DataPtr,tmp_buffinfo->dataPtr, DataSize);
+			std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_buffinfo->buffIdx]);
 			m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx] =1;
 			// notify writer that read finish
 			m_srcBuffDataReadCond[tmp_buffinfo->buffIdx].notify_one();
+			LCK3.unlock();
 		}
 	}// end dst task
 

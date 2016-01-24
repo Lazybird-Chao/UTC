@@ -18,8 +18,8 @@
 #define SKIP_LLARGE 1
 #define LOOP_LARGE  100
 #define LOOP_LLARGE 10
-#define LARGE_MESSAGE_SIZE  8192
-#define LLARGE_MESSAGE_SIZE (8192*1024)
+#define LARGE_MESSAGE_SIZE  (1<<13)
+#define LLARGE_MESSAGE_SIZE (1<<23)
 int skip = 1000;
 int loop = 10000;
 

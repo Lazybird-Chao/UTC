@@ -5,7 +5,7 @@
 /*
  *
  */
-//#define USE_DEBUG_LOG
+#define USE_DEBUG_LOG
 //#define USE_DEBUG_ASSERT
 
 
