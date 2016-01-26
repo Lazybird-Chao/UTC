@@ -169,9 +169,9 @@ int main(int argc, char* argv[])
 	int myProc = ctx.getProcRank();
 
 	/* define sender and receiver task obj */
-	RankList rl1(2, 0);
+	RankList rl1(1, 0);
 	Task<SendRecvWorker> sender(rl1);
-	RankList rl2(1, 0);
+	RankList rl2(1, 1);
 	Task<SendRecvWorker> receiver(rl2);
 
 	/* define conduit obj */

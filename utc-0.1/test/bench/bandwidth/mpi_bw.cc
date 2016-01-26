@@ -97,6 +97,9 @@ int main(int argc, char*argv[])
 			}
 			t_end = MPI_Wtime();
 			t = t_end - t_start;
+			double bw = size/1e6*loop*window_size*8;
+			bw = bw/t;
+			printf("%d\t\t%f\t\t%d\n", size, bw, myid);
 		}
 		else if(myid %2 == 1)
 		{
@@ -110,12 +113,6 @@ int main(int argc, char*argv[])
 			}
 		}
 
-		if(myid%2 ==0)
-		{
-			double bw = size/1e6*loop*window_size*8;
-			bw = bw/t;
-			printf("%d\t\t%f\t\t%d\n", size, bw, myid);
-		}
 	}
 
 	MPI_Finalize();
