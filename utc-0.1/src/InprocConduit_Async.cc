@@ -48,6 +48,7 @@ int InprocConduit::AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag)
 			std::unique_lock<std::mutex> LCK2(m_srcNewAsyncWorkMutex);
 			m_srcAsyncWorkQueue.push_back(args);
 			m_srcAsyncWriteFinishSet[tag] = std::promise<void>();
+			m_srcAsyncWorkerCloseSig = false;
 			if(m_srcAsyncWorkerOn == false)
 			{
 				//std::cout<<"async thread start"<<std::endl;
@@ -129,6 +130,7 @@ int InprocConduit::AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag)
 				std::unique_lock<std::mutex> LCK2(m_srcNewAsyncWorkMutex);
 				m_srcAsyncWorkQueue.push_back(args);
 				m_srcAsyncWriteFinishSet[tag] = std::promise<void>();
+				m_srcAsyncWorkerCloseSig=false;
 				if(m_srcAsyncWorkerOn == false)
 				{
 					m_srcAsyncWorkerOn=true;
@@ -181,6 +183,7 @@ int InprocConduit::AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag)
 			std::unique_lock<std::mutex> LCK2(m_dstNewAsyncWorkMutex);
 			m_dstAsyncWorkQueue.push_back(args);
 			m_dstAsyncWriteFinishSet[tag] = std::promise<void>();
+			m_dstAsyncWorkerCloseSig=false;
 			if(m_dstAsyncWorkerOn == false)
 			{
 				m_dstAsyncWorkerOn=true;
@@ -261,6 +264,7 @@ int InprocConduit::AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag)
 				std::unique_lock<std::mutex> LCK2(m_dstNewAsyncWorkMutex);
 				m_dstAsyncWorkQueue.push_back(args);
 				m_dstAsyncWriteFinishSet[tag] = std::promise<void>();
+				m_dstAsyncWorkerCloseSig=false;
 				if(m_dstAsyncWorkerOn == false)
 				{
 
@@ -307,37 +311,49 @@ void InprocConduit::asyncWorkerImpl(int myTaskid)
 	assert(m_srcAsyncWorkerOn == true || m_dstAsyncWorkerOn == true);
 #endif
 	AsyncWorkArgs m_args;
+	AsyncWorkArgs *m_args_array;
+	bool first_visit = true;
 	if(myTaskid == m_srcId)
 	{
+		std::unique_lock<std::mutex> LCK1(m_srcNewAsyncWorkMutex);
 		while(1)
 		{
-			std::unique_lock<std::mutex> LCK1(m_srcNewAsyncWorkMutex);
 			while(m_srcAsyncWorkQueue.size() !=0)
 			{
 				m_srcNewAsyncWork = false;
-				m_args = m_srcAsyncWorkQueue.front();
-				m_srcAsyncWorkQueue.pop_front();
+				int tmp_Qsize = m_srcAsyncWorkQueue.size();
+				m_args_array = (AsyncWorkArgs*)malloc(sizeof(AsyncWorkArgs)*tmp_Qsize);
+				for(int i=0; i<tmp_Qsize;i++)
+				{
+					m_args_array[i] = m_srcAsyncWorkQueue.front();
+					m_srcAsyncWorkQueue.pop_front();
+				}
 				LCK1.unlock();
 
-				if(m_args.WorkType == 1)
+				for(int i=0;i<tmp_Qsize;i++)
 				{
-					threadReadImpl(m_args.DataPtr, m_args.DataSize, m_args.tag, myTaskid);
-					m_srcAsyncReadFinishSet[m_args.tag].set_value();
+					m_args = m_args_array[i];
+					if(m_args.WorkType == 1)
+					{
+						threadReadImpl(m_args.DataPtr, m_args.DataSize, m_args.tag, myTaskid);
+						m_srcAsyncReadFinishSet[m_args.tag].set_value();
+					}
+					else if(m_args.WorkType == 2)
+					{
+						//threadWriteImpl(m_args.DataPtr, m_args.DataSize, m_args.tag, myTaskid);
+						threadPWriteImpl(m_args.DataPtr, m_args.DataSize, m_args.tag, myTaskid);
+						m_srcAsyncWriteFinishSet[m_args.tag].set_value();
+					}
+					else
+					{
+						std::cerr<<"Error, undefined worktype for asyncworker!!!"<<std::endl;
+						exit(1);
+					}
 				}
-				else if(m_args.WorkType == 2)
-				{
-					threadWriteImpl(m_args.DataPtr, m_args.DataSize, m_args.tag, myTaskid);
-					m_srcAsyncWriteFinishSet[m_args.tag].set_value();
-				}
-				else
-				{
-					std::cerr<<"Error, undefined worktype for asyncworker!!!"<<std::endl;
-					exit(1);
-				}
-
+				free(m_args_array);
 				LCK1.lock();
 			}// end while workqueue
-
+			m_srcNewAsyncWork = false;
 			bool ret = m_srcNewAsyncWorkCond.wait_for(LCK1, std::chrono::microseconds(ASYNC_TIME_OUT),
 								[=](){return m_srcNewAsyncWork == true;});
 			if(ret==false || m_srcAsyncWorkerCloseSig == true)
@@ -345,6 +361,8 @@ void InprocConduit::asyncWorkerImpl(int myTaskid)
 				//std::cout<<"async thread exit "<<std::endl;
 				// time out or command to close
 #ifdef USE_DEBUG_ASSERT
+				if(m_srcAsyncWorkQueue.size())
+					std::cerr<<"here"<<ret<<std::endl;
 				assert(m_srcAsyncWorkQueue.size() == 0);
 #endif
 				m_srcNewAsyncWork =false;
@@ -358,43 +376,58 @@ void InprocConduit::asyncWorkerImpl(int myTaskid)
 	}//end src task
 	else
 	{
+		std::unique_lock<std::mutex> LCK1(m_dstNewAsyncWorkMutex);
 		while(1)
 		{
-			std::unique_lock<std::mutex> LCK1(m_dstNewAsyncWorkMutex);
 			while(m_dstAsyncWorkQueue.size() !=0)
 			{
 				m_dstNewAsyncWork = false;
-				m_args = m_dstAsyncWorkQueue.front();
-				m_dstAsyncWorkQueue.pop_front();
+				int tmp_Qsize = m_dstAsyncWorkQueue.size();
+				m_args_array = (AsyncWorkArgs*)malloc(sizeof(AsyncWorkArgs)*tmp_Qsize);
+				for(int i=0; i<tmp_Qsize;i++)
+				{
+					m_args_array[i] = m_dstAsyncWorkQueue.front();
+					m_dstAsyncWorkQueue.pop_front();
+				}
 				LCK1.unlock();
 
-				if(m_args.WorkType == 1)
+				for(int i=0;i<tmp_Qsize;i++)
 				{
-					threadReadImpl(m_args.DataPtr, m_args.DataSize, m_args.tag, myTaskid);
-					m_dstAsyncReadFinishSet[m_args.tag].set_value();
+					m_args = m_args_array[i];
+					if(m_args.WorkType == 1)
+					{
+						threadReadImpl(m_args.DataPtr, m_args.DataSize, m_args.tag, myTaskid);
+						m_dstAsyncReadFinishSet[m_args.tag].set_value();
+					}
+					else if(m_args.WorkType == 2)
+					{
+						//threadWriteImpl(m_args.DataPtr, m_args.DataSize, m_args.tag, myTaskid);
+						threadPWriteImpl(m_args.DataPtr, m_args.DataSize, m_args.tag, myTaskid);
+						m_dstAsyncWriteFinishSet[m_args.tag].set_value();
+					}
+					else
+					{
+						std::cerr<<"Error, undefined worktype for asyncworker!!!"<<std::endl;
+						exit(1);
+					}
 				}
-				else if(m_args.WorkType == 2)
-				{
-					threadWriteImpl(m_args.DataPtr, m_args.DataSize, m_args.tag, myTaskid);
-					m_dstAsyncWriteFinishSet[m_args.tag].set_value();
-				}
-				else
-				{
-					std::cerr<<"Error, undefined worktype for asyncworker!!!"<<std::endl;
-					exit(1);
-				}
-
+				free(m_args_array);
 				LCK1.lock();
 				//
 
 			}// end while workqueue
-
+#ifdef USE_DEBUG_ASSERT
+				assert(m_dstAsyncWorkQueue.size() == 0);
+#endif
+			m_dstNewAsyncWork = false;
 			bool ret = m_dstNewAsyncWorkCond.wait_for(LCK1, std::chrono::microseconds(ASYNC_TIME_OUT),
 								[=](){return m_dstNewAsyncWork == true;});
 			if(!ret || m_dstAsyncWorkerCloseSig == true)
 			{
 				// time out or command to close
 #ifdef USE_DEBUG_ASSERT
+				if(m_dstAsyncWorkQueue.size())
+					std::cerr<<"here"<<ret<<std::endl;
 				assert(m_dstAsyncWorkQueue.size() == 0);
 #endif
 				m_dstNewAsyncWork=false;
@@ -403,7 +436,6 @@ void InprocConduit::asyncWorkerImpl(int myTaskid)
 				LCK1.unlock();
 				break;
 			}
-
 		}// end while(1)
 	}//end dst task
 
@@ -671,6 +703,146 @@ int InprocConduit::threadWriteImpl(void* DataPtr, DataSize_t DataSize, int tag, 
 	return 0;
 }
 
+int InprocConduit::threadPWriteImpl(void* DataPtr, DataSize_t DataSize, int tag, int myTaskid)
+{
+	if(myTaskid == m_srcId)
+	{
+		std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);
+		// check if there is available buff
+		while(m_srcAvailableBuffCount == 0)
+		{
+			// buffpool full, wait for one
+			m_srcBuffAvailableCond.wait(LCK2);
+		}
+		// get buff, go on check if tag exist in pool
+		if(m_srcBuffPool.find(tag) != m_srcBuffPool.end())
+		{
+			// exist, this would be an tag reuse error
+			std::cerr<<"Error, tag resued!"<<std::endl;
+			LCK2.unlock();
+			exit(1);
+		}
+		if(m_srcBuffPool.find(tag) == m_srcBuffPool.end())
+		{
+			// has buff and tag not exist now, can do the real write
+			int tmp_idx = m_srcBuffIdx.back();
+			m_srcBuffIdx.pop_back();
+			BuffInfo* tmp_buffinfo = &(m_srcAvailableBuff[tmp_idx]);
+			tmp_buffinfo->buffIdx = tmp_idx;
+			// set write thread count to 1
+			tmp_buffinfo->callingWriteThreadCount = 1;
+			// insert this buff to buffpool
+			m_srcBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
+			// decrease availabe buff
+			m_srcAvailableBuffCount--;
+
+			if(m_srcBuffPoolWaitlist.find(tag)!= m_srcBuffPoolWaitlist.end())
+			{
+				// tag is in waitlist, means reader is already waiting for this msg.
+				// passing address
+				m_srcBuffPoolWaitlist.erase(tag);
+			}
+			tmp_buffinfo->dataPtr = DataPtr;
+			m_srcBuffDataWrittenFlag[tmp_idx] = 1;
+			LCK2.unlock();
+			m_srcNewBuffInsertedCond.notify_all();
+
+			// wait reader finish data copy
+			std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_idx]);
+			m_srcBuffDataReadCond[tmp_idx].wait(LCK3,
+					[=](){return m_srcBuffDataReadFlag[tmp_idx] == 1;});
+			LCK3.unlock();
+
+			LCK2.lock();
+			m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
+			m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
+			tmp_buffinfo->dataPtr= nullptr;
+			tmp_buffinfo->callingReadThreadCount=0;
+			tmp_buffinfo->callingWriteThreadCount=0;
+			tmp_buffinfo->reduceBuffsizeSensor=0;
+			m_srcBuffIdx.push_back(tmp_buffinfo->buffIdx);
+			tmp_buffinfo->buffIdx = -1;
+			m_srcAvailableBuffCount++;
+			m_srcBuffPool.erase(tag);
+			m_srcBuffAvailableCond.notify_one();
+			LCK2.unlock();
+
+		}
+	}
+	else
+	{
+		// check if there is available buff
+		std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
+		while(m_dstAvailableBuffCount == 0)
+		{
+			// buffpool full, wait for one
+			m_dstBuffAvailableCond.wait(LCK2);
+		}
+		// get buff, go on check if tag exist in pool
+		if(m_dstBuffPool.find(tag) != m_dstBuffPool.end())
+		{
+			// exist, this would be an tag reuse error
+			std::cerr<<"Error, tag resued!"<<std::endl;
+			LCK2.unlock();
+			exit(1);
+		}
+
+		if(m_dstBuffPool.find(tag) == m_dstBuffPool.end())
+		{
+			// has buff now, can do the real write
+
+			// get buff id
+			int tmp_idx = m_dstBuffIdx.back();
+			m_dstBuffIdx.pop_back();
+			BuffInfo *tmp_buffinfo = &(m_dstAvailableBuff[tmp_idx]);
+			tmp_buffinfo->buffIdx = tmp_idx;
+			// set count to 1
+			tmp_buffinfo->callingWriteThreadCount = 1;
+			// insert this buff to buffpool
+			m_dstBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
+			// decrease availabe buff
+			m_dstAvailableBuffCount--;
+
+			if(m_dstBuffPoolWaitlist.find(tag) != m_dstBuffPoolWaitlist.end())
+			{
+				m_dstBuffPoolWaitlist.erase(tag);
+			}
+			// use address to pass msg
+			tmp_buffinfo->dataPtr = DataPtr;
+			// set written flag here
+			m_dstBuffDataWrittenFlag[tmp_idx] = 1;
+			// release buffmanager lock to allow other threads to get buff
+			LCK2.unlock();
+			// notify reader that one new item inserted to buff pool
+			m_dstNewBuffInsertedCond.notify_all();
+
+			// wait reader finish data copy
+			std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_idx]);
+			m_dstBuffDataReadCond[tmp_idx].wait(LCK3,
+					[=](){return m_dstBuffDataReadFlag[tmp_idx] == 1;});
+			LCK3.unlock();
+
+			// release buff
+			LCK2.lock();
+			m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
+			m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
+			tmp_buffinfo->dataPtr= nullptr;
+			tmp_buffinfo->callingReadThreadCount=0;
+			tmp_buffinfo->callingWriteThreadCount=0;
+			tmp_buffinfo->reduceBuffsizeSensor=0;
+			m_dstBuffIdx.push_back(tmp_buffinfo->buffIdx);
+			tmp_buffinfo->buffIdx = -1;
+			m_dstAvailableBuffCount++;
+			m_dstBuffPool.erase(tag);
+			m_dstBuffAvailableCond.notify_one();
+			LCK2.unlock();
+
+		}
+	}// end dsttask
+
+	return 0;
+}
+
 void InprocConduit::AsyncWrite_Finish(int tag)
 {
 #ifdef USE_DEBUG_LOG
@@ -700,7 +872,7 @@ void InprocConduit::AsyncWrite_Finish(int tag)
 		{
 			std::future<void> fut = m_srcAsyncWriteFinishSet[tag].get_future();
 			fut.wait();
-			std::lock_guard<std::mutex> LCK2(m_srcNewAsyncWorkMutex);
+			m_srcNewAsyncWorkMutex.lock();
 			m_srcAsyncWriteFinishSet.erase(tag);
 			if(m_srcAsyncWriteFinishSet.empty() && m_srcAsyncReadFinishSet.empty())
 			{
@@ -708,6 +880,7 @@ void InprocConduit::AsyncWrite_Finish(int tag)
 				m_srcAsyncWorkerCloseSig=true;
 				m_srcNewAsyncWorkCond.notify_one();
 			}
+			m_srcNewAsyncWorkMutex.unlock();
 		}
 		else
 		{
@@ -760,7 +933,7 @@ void InprocConduit::AsyncWrite_Finish(int tag)
 
 				std::future<void> fut = m_srcAsyncWriteFinishSet[tag].get_future();
 				fut.wait();
-				std::lock_guard<std::mutex> LCK2(m_srcNewAsyncWorkMutex);
+				m_srcNewAsyncWorkMutex.lock();
 				m_srcAsyncWriteFinishSet.erase(tag);
 				if(m_srcAsyncWriteFinishSet.empty() && m_srcAsyncReadFinishSet.empty())
 				{
@@ -801,7 +974,7 @@ void InprocConduit::AsyncWrite_Finish(int tag)
         	// only one local thread
 			std::future<void> fut = m_dstAsyncWriteFinishSet[tag].get_future();
 			fut.wait();
-			std::lock_guard<std::mutex> LCK2(m_dstNewAsyncWorkMutex);
+			m_dstNewAsyncWorkMutex.lock();
 			m_dstAsyncWriteFinishSet.erase(tag);
 			if(m_dstAsyncWriteFinishSet.empty() && m_dstAsyncReadFinishSet.empty())
 			{
@@ -809,6 +982,7 @@ void InprocConduit::AsyncWrite_Finish(int tag)
 				m_dstAsyncWorkerCloseSig = true;
 				m_dstNewAsyncWorkCond.notify_one();
 			}
+			m_dstNewAsyncWorkMutex.unlock();
         }
         else
         {
@@ -865,7 +1039,7 @@ void InprocConduit::AsyncWrite_Finish(int tag)
 
 				std::future<void> fut = m_dstAsyncWriteFinishSet[tag].get_future();
 				fut.wait();
-				std::lock_guard<std::mutex> LCK2(m_dstNewAsyncWorkMutex);
+				m_dstNewAsyncWorkMutex.lock();
 				m_dstAsyncWriteFinishSet.erase(tag);
 				if(m_dstAsyncWriteFinishSet.empty() && m_dstAsyncReadFinishSet.empty())
 				{
@@ -935,6 +1109,7 @@ int InprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)
 			std::unique_lock<std::mutex> LCK2(m_srcNewAsyncWorkMutex);
 			m_srcAsyncWorkQueue.push_back(args);
 			m_srcAsyncReadFinishSet[tag] = std::promise<void>();
+			m_srcAsyncWorkerCloseSig=false;
 			if(m_srcAsyncWorkerOn == false)
 			{
 				m_srcAsyncWorkerOn = true;
@@ -1010,6 +1185,7 @@ int InprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)
     			std::unique_lock<std::mutex> LCK2(m_srcNewAsyncWorkMutex);
     			m_srcAsyncWorkQueue.push_back(args);
     			m_srcAsyncReadFinishSet[tag] = std::promise<void>();
+    			m_srcAsyncWorkerCloseSig=false;
     			if(m_srcAsyncWorkerOn == false)
     			{
     				m_srcAsyncWorkerOn = true;
@@ -1061,6 +1237,7 @@ int InprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)
 			std::unique_lock<std::mutex> LCK2(m_dstNewAsyncWorkMutex);
 			m_dstAsyncWorkQueue.push_back(args);
 			m_dstAsyncReadFinishSet[tag] = std::promise<void>();
+			m_dstAsyncWorkerCloseSig=false;
 			if(m_dstAsyncWorkerOn == false)
 			{
 				m_dstAsyncWorkerOn = true;
@@ -1134,6 +1311,7 @@ int InprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)
 				std::unique_lock<std::mutex> LCK2(m_dstNewAsyncWorkMutex);
 				m_dstAsyncWorkQueue.push_back(args);
 				m_dstAsyncReadFinishSet[tag] = std::promise<void>();
+				m_dstAsyncWorkerCloseSig=false;
 				if(m_dstAsyncWorkerOn == false)
 				{
 					m_dstAsyncWorkerOn = true;
@@ -1443,7 +1621,7 @@ void InprocConduit::AsyncRead_Finish(int tag)
 		{
 			std::future<void> fut = m_srcAsyncReadFinishSet[tag].get_future();
 			fut.wait();
-			std::lock_guard<std::mutex> LCK2(m_srcNewAsyncWorkMutex);
+			m_srcNewAsyncWorkMutex.lock();
 			m_srcAsyncReadFinishSet.erase(tag);
 			if(m_srcAsyncWriteFinishSet.empty() && m_srcAsyncReadFinishSet.empty())
 			{
@@ -1451,6 +1629,7 @@ void InprocConduit::AsyncRead_Finish(int tag)
 				m_srcAsyncWorkerCloseSig=true;
 				m_srcNewAsyncWorkCond.notify_one();
 			}
+			m_srcNewAsyncWorkMutex.unlock();
 		}
 		else
 		{
@@ -1503,7 +1682,7 @@ void InprocConduit::AsyncRead_Finish(int tag)
 
 				std::future<void> fut = m_srcAsyncReadFinishSet[tag].get_future();
 				fut.wait();
-				std::lock_guard<std::mutex> LCK2(m_srcNewAsyncWorkMutex);
+				m_srcNewAsyncWorkMutex.lock();
 				m_srcAsyncReadFinishSet.erase(tag);
 				if(m_srcAsyncWriteFinishSet.empty() && m_srcAsyncReadFinishSet.empty())
 				{
@@ -1545,7 +1724,7 @@ void InprocConduit::AsyncRead_Finish(int tag)
         	// only one local thread
         	std::future<void> fut = m_dstAsyncReadFinishSet[tag].get_future();
 			fut.wait();
-			std::lock_guard<std::mutex> LCK2(m_dstNewAsyncWorkMutex);
+			m_dstNewAsyncWorkMutex.lock();
 			m_dstAsyncReadFinishSet.erase(tag);
 			if(m_dstAsyncWriteFinishSet.empty() && m_dstAsyncReadFinishSet.empty())
 			{
@@ -1553,6 +1732,7 @@ void InprocConduit::AsyncRead_Finish(int tag)
 				m_dstAsyncWorkerCloseSig=true;
 				m_dstNewAsyncWorkCond.notify_one();
 			}
+			m_dstNewAsyncWorkMutex.unlock();
         }
         else
         {
@@ -1609,7 +1789,7 @@ void InprocConduit::AsyncRead_Finish(int tag)
 
 				std::future<void> fut = m_dstAsyncReadFinishSet[tag].get_future();
 				fut.wait();
-				std::lock_guard<std::mutex> LCK2(m_dstNewAsyncWorkMutex);
+				m_dstNewAsyncWorkMutex.lock();
 				m_dstAsyncReadFinishSet.erase(tag);
 				if(m_dstAsyncWriteFinishSet.empty() && m_dstAsyncReadFinishSet.empty())
 				{

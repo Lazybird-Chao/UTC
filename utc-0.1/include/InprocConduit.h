@@ -133,6 +133,7 @@ private:
 	void asyncWorkerImpl(int myTaskid);
 
 	int threadWriteImpl(void* DataPtr, DataSize_t DataSize, int tag, int myTaskid);
+	int threadPWriteImpl(void* DataPtr, DataSize_t DataSize, int tag, int myTaskid);
 
 	int threadReadImpl(void* DataPtr, DataSize_t DataSize, int tag, int myTaskid);
 
