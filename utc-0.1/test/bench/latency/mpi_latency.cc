@@ -33,7 +33,9 @@ int main(int argc, char* argv[])
     double t_start = 0.0, t_end = 0.0;
     //char end_data;
 
-    MPI_Init(&argc, &argv);
+    //MPI_Init(&argc, &argv);
+    int provide;
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provide);
     MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &myid);
     if(numprocs != 2)
@@ -43,6 +45,11 @@ int main(int argc, char* argv[])
 		MPI_Finalize();
 		return 1;
     }
+
+    /*char name[100];
+    int len;
+    MPI_Get_processor_name(name,&len);
+    printf("%s\n",name);*/
 
 
     if(myid == 0)

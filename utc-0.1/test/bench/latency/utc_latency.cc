@@ -115,7 +115,7 @@ void SendRecvWorker::run()
 			{
 				if(i==skip)
 					timer.start();
-				m_cdt->PWrite(s_buf, size, i);
+				m_cdt->Write(s_buf, size, i);
 				m_cdt->Read(r_buf, size, i);
 			}
 			//m_cdt->Read(&end_data, 1 , i);
@@ -145,7 +145,7 @@ void SendRecvWorker::run()
 			for(i=0; i<loop+skip; i++)
 			{
 				m_cdt->Read(r_buf, size, i);
-				m_cdt->PWrite(s_buf, size, i);
+				m_cdt->Write(s_buf, size, i);
 			}
 			//m_cdt->Write(&end_data, 1, i);
 		}

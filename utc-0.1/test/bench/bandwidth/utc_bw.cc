@@ -24,7 +24,7 @@ using namespace iUtc;
 #define WINDOW_SIZE_LARGE 64
 #define SKIP_LARGE 2
 #define LARGE_MESSAGE_SIZE (1<<16)
-#define LOOP_LLARGE 10
+#define LOOP_LLARGE 4
 #define SKIP_LLARGE 1
 #define LLARGE_MESSAGE_SIZE (1<<23)
 #define WINDOW_SIZE_LLARGE 4
@@ -189,7 +189,7 @@ int main(int argc, char* argv[])
 	/* define sender and receiver task obj */
 	RankList rl1(1, 0);
 	Task<SendRecvWorker> sender(rl1);
-	RankList rl2(1, 0);
+	RankList rl2(1, 1);
 	Task<SendRecvWorker> receiver(rl2);
 
 	/* define conduit obj */

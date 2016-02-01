@@ -42,7 +42,7 @@ public:
 
 
 private:
-	TIME_CLOCK::time_point m_beginTimePoint;
+	TIME_CLOCK::time_point m_beginTimePoint=TIME_CLOCK::time_point();
 	TIME_CLOCK::time_point m_endTimePoint;
 
 	double m_retTimeperiod;
