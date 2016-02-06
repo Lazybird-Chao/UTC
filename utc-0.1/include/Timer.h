@@ -1,6 +1,7 @@
 #ifndef UTC_TIMER_H_
 #define UTC_TIMER_H_
 
+#include <time.h>
 #include <chrono>
 
 #define TIME_CLOCK  std::chrono::steady_clock
@@ -35,18 +36,26 @@ public:
 	// to current stop() in Timer_unit
 	double stop();
 	// return passed time from last start(), also tv_out store the current time point value
-	double stop(TimerValue& tv_out);
+	double stop(TimerValue& tv_stop);
 	// return the time period from tv_in to current. also tv_out store the current time point
-	double stop(TimerValue& tv_in, TimerValue& tv_out);
+	double stop(TimerValue& tv_start, TimerValue& tv_stop);
 
-
+	double getRealTime();
+	double getThreadCpuTime();
 
 private:
-	TIME_CLOCK::time_point m_beginTimePoint=TIME_CLOCK::time_point();
+	TIME_CLOCK::time_point m_beginTimePoint;
 	TIME_CLOCK::time_point m_endTimePoint;
 
-	double m_retTimeperiod;
+	double m_realTimeperiod;
 	double m_ratio2sec;
+	double m_cpuTimeperiod;
+
+	/*
+	 * some other linux timing struct
+	 */
+	struct timespec m_clk_start;
+	struct timespec m_clk_stop;
 
 	//bool m_started;
 

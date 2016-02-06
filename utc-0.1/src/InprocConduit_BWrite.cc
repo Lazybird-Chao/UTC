@@ -1,7 +1,6 @@
 #include "InprocConduit.h"
 #include "TaskManager.h"
 #include "Task.h"
-#include "Task_Utilities.h"
 #include "UtcBasics.h"
 
 
@@ -10,6 +9,7 @@
 #include <cstring>
 #include <chrono>
 #include <cassert>
+#include "../include/TaskUtilities.h"
 
 
 namespace iUtc

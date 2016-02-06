@@ -28,6 +28,7 @@
 using namespace iUtc;
 
 #define USE_THREAD
+//#define USE_PROCESS
 
 /*
  * define the function f(x) that
@@ -45,13 +46,16 @@ class IntegralCaculator
 public:
 	void init(long loopN, unsigned seed, double range_lower, double range_upper)
 	{
-		m_seed = seed;
-		m_range_lower = range_lower;
-		m_range_upper = range_upper;
-		int total_nthreads = getGsize();
-		int local_nthreads = getLsize();
-		m_loopN = loopN/total_nthreads;
-		m_res = (double*)malloc(sizeof(double)*local_nthreads);
+		if(getTrank()==0)
+		{
+			m_seed = seed;
+			m_range_lower = range_lower;
+			m_range_upper = range_upper;
+			int total_nthreads = getGsize();
+			int local_nthreads = getLsize();
+			m_loopN = loopN/total_nthreads;
+			m_res = (double*)malloc(sizeof(double)*local_nthreads);
+		}
 
 	}
 
@@ -63,7 +67,7 @@ public:
 		int local_nthreads = getLsize();
 		std::srand(m_seed);
 
-		sleep(my_thread);
+		/*sleep(my_thread);
 		std::cout<<my_thread<<": "<<getpid()<<": "<<syscall(SYS_gettid)<<endl;
 		// check thread affinity
 		int s;
@@ -84,44 +88,45 @@ public:
 		CPU_ZERO(&cpuset);
 		CPU_SET(my_thread, &cpuset);
 		pthread_setaffinity_np(thread, sizeof(cpu_set_t),&cpuset);
-		intra_Barrier();
+		intra_Barrier();*/
 
 		Timer timer;
 		timer.start();
 
-		struct timespec st1, st2;
+		/*struct timespec st1, st2;
 		clock_gettime(CLOCK_THREAD_CPUTIME_ID, &st1);
 		struct tms cst1, cst2;
-		times(&cst1);
+		times(&cst1);*/
 
-		int c1, c2;
+		/*int c1, c2;
 		c1 = c2= sched_getcpu();
-		long count=0;
+		long count=0;*/
 		double tmp_lower = m_range_lower;
 		double tmp_upper=m_range_upper;
+		unsigned int tmp_seed = m_seed;
 		for(long i=0; i<m_loopN;i++)
 		{
-			tmp_x = tmp_lower+((double)rand()/RAND_MAX)*(tmp_upper-tmp_lower);
+			tmp_x = tmp_lower+((double)rand_r(&tmp_seed)/RAND_MAX)*(tmp_upper-tmp_lower);
 			tmp_sum+=f(tmp_x);
-			//if(i%10==0)
-			//{
-				c2=sched_getcpu();
+
+				/*c2=sched_getcpu();
 				if(c2!=c1)
 				{
 					c1 = c2;
 					count++;
-				}
-			//}
+				}*/
+
 		}
 		m_res[my_thread]=tmp_sum*(m_range_upper-m_range_lower)/m_loopN;
 
-		clock_gettime(CLOCK_THREAD_CPUTIME_ID,&st2);
+		/*clock_gettime(CLOCK_THREAD_CPUTIME_ID,&st2);
 		double diff = (st2.tv_sec - st1.tv_sec) + (st2.tv_nsec - st1.tv_nsec)/1e9;
 		times(&cst2);
 		clock_t utime = cst2.tms_utime-cst1.tms_utime;
-		clock_t systime = cst2.tms_stime - cst1.tms_stime;
+		clock_t systime = cst2.tms_stime - cst1.tms_stime;*/
 
-		double t2 = timer.stop();
+		timer.stop();
+		double t2 = timer.getThreadCpuTime();
 		intra_Barrier();
 		if(my_thread==0)
 		{
@@ -139,7 +144,7 @@ public:
 		sleep_for(my_thread);
 		std::cout<<my_thread<<": "<<getpid()<<": "<<syscall(SYS_gettid)<<": "<<pthread_self()<<": "<<std::this_thread::get_id()
 					<<"  "<<t2<<"  "<<m_loopN<<std::endl;
-
+		/*
 		// check thread affinity
 		CPU_ZERO(&cpuset);
 		thread=pthread_self();
@@ -154,7 +159,7 @@ public:
 		}
 		std::cout<<count<<std::endl;
 		std::cout<<diff<<std::endl;
-		std::cout<<utime<<"  "<<systime<<std::endl;
+		std::cout<<utime<<"  "<<systime<<std::endl;*/
 	}
 
 private:
@@ -171,7 +176,7 @@ int main(int argc, char*argv[])
 {
 	UtcContext ctx(argc, argv);
 
-	std::cout<<"Total cpus: "<<std::thread::hardware_concurrency()<<std::endl;
+	/*std::cout<<"Total cpus: "<<std::thread::hardware_concurrency()<<std::endl;
 
 	std::cout<<"main proc id: "<<getpid()<<": "<<syscall(SYS_gettid)<<"  thread id:"<<std::this_thread::get_id()<<std::endl;
 	// check thread affinity
@@ -188,7 +193,7 @@ int main(int argc, char*argv[])
 			   if(CPU_ISSET(j, &cpuset))
 				   printf("%d ", j);
 		std::cout<<std::endl;
-	}
+	}*/
 
 	int nthreads = std::atoi(argv[1]);
 	//std::cout<<nthreads<<std::endl;

@@ -62,8 +62,8 @@ void UtcContext::initialize(int& argc, char** argv)
 {
     // This initialize will only run once for the first time when creating Context obj.
     // TODO: change this class to "Singleton", even under multi thread.
-    if(m_nCount && TaskManager::getCurrentTaskId()!= m_rootTaskId)
-        return;
+   /* if(m_nCount && TaskManager::getCurrentTaskId()!= m_rootTaskId)
+        return;*/
     if(m_nCount++!=0)
         return;
 

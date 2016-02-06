@@ -1,81 +1,106 @@
 #include "Timer.h"
-#include "Timer_Utilities.h"
-
 #include <iostream>
 #include <thread>
+#include "../include/TimerUtilities.h"
 
 namespace iUtc{
 
 Timer::Timer(Timer_unit tu)
 {
-	m_retTimeperiod =0.0;
+	m_realTimeperiod =0.0;
+	m_cpuTimeperiod =0.0;
 	//m_started = false;
 	switch(tu){
 	case DAYS:
-		m_ratio2sec = 1/86400;
+		m_ratio2sec = 1.0/86400;
 		break;
 	case HOURS:
-		m_ratio2sec = 1/3600;
+		m_ratio2sec = 1.0/3600;
 		break;
 	case MINUTES:
-		m_ratio2sec = 1/60;
+		m_ratio2sec = 1.0/60;
 		break;
 	case SECONDS:
-		m_ratio2sec = 1;
+		m_ratio2sec = 1.0;
 		break;
 	case MILLISEC:
-		m_ratio2sec = 1000;
+		m_ratio2sec = 1000.0;
 		break;
 	case MICROSEC:
-		m_ratio2sec = 1000000;
+		m_ratio2sec = 1000000.0;
 		break;
 	case NANOSEC:
-		m_ratio2sec = 1000000000;
+		m_ratio2sec = 1000000000.0;
 		break;
 	default:
-		m_ratio2sec = 1;
+		m_ratio2sec = 1.0;
 		break;
 	}
 	m_ratio2sec= m_ratio2sec*TIME_CLOCK::period::num / TIME_CLOCK::period::den;
+	m_beginTimePoint = TIME_CLOCK::time_point();
+	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &m_clk_start);
 
 }
 
 void Timer::start()
 {
 	m_beginTimePoint = TIME_CLOCK::now();
+	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &m_clk_start);
 	//m_started = true;
 }
 void Timer::start(TimerValue& tv_out)
 {
 	tv_out = m_beginTimePoint = TIME_CLOCK::now();
+	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &m_clk_start);
 }
 
 double Timer::stop()
 {
 	m_endTimePoint = TIME_CLOCK::now();
+	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &m_clk_stop);
 	/*if(m_started)
 	{
 		m_retTimevalue = (std::chrono::duration_cast<std::chrono::duration<double>>\
 				(m_endTimePoint-m_beginTimePoint).count())*m_ratio2sec;
 
 	}*/
-	m_retTimeperiod=m_ratio2sec * (m_endTimePoint-m_beginTimePoint).count();
-	return m_retTimeperiod;
+	m_realTimeperiod=m_ratio2sec * (m_endTimePoint-m_beginTimePoint).count();
+
+	return m_realTimeperiod;
 }
 double Timer::stop(TimerValue &tv_out)
 {
 	tv_out = m_endTimePoint = TIME_CLOCK::now();
-	m_retTimeperiod=m_ratio2sec * (m_endTimePoint-m_beginTimePoint).count();
-	return m_retTimeperiod;
+	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &m_clk_stop);
+	m_realTimeperiod=m_ratio2sec * (m_endTimePoint-m_beginTimePoint).count();
+	return m_realTimeperiod;
 }
 double Timer::stop(TimerValue& tv_in, TimerValue& tv_out)
 {
 	tv_out = m_endTimePoint = TIME_CLOCK::now();
-	m_retTimeperiod=m_ratio2sec * (m_endTimePoint-tv_in).count();
-	return m_retTimeperiod;
+	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &m_clk_stop);
+	m_realTimeperiod=m_ratio2sec * (m_endTimePoint-tv_in).count();
+	return m_realTimeperiod;
 }
 
+/*
+ *
+ */
+double Timer::getRealTime()
+{
+	return m_realTimeperiod;
+}
 
+/*
+ * get calling thread's own cpu time, excluding waiting for other thread's cpu holding time.
+ * this is not the real feeling or wall clock time.
+ */
+double Timer::getThreadCpuTime()
+{
+	m_cpuTimeperiod = (m_ratio2sec*TIME_CLOCK::period::den/TIME_CLOCK::period::num)*
+			((m_clk_stop.tv_sec - m_clk_start.tv_sec) + (m_clk_stop.tv_nsec - m_clk_start.tv_nsec)/1e9);
+	return m_cpuTimeperiod;
+}
 
 
 /*

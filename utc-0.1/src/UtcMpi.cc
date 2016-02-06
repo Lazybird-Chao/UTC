@@ -43,8 +43,8 @@ namespace iUtc{
             mpi_mode=MPI::THREAD_SERIALIZED;
 #endif
             int provided=0;
-            //MPI_Init_thread(&argc, &argv, mpi_mode, &provided);
-            provided=MPI::Init_thread(argc, argv, mpi_mode);
+            MPI_Init_thread(&argc, &argv, mpi_mode, &provided);
+            //provided=MPI::Init_thread(argc, argv, mpi_mode);
             m_rank= this->rank();
             m_size = this->numProcs();
             int length;

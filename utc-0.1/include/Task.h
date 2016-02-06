@@ -131,6 +131,8 @@ private:
 	//
 	std::function<void()> m_userTaskInitFunctionHandle;
 
+	std::function<void()> m_userTaskRunFunctionHandle;
+
 	//
 	Task& operator=(const Task& other)=delete;
 	Task(const Task& other)=delete;

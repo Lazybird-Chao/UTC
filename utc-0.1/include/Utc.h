@@ -5,6 +5,7 @@
 #include "UtcBasics.h"
 
 //A
+#include "AffinityUtilities.h"
 
 //B
 #include "Barrier.h"
@@ -29,12 +30,9 @@
 #include "TaskInfo.h"
 #include "TaskManager.h"
 #include "Task.h"
-#include "Task_Utilities.h"
+#include "TaskUtilities.h"
 #include "Timer.h"
-#include "Timer_Utilities.h"
-
-
-//U
+#include "TimerUtilities.h"
 #include "UtcBase.h"
 #include "UtcBasics.h"
 #include "UtcContext.h"
