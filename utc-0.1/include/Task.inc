@@ -225,6 +225,8 @@ void Task<T>::run()
         return;
     }
 	m_calledRun = 1;
+	//
+	m_userTaskRunFunctionHandle = std::bind(&T::run, m_userTaskObjPtr);
 	// ask all thread to do task.run
 	runImpl();
 
@@ -381,7 +383,8 @@ void Task<T>::threadImpl(ThreadRank_t trank, ThreadRank_t lrank, std::ofstream *
 	LCK2.unlock();
 
 	//call user's task.run()
-	m_userTaskObjPtr->run();
+	//m_userTaskObjPtr->run();
+	m_userTaskRunFunctionHandle();
 
 	// TODO: notify main thread that this thread finish run
 
