@@ -142,5 +142,16 @@
                         We use std::chrono::steady_clock to implement this timer obj.            
                       
                         
-                        
+
+-Version 0.1.0
+			The first usable task&conduit prototype. Implement task create procedure, inproc conduit, xproc 
+			conduit.
+			
+			
+			
+-Version 0.1.1	
+			Finish debugging the last version. Right now the main problem of the system is conduit's 
+			performance. 
+			Improving inproc conduit communication using "lock free" design and algorithm.
+			
                                                                
