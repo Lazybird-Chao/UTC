@@ -74,8 +74,6 @@ RootTask::RootTask(int WorldSize, int currentProcess)
                                               // TaskManager instance, only one instance in current
                                               // process.
 
-
-
 }
 
 

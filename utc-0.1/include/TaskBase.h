@@ -9,8 +9,8 @@
 #include <map>
 #include <vector>
 #include <string>
-#include <boost/thread/tss.hpp>
-#include <boost/thread/thread.hpp>
+#include "boost/thread/tss.hpp"
+#include "boost/thread/thread.hpp"
 #include <mutex>
 #include <condition_variable>
 

@@ -23,6 +23,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "boost/filesystem.hpp"
+#include "boost/thread/tss.hpp"
 
 namespace iUtc{
 
