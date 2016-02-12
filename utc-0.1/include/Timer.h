@@ -41,7 +41,9 @@ public:
 	double stop(TimerValue& tv_start, TimerValue& tv_stop);
 
 	double getRealTime();
+#ifdef _LINUX_
 	double getThreadCpuTime();
+#endif
 
 private:
 	TIME_CLOCK::time_point m_beginTimePoint;
@@ -49,6 +51,7 @@ private:
 
 	double m_realTimeperiod;
 	double m_ratio2sec;
+#ifdef _LINUX_
 	double m_cpuTimeperiod;
 
 	/*
@@ -56,7 +59,7 @@ private:
 	 */
 	struct timespec m_clk_start;
 	struct timespec m_clk_stop;
-
+#endif
 	//bool m_started;
 
 	Timer& operator=(const Timer &other)=delete;

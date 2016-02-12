@@ -8,7 +8,9 @@ namespace iUtc{
 Timer::Timer(Timer_unit tu)
 {
 	m_realTimeperiod =0.0;
+#ifdef _LINUX_
 	m_cpuTimeperiod =0.0;
+#endif
 	//m_started = false;
 	switch(tu){
 	case DAYS:
@@ -38,26 +40,34 @@ Timer::Timer(Timer_unit tu)
 	}
 	m_ratio2sec= m_ratio2sec*TIME_CLOCK::period::num / TIME_CLOCK::period::den;
 	m_beginTimePoint = TIME_CLOCK::time_point();
+#ifdef _LINUX_
 	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &m_clk_start);
+#endif
 
 }
 
 void Timer::start()
 {
 	m_beginTimePoint = TIME_CLOCK::now();
+#ifdef _LINUX_
 	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &m_clk_start);
+#endif
 	//m_started = true;
 }
 void Timer::start(TimerValue& tv_out)
 {
 	tv_out = m_beginTimePoint = TIME_CLOCK::now();
+#ifdef _LINUX_
 	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &m_clk_start);
+#endif
 }
 
 double Timer::stop()
 {
 	m_endTimePoint = TIME_CLOCK::now();
+#ifdef _LINUX_
 	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &m_clk_stop);
+#endif
 	/*if(m_started)
 	{
 		m_retTimevalue = (std::chrono::duration_cast<std::chrono::duration<double>>\
@@ -71,14 +81,18 @@ double Timer::stop()
 double Timer::stop(TimerValue &tv_out)
 {
 	tv_out = m_endTimePoint = TIME_CLOCK::now();
+#ifdef _LINUX_
 	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &m_clk_stop);
+#endif
 	m_realTimeperiod=m_ratio2sec * (m_endTimePoint-m_beginTimePoint).count();
 	return m_realTimeperiod;
 }
 double Timer::stop(TimerValue& tv_in, TimerValue& tv_out)
 {
 	tv_out = m_endTimePoint = TIME_CLOCK::now();
+#ifdef _LINUX_
 	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &m_clk_stop);
+#endif
 	m_realTimeperiod=m_ratio2sec * (m_endTimePoint-tv_in).count();
 	return m_realTimeperiod;
 }
@@ -95,12 +109,14 @@ double Timer::getRealTime()
  * get calling thread's own cpu time, excluding waiting for other thread's cpu holding time.
  * this is not the real feeling or wall clock time.
  */
+#ifdef _LINUX_
 double Timer::getThreadCpuTime()
 {
 	m_cpuTimeperiod = (m_ratio2sec*TIME_CLOCK::period::den/TIME_CLOCK::period::num)*
 			((m_clk_stop.tv_sec - m_clk_start.tv_sec) + (m_clk_stop.tv_nsec - m_clk_start.tv_nsec)/1e9);
 	return m_cpuTimeperiod;
 }
+#endif
 
 
 /*

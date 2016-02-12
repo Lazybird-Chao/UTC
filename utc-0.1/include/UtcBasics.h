@@ -1,6 +1,13 @@
 #ifndef UTC_BASICS_H_
 #define UTC_BASICS_H_
 
+/*
+ *
+ */
+#define _MAC_
+//#define _LINUX_
+
+
 
 /*
  *
@@ -14,7 +21,6 @@
 /*
  *
  */
-
 #include <chrono>
 #include <ctime>
 extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
