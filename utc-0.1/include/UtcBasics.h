@@ -4,8 +4,8 @@
 /*
  *
  */
-#define _MAC_
-//#define _LINUX_
+//#define _MAC_
+#define _LINUX_
 
 
 

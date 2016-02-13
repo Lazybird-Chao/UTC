@@ -8,9 +8,14 @@
 #ifndef UTC_AFFINITYUTILITIES_H_
 #define UTC_AFFINITYUTILITIES_H_
 
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/syscall.h>
+#ifdef _LINUX_
+	#include <unistd.h>
+	#include <sys/types.h>
+	#include <sys/syscall.h>
+#endif
+#ifdef _MAC_
+
+#endif
 #include <vector>
 
 namespace iUtc{
@@ -20,6 +25,16 @@ namespace iUtc{
  */
 inline std::vector<int> getAffinity()
 {
+#ifdef _LINUX_
+	return getAffinityLinux();
+#endif
+#ifdef _MAC_
+	return getAffinityMAc();
+#endif
+
+}
+
+inline std::vector<int> getAffinityLinux(){
 	cpu_set_t cpuset;
 	pthread_t thread;
 	std::vector<int> ret;
@@ -36,14 +51,27 @@ inline std::vector<int> getAffinity()
 		if(CPU_ISSET(i, &cpuset))
 			ret.push_back(i);
 	return ret;
+
 }
 
+inline std::vector<int> getAffinityMac(){
+	return 0;
+}
 
 /*
  * modify calling thread's cpu affinity as desired
  */
 inline void setAffinity(std::vector<int> cpus)
 {
+#ifdef _LINUX_
+	setAffinityLinux(cpus);
+#endif
+#ifdef _MAC_
+	setAffinityMac(cpus);
+#endif
+}
+
+inline void setAffinityLinux(std::vector<int> cpus){
 	cpu_set_t cpuset;
 	pthread_t thread;
 	std::vector<int> ret;
@@ -62,12 +90,22 @@ inline void setAffinity(std::vector<int> cpus)
 	return;
 }
 
+inline void setAffinityMac(std::vector<int> cpus){
+	return;
+}
+
 /*
  * get calling thread's run-on cpu id at current execution point
  */
 inline int getCurrentCPU()
 {
+#ifdef _LINUX_
 	return sched_getcpu();
+#endif
+
+#ifdef _MAC_
+	return 0;
+#endif
 }
 
 }//end iUtc
