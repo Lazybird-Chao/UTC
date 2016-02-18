@@ -1,5 +1,4 @@
 #include "Conduit.h"
-
 #include "../include/TaskUtilities.h"
 #include "UtcBasics.h"
 #include "ConduitManager.h"
@@ -33,57 +32,11 @@ Conduit::Conduit()
 
 Conduit::Conduit(TaskBase* srctask, TaskBase* dsttask)
 {
-	m_srcTask = srctask;
-	m_dstTask = dsttask;
-	m_srcId = m_srcTask->getTaskId();
-	m_dstId = m_dstTask->getTaskId();
-
-	m_capacity = INPROC_CONDUIT_CAPACITY_DEFAULT;
-	m_Name = m_srcTask->getName()+"<=>"+m_dstTask->getName();
-	m_conduitId = ConduitManager::getNewConduitId();
-	m_cdtMgr = ConduitManager::getInstance();
-	m_cdtMgr->registerConduit(this, m_conduitId);
-
-#ifdef USE_DEBUG_LOG
-	std::ofstream* procOstream = getProcOstream();
-#endif
-
-	if(srctask->isActiveOnCurrentProcess()==true &&
-			dsttask->isActiveOnCurrentProcess()==true)
-	{
-		m_realConduitPtr = new InprocConduit(srctask, dsttask, m_conduitId, m_capacity);
-#ifdef USE_DEBUG_LOG
-		PRINT_TIME_NOW(*procOstream)
-		*procOstream<<"InprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
-						<<"] constructed..."<<std::endl;
-#endif
-	}
-	else if((srctask->isActiveOnCurrentProcess()== false && dsttask->isActiveOnCurrentProcess()== true) ||
-			(srctask->isActiveOnCurrentProcess()== true && dsttask->isActiveOnCurrentProcess()==false))
-	{
-		m_realConduitPtr = new XprocConduit(srctask, dsttask, m_conduitId);
-#ifdef USE_DEBUG_LOG
-		PRINT_TIME_NOW(*procOstream)
-		*procOstream<<"XprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
-						<<"] constructed..."<<std::endl;
-#endif
-	}
-	else
-	{
-		m_realConduitPtr = nullptr;
-#ifdef USE_DEBUG_LOG
-		PRINT_TIME_NOW(*procOstream)
-		*procOstream<<"NULL Conduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
-						<<"] constructed..."<<std::endl;
-#endif
-	}
-
-
-
+	initConduit(srctask, dsttask, INPROC_CONDUIT_CAPACITY_DEFAULT);
 }
 
-Conduit::Conduit(TaskBase* srctask, TaskBase* dsttask, int capacity)
-{
+
+int Conduit::initConduit(TaskBase* srctask, TaskBase* dsttask, int capacity){
 	m_srcTask = srctask;
 	m_dstTask = dsttask;
 	m_srcId = m_srcTask->getTaskId();
@@ -102,42 +55,52 @@ Conduit::Conduit(TaskBase* srctask, TaskBase* dsttask, int capacity)
 	m_cdtMgr = ConduitManager::getInstance();
 	m_cdtMgr->registerConduit(this, m_conduitId);
 
-
 #ifdef USE_DEBUG_LOG
 	std::ofstream* procOstream = getProcOstream();
 #endif
 
-	if(srctask->isActiveOnCurrentProcess()==true &&
+	/*
+	 * we just now only allow simple conduit between two tasks.
+	 * This requires that each task only active on one process.
+	 */
+	if(srctask->getNumProcesses() == 1 && dsttask->getNumProcesses() == 1){
+	 	if(srctask->isActiveOnCurrentProcess()==true &&
 				dsttask->isActiveOnCurrentProcess()==true)
-	{
-		m_realConduitPtr = new InprocConduit(srctask, dsttask, m_conduitId, m_capacity);
+		{
+			m_realConduitPtr = new InprocConduit(srctask, dsttask, m_conduitId);
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*procOstream)
 		*procOstream<<"InprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
 						<<"] constructed..."<<std::endl;
 #endif
-	}
-	else if((srctask->isActiveOnCurrentProcess()== false && dsttask->isActiveOnCurrentProcess()== true) ||
-			(srctask->isActiveOnCurrentProcess()== true && dsttask->isActiveOnCurrentProcess()==false))
-	{
-		m_realConduitPtr = new XprocConduit(srctask, dsttask, m_conduitId);
+		}
+		else if((srctask->isActiveOnCurrentProcess()== false && dsttask->isActiveOnCurrentProcess()== true) ||
+				(srctask->isActiveOnCurrentProcess()== true && dsttask->isActiveOnCurrentProcess()==false))
+		{
+			m_realConduitPtr = new XprocConduit(srctask, dsttask, m_conduitId);
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*procOstream)
 		*procOstream<<"XprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
 						<<"] constructed..."<<std::endl;
 #endif
-	}
-	else
-	{
-		m_realConduitPtr = nullptr;
+		}
+		else
+		{
+			m_realConduitPtr = nullptr;
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*procOstream)
 		*procOstream<<"NULL Conduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
 						<<"] constructed..."<<std::endl;
 #endif
+		}
 	}
-}
+	else{
+		std::cerr<<"ERROR, simple conduit only allow task rnning on one process"<<std::endl;
+		return 1;
+	}
 
+	return 0;	
+}
 
 int Conduit::getCapacity()
 {
@@ -190,47 +153,9 @@ void Conduit::Connect(TaskBase* srctask, TaskBase* dsttask)
         std::cerr<<"Error, already connected to some Task"<<std::endl;
         exit(1);
     }
-    m_srcTask = srctask;
-    m_dstTask = dsttask;
-    m_srcId = srctask->getTaskId();
-    m_dstId = dsttask->getTaskId();
-
-    m_Name = m_srcTask->getName()+"<=>"+m_dstTask->getName();
-
-#ifdef USE_DEBUG_LOG
-	std::ofstream* procOstream = getProcOstream();
-#endif
-
-	if(srctask->isActiveOnCurrentProcess()==true &&
-					dsttask->isActiveOnCurrentProcess()==true)
-	{
-		m_realConduitPtr = new InprocConduit(srctask, dsttask, m_conduitId, m_capacity);
-#ifdef USE_DEBUG_LOG
-		PRINT_TIME_NOW(*procOstream)
-		*procOstream<<"InprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
-						<<"] constructed..."<<std::endl;
-#endif
-	}
-	else if((srctask->isActiveOnCurrentProcess()== false && dsttask->isActiveOnCurrentProcess()== true) ||
-			(srctask->isActiveOnCurrentProcess()== true && dsttask->isActiveOnCurrentProcess()==false))
-	{
-		m_realConduitPtr = new XprocConduit(srctask, dsttask,m_conduitId);
-#ifdef USE_DEBUG_LOG
-		PRINT_TIME_NOW(*procOstream)
-		*procOstream<<"XprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
-						<<"] constructed..."<<std::endl;
-#endif
-	}
-	else
-	{
-		m_realConduitPtr = nullptr;
-#ifdef USE_DEBUG_LOG
-		PRINT_TIME_NOW(*procOstream)
-		*procOstream<<"NULL Conduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
-						<<"] constructed..."<<std::endl;
-#endif
-	}
-
+    
+    initConduit(srctask, dsttask, INPROC_CONDUIT_CAPACITY_DEFAULT);
+    
     return;
 }
 
@@ -282,45 +207,6 @@ Conduit::~Conduit()
 }
 
 
-int Conduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag)
-{
-	if(m_realConduitPtr)
-	{
-		m_realConduitPtr->BWrite(DataPtr, DataSize, tag);
-	}
-	else
-	{
-		return 1;
-	}
-
-	return 0;
-}
-
-int Conduit::BWriteBy(ThreadRank_t thread, void *DataPtr, DataSize_t DataSize, int tag)
-{
-	if(m_realConduitPtr)
-	{
-		m_realConduitPtr->BWriteBy(thread, DataPtr, DataSize, tag);
-	}
-	else
-	{
-		return 1;
-	}
-
-	return 0;
-}
-
-void Conduit::BWriteBy_Finish(int tag)
-{
-	if(m_realConduitPtr)
-	{
-		m_realConduitPtr->BWriteBy_Finish(tag);
-	}
-
-	return;
-}
-
-
 int Conduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
 {
 	if(m_realConduitPtr)
@@ -335,7 +221,7 @@ int Conduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
 	return 0;
 }
 
-int Conduit::WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag)
+/*int Conduit::WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 	if(m_realConduitPtr)
 	{
@@ -357,7 +243,45 @@ void Conduit::WriteBy_Finish(int tag)
 	}
 
 	return;
+}*/
+
+int Conduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag)
+{
+	if(m_realConduitPtr)
+	{
+		m_realConduitPtr->BWrite(DataPtr, DataSize, tag);
+	}
+	else
+	{
+		return 1;
+	}
+
+	return 0;
 }
+
+/*int Conduit::BWriteBy(ThreadRank_t thread, void *DataPtr, DataSize_t DataSize, int tag)
+{
+	if(m_realConduitPtr)
+	{
+		m_realConduitPtr->BWriteBy(thread, DataPtr, DataSize, tag);
+	}
+	else
+	{
+		return 1;
+	}
+
+	return 0;
+}
+
+void Conduit::BWriteBy_Finish(int tag)
+{
+	if(m_realConduitPtr)
+	{
+		m_realConduitPtr->BWriteBy_Finish(tag);
+	}
+
+	return;
+}*/
 
 
 int Conduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
@@ -374,7 +298,7 @@ int Conduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
 	return 0;
 }
 
-int Conduit::PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag)
+/*int Conduit::PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 	if(m_realConduitPtr)
 	{
@@ -396,7 +320,7 @@ void Conduit::PWriteBy_Finish(int tag)
 	}
 
 	return;
-}
+}*/
 
 
 
@@ -414,7 +338,7 @@ int Conduit::Read(void* DataPtr, DataSize_t DataSize, int tag)
 	return 0;
 }
 
-int Conduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag)
+/*int Conduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 	if(m_realConduitPtr)
 	{
@@ -436,7 +360,7 @@ void Conduit::ReadBy_Finish(int tag)
 	}
 
 	return;
-}
+}*/
 
 
 int Conduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)

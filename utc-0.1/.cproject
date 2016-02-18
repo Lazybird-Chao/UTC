@@ -29,8 +29,8 @@
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.628094528" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=c++11" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.include.paths.304551747" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="/opt/boost-1.60/include"/>
 									<listOptionValue builtIn="false" value="/opt/openmpi-1.10/include"/>
+									<listOptionValue builtIn="false" value="/opt/boost-1.60/include"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.918711816" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>

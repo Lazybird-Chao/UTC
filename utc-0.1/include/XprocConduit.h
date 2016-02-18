@@ -9,6 +9,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <fstream>
+#include "boost/thread/latch.hpp"
 
 namespace iUtc{
 
@@ -66,17 +67,13 @@ private:
 	int m_dstMainResideProc;
 
 
-	// this  means how many msg can be send or recv by different threads when not all threads finish
-	// that operation
-	int m_noFinishedOpCapacity;
-	//
-	int m_availableNoFinishedOpCount;
-	std::condition_variable m_availableNoFinishedCond;
-	std::mutex m_OpCheckMutex;
-	int *m_OpRotateCounter;
-	int *m_OpRotateCounterIdx;
-	int *m_OpRotateFinishFlag;
-	std::condition_variable m_OpFinishCond;
+	/*
+	 * using token-ring-net mechanism. Start from thread local rank 0,
+	 * each thread responds for doing the r/w one by one
+	 */
+	std::vector<boost::latch*> m_OpThreadLatch;
+	int *m_OpTokenFlag;
+
 
 
 	///// for OpBy
@@ -93,9 +90,8 @@ private:
 	std::map<int, MPI_Request*> m_asyncReadFinishSet;
 	std::map<int, MPI_Request*> m_asyncWriteFinishSet;
 #endif
-
-
-
+	std::atomic<int> *m_asyncOpThreadAtomic;
+	int *m_asyncOpTokenFlag;
 
 
 	////

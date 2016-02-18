@@ -1,23 +1,24 @@
 #include "InprocConduit.h"
 #include "UtcBasics.h"
-#include <map>
+#include "../include/TaskUtilities.h"
+#include "LockFreeRingbufferQueue.h"
+
 #include <cstdlib>
 #include <cstring>
 #include <chrono>
-#include "../include/TaskUtilities.h"
 
 
-namespace iUtc
-{
+
+namespace iUtc{
 
 thread_local std::ofstream *InprocConduit::m_threadOstream = nullptr;
 
 
-
-InprocConduit::InprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId, int capacity)
-:ConduitBase()
-{
-
+/*
+ *
+ */
+InprocConduit::InprocConduit(TaskBase *srctask, TaskBase *dsttask, int cdtId)
+:ConduitBase(){
 	m_conduitId = cdtId;
     m_srcTask = srctask;
     m_dstTask = dsttask;
@@ -26,141 +27,102 @@ InprocConduit::InprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId, in
 
     m_numSrcLocalThreads = srctask->getNumLocalThreads();
     m_numDstLocalThreads = dsttask->getNumLocalThreads();
-    m_capacity = capacity;
-    m_noFinishedOpCapacity = NO_FINISHED_OP_MAX;
 
     initInprocConduit();
-
 }
 
-
-void InprocConduit::initInprocConduit()
-{
-	/*if(m_srcTask->isActiveOnCurrentProcess()== false && m_dstTask->isActiveOnCurrentProcess()== false)
-	{	// no thread for src and dst running on this process, no need to init the conduit obj
-		return;
-	}
-	m_Name = m_srcTask->getName()+"<=>"+m_dstTask->getName();
-	m_conduitId = ConduitManager::getNewConduitId();*/
-
-
-	m_srcAvailableBuffCount = m_capacity;
-	m_srcAvailableBuff = new BuffInfo[m_capacity];
-	for(int i=0; i<m_capacity; i++)
-	{
-	    m_srcAvailableBuff[i].buffSize = CONDUIT_BUFFER_SIZE;
-	    m_srcAvailableBuff[i].bufferPtr = malloc(CONDUIT_BUFFER_SIZE);
-	}
-	m_srcBuffPool.clear();
-	m_srcBuffPoolWaitlist.clear();
-	m_srcBuffIdx.clear();
-	std::vector<std::mutex> *tmp1_mutexlist = new std::vector<std::mutex>(m_capacity);
-	m_srcBuffAccessMutex.swap(*tmp1_mutexlist);
-	std::vector<std::condition_variable> *tmp1_condlist = new std::vector<std::condition_variable>(m_capacity);
-	m_srcBuffDataWrittenCond.swap(*tmp1_condlist);
-	std::vector<std::condition_variable> *tmp2_condlist = new std::vector<std::condition_variable>(m_capacity);
-	m_srcBuffDataReadCond.swap(*tmp2_condlist);
-	m_srcBuffDataWrittenFlag.clear();
-	m_srcBuffDataReadFlag.clear();
-	for(int i = 0; i< m_capacity; i++)
-	{
-		m_srcBuffIdx.push_back(i);
-		m_srcBuffDataWrittenFlag.push_back(0);
-		m_srcBuffDataReadFlag.push_back(0);
-	}
-
-	m_srcAvailableNoFinishedOpCount = m_noFinishedOpCapacity;
-	m_srcOpRotateCounter = new int[m_noFinishedOpCapacity+1];
-	m_srcOpRotateFinishFlag = new int[m_noFinishedOpCapacity+1];
-	for(int i =0; i<m_noFinishedOpCapacity; i++)
-	{
-	    m_srcOpRotateCounter[i]=0;
-	    m_srcOpRotateCounter[i]=0;
-	}
-	m_srcOpRotateCounterIdx = new int[m_srcTask->getNumTotalThreads()];
-    for(int i =0; i<m_srcTask->getNumTotalThreads();i++)
+/*
+ *
+ */
+void InprocConduit::initInprocConduit(){
+    // init src side
+	m_srcBuffQueue = new LockFreeQueue<MsgInfo_t, INPROC_CONDUIT_CAPACITY_DEFAULT>(
+		m_numSrcLocalThreads, m_numDstLocalThreads);
+    m_srcInnerMsgQueue = new LockFreeQueue<MsgInfo_t, INPROC_CONDUIT_CAPACITY_DEFAULT>(
+        m_numSrcLocalThreads, m_numDstLocalThreads);
+    for(int i=0; i< INPROC_CONDUIT_CAPACITY_DEFAULT; i++)
     {
-        m_srcOpRotateCounterIdx[i] = 0;
+        MsgInfo_t *tmpbuff = new MsgInfo_t;
+        tmpbuff->smallDataBuff = (void*)malloc(CONDUIT_BUFFER_SIZE);
+        m_srcInnerMsgQueue->push(tmpbuff);
+    }
+    m_srcBuffMap.clear();
+	
+    m_srcOpTokenFlag = new int[m_numSrcLocalThreads];
+    for(int i=0; i<m_numSrcLocalThreads; i++){
+        m_srcOpTokenFlag[i]=0;
+        boost::latch *tmp_latch = new boost::latch(1);
+        m_srcOpThreadLatch.push_back(tmp_latch);       
+    }
+
+    m_srcUsingPtrFinishFlag = new std::atomic<int>[m_numSrcLocalThreads];
+    for(int i=0; i<m_numSrcLocalThreads; i++){
+        m_srcUsingPtrFinishFlag[i] = 0;
+    }
+
+
+    // init dst side
+	m_dstBuffQueue = new LockFreeQueue<MsgInfo_t, INPROC_CONDUIT_CAPACITY_DEFAULT>(
+		m_numDstLocalThreads, m_numSrcLocalThreads);
+    m_dstInnerMsgQueue = new LockFreeQueue<MsgInfo_t, INPROC_CONDUIT_CAPACITY_DEFAULT>(
+        m_numSrcLocalThreads, m_numDstLocalThreads);
+    for(int i=0; i< INPROC_CONDUIT_CAPACITY_DEFAULT; i++)
+    {
+        MsgInfo_t *tmpbuff = new MsgInfo_t;
+        tmpbuff->smallDataBuff = (void*)malloc(CONDUIT_BUFFER_SIZE);
+        m_dstInnerMsgQueue->push(tmpbuff);
+    }
+    m_dstBuffMap.clear();
+
+    m_dstOpTokenFlag = new int[m_numDstLocalThreads];
+    for(int i=0; i<m_numDstLocalThreads; i++){
+        m_dstOpTokenFlag[i]=0;
+        boost::latch *tmp_latch = new boost::latch(1);
+        m_dstOpThreadLatch.push_back(tmp_latch);
+    }
+
+    m_dstUsingPtrFinishFlag = new std::atomic<int>[m_numDstLocalThreads];
+    for(int i=0; i<m_numDstLocalThreads; i++){
+        m_dstUsingPtrFinishFlag[i] = 0;
     }
 
 
 
 
-
-	m_dstAvailableBuffCount = m_capacity;
-	m_dstAvailableBuff = new BuffInfo[m_capacity];
-    for(int i=0; i<m_capacity; i++)
-    {
-        m_dstAvailableBuff[i].buffSize = CONDUIT_BUFFER_SIZE;
-        m_dstAvailableBuff[i].bufferPtr = malloc(CONDUIT_BUFFER_SIZE);
-    }
-	m_dstBuffPool.clear();
-	m_dstBuffPoolWaitlist.clear();
-	m_dstBuffIdx.clear();
-	//m_dstBuffAccessMutex.clear();
-	std::vector<std::mutex> *tmp2_mutexlist= new std::vector<std::mutex>(m_capacity);
-	m_dstBuffAccessMutex.swap(*tmp2_mutexlist);
-	std::vector<std::condition_variable> *tmp3_condlist = new std::vector<std::condition_variable>(m_capacity);
-	m_dstBuffDataWrittenCond.swap(*tmp3_condlist);
-	std::vector<std::condition_variable> *tmp4_condlist = new std::vector<std::condition_variable>(m_capacity);
-	m_dstBuffDataReadCond.swap(*tmp4_condlist);
-	m_dstBuffDataWrittenFlag.clear();
-	m_dstBuffDataReadFlag.clear();
-	for(int i = 0; i< m_capacity; i++)
-	{
-		m_dstBuffIdx.push_back(i);
-		m_dstBuffDataWrittenFlag.push_back(0);
-		m_dstBuffDataReadFlag.push_back(0);
-	}
-
-	m_dstAvailableNoFinishedOpCount = m_noFinishedOpCapacity;
-    m_dstOpRotateCounter = new int[m_noFinishedOpCapacity+1];
-    m_dstOpRotateFinishFlag = new int[m_noFinishedOpCapacity+1];
-    for(int i =0; i<m_noFinishedOpCapacity; i++)
-    {
-        m_dstOpRotateCounter[i]=0;
-        m_dstOpRotateCounter[i]=0;
-    }
-    m_dstOpRotateCounterIdx = new int[m_dstTask->getNumTotalThreads()];
-    for(int i =0; i<m_dstTask->getNumTotalThreads();i++)
-    {
-        m_dstOpRotateCounterIdx[i] = 0;
-    }
+    // init readby, writeby related
+    m_readbyFinishSet.clear();
+    m_writebyFinishSet.clear();
 
 
-	m_readbyFinishSet.clear();
-	m_writebyFinishSet.clear();
+    // init Async op related
+    m_srcAsyncReadFinishSet.clear();
+    m_srcAsyncWriteFinishSet.clear();
+    m_srcNewAsyncWork=false;
+    m_srcAsyncWorkerCloseSig=false;
+    m_srcAsyncWorkerOn=false;
+    m_srcAsyncWorkQueue.clear();
 
+    m_dstAsyncReadFinishSet.clear();
+    m_dstAsyncWriteFinishSet.clear();
+    m_dstNewAsyncWork=false;
+    m_dstAsyncWorkerCloseSig=false;
+    m_dstAsyncWorkerOn=false;
+    m_dstAsyncWorkQueue.clear();
 
-	//
-	m_srcAsyncReadFinishSet.clear();
-	m_srcAsyncWriteFinishSet.clear();
-	m_srcNewAsyncWork=false;
-	m_srcAsyncWorkerCloseSig=false;
-	m_srcAsyncWorkerOn=false;
-	m_srcAsyncWorkQueue.clear();
-
-	m_dstAsyncReadFinishSet.clear();
-	m_dstAsyncWriteFinishSet.clear();
-	m_dstNewAsyncWork=false;
-	m_dstAsyncWorkerCloseSig=false;
-	m_dstAsyncWorkerOn=false;
-	m_dstAsyncWorkQueue.clear();
 
 #ifdef USE_DEBUG_LOG
-	std::ofstream* procOstream = getProcOstream();
-	PRINT_TIME_NOW(*procOstream)
-	*procOstream<<"InprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
-				<<"] initiated..."<<std::endl;
+    std::ofstream* procOstream = getProcOstream();
+    PRINT_TIME_NOW(*procOstream)
+    *procOstream<<"InprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
+                <<"] initiated..."<<std::endl;
 #endif
 
 }
 
 
-InprocConduit::~InprocConduit()
-{
+InprocConduit::~InprocConduit(){
 
-	clear();
+    clear();
 
 #ifdef USE_DEBUG_LOG
     std::ofstream* procOstream = getProcOstream();
@@ -171,61 +133,50 @@ InprocConduit::~InprocConduit()
 
 }
 
-void InprocConduit::clear()
-{
-
-	m_readbyFinishSet.clear();
-	m_writebyFinishSet.clear();
-
-    m_srcBuffIdx.clear();
-    m_srcBuffAccessMutex.clear();
-    m_srcBuffDataWrittenCond.clear();
-    m_srcBuffDataReadCond.clear();
-    m_srcBuffDataWrittenFlag.clear();
-    m_srcBuffDataReadFlag.clear();
-    delete m_srcOpRotateCounter;
-    delete m_srcOpRotateCounterIdx;
-    delete m_srcOpRotateFinishFlag;
 
 
-    m_dstBuffIdx.clear();
-    m_dstBuffAccessMutex.clear();
-    m_dstBuffDataWrittenCond.clear();
-    m_dstBuffDataReadCond.clear();
-    m_dstBuffDataWrittenFlag.clear();
-    m_dstBuffDataReadFlag.clear();
-    delete m_dstOpRotateCounter;
-    delete m_dstOpRotateCounterIdx;
-    delete m_dstOpRotateFinishFlag;
+void InprocConduit::clear(){
 
-    m_srcBuffPool.clear();
-    m_srcBuffPoolWaitlist.clear();
-    for(int i=0; i<m_capacity; i++)
+    //
+    for(int i=0; i< INPROC_CONDUIT_CAPACITY_DEFAULT; i++)
     {
-        free(m_srcAvailableBuff[i].bufferPtr);
+        MsgInfo_t *tmpbuff = m_srcInnerMsgQueue->pop();
+        free(tmpbuff->smallDataBuff);
     }
-    delete m_srcAvailableBuff;
+    m_srcBuffMap.clear();
+    delete m_srcOpTokenFlag;
+    delete m_srcUsingPtrFinishFlag;
+    for(int i=0; i<m_numSrcLocalThreads; i++){
+        delete m_srcOpThreadLatch[i];       
+    }
+    m_srcOpThreadLatch.clear();
 
-
-    m_dstBuffPool.clear();
-    m_dstBuffPoolWaitlist.clear();
-    for(int i=0; i<m_capacity; i++)
+    for(int i=0; i< INPROC_CONDUIT_CAPACITY_DEFAULT; i++)
     {
-        free(m_dstAvailableBuff[i].bufferPtr);
+        MsgInfo_t *tmpbuff = m_dstInnerMsgQueue->pop();
+        free(tmpbuff->smallDataBuff);
     }
-    delete m_dstAvailableBuff;
+    m_dstBuffMap.clear();
+    delete m_dstOpTokenFlag;
+    delete m_dstUsingPtrFinishFlag;
+    for(int i=0; i<m_numDstLocalThreads; i++){
+        delete m_dstOpThreadLatch[i];       
+    }
+    m_dstOpThreadLatch.clear();
 
+    //
+    m_readbyFinishSet.clear();
+    m_writebyFinishSet.clear();
 
+    //
     m_srcAsyncReadFinishSet.clear();
-	m_srcAsyncWriteFinishSet.clear();
-	m_srcAsyncWorkQueue.clear();
+    m_srcAsyncWriteFinishSet.clear();
+    m_srcAsyncWorkQueue.clear();
 
-	m_dstAsyncReadFinishSet.clear();
-	m_dstAsyncWriteFinishSet.clear();
-	m_dstAsyncWorkQueue.clear();
-
+    m_dstAsyncReadFinishSet.clear();
+    m_dstAsyncWriteFinishSet.clear();
+    m_dstAsyncWorkQueue.clear();
 }
 
 
-
-}// namespace iUtc
+} // end namespace iUtc

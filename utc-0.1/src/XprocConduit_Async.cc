@@ -54,7 +54,12 @@ int XprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)
 #ifdef USE_MPI_BASE
 		MPI_Request *req = (MPI_Request*)malloc(sizeof(MPI_Request));
 		//TODO:
-		MPI_Irecv(DataPtr, (int)DataSize, MPI_CHAR, mpiOtherEndProc,
+		MPI_Datatype datatype=MPI_CHAR;
+		if(DataSize > (1<<31)-1){
+			DataSize = (DataSize+3)/4;
+			datatype = MPI_INT;
+		}
+		MPI_Irecv(DataPtr, (int)DataSize, datatype, mpiOtherEndProc,
 				(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD, req);
 		m_asyncReadFinishSet[tag] = req;
 
@@ -62,18 +67,11 @@ int XprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)
 
 	}// end only one thread
 	else
-	{
-		std::unique_lock<std::mutex> LCK1(m_OpCheckMutex);
-		int counteridx = m_OpRotateCounterIdx[myThreadRank];
-		m_OpRotateCounter[counteridx]++;
-		if(m_OpRotateCounter[counteridx] == 1)
-		{
-			// fisrt coming thread
-			while(m_availableNoFinishedOpCount==0)
-			{
-				m_availableNoFinishedCond.wait(LCK1);
-			}
-			m_availableNoFinishedOpCount--;
+	{	// multple threads
+		if(myThreadRank == m_asyncOpTokenFlag[myThreadRank]){
+			//
+			int next_thread = (m_asyncOpTokenFlag[myThreadRank]+1)%localNumthreads;
+			m_asyncOpThreadAtomic[next_thread].store(0);
 
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -83,38 +81,27 @@ int XprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)
 #ifdef USE_MPI_BASE
 			MPI_Request *req = (MPI_Request*)malloc(sizeof(MPI_Request));
 			//TODO:
-			MPI_Irecv(DataPtr, (int)DataSize, MPI_CHAR, mpiOtherEndProc,
+			MPI_Datatype datatype=MPI_CHAR;
+			if(DataSize > (1<<31)-1){
+				DataSize = (DataSize+3)/4;
+				datatype = MPI_INT;
+			}
+			MPI_Irecv(DataPtr, (int)DataSize, datatype, mpiOtherEndProc,
 					(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD, req);
 			m_asyncReadFinishSet[tag] = req;
 #endif
-			m_OpRotateFinishFlag[counteridx]++;
-			m_OpFinishCond.notify_all();
-			m_OpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
-			LCK1.unlock();
+			m_asyncOpThreadAtomic[m_asyncOpTokenFlag[myThreadRank]].store(1);
+			m_asyncOpTokenFlag[myThreadRank] = next_thread;
 
 		}
 		else
-		{	// late coming thread
-			while(m_OpRotateFinishFlag[counteridx] ==0)
-			{
-				m_OpFinishCond.wait(LCK1);
+		{	// not this thread's turn to do
+			int do_thread = m_asyncOpTokenFlag[myThreadRank];
+			while(m_asyncOpThreadAtomic[do_thread].load() == 0){
+				_mm_pause();
 			}
-			m_OpRotateFinishFlag[counteridx]++;
-			if(m_OpRotateFinishFlag[counteridx] == localNumthreads)
-			{
-				// last thread
-				m_OpRotateCounter[counteridx]=0;
-				m_OpRotateFinishFlag[counteridx]=0;
-				m_OpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
-				m_availableNoFinishedOpCount++;
-				m_availableNoFinishedCond.notify_one();
-				LCK1.unlock();
-			}
-			else
-			{
-				m_OpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
-				LCK1.unlock();
-			}
+			//
+			m_asyncOpTokenFlag[myThreadRank] = (m_asyncOpTokenFlag[myThreadRank]+1)%localNumthreads;
 
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -181,48 +168,19 @@ void XprocConduit::AsyncRead_Finish(int tag)
 	else
 	{
 		// there are several threads
-		std::unique_lock<std::mutex> LCK1(m_OpCheckMutex);
-		int counteridx = m_OpRotateCounterIdx[myThreadRank];
-		m_OpRotateCounter[counteridx]++;
-		if(m_OpRotateCounter[counteridx]>1)
-		{
-			// late coming thread
-#ifdef USE_DEBUG_ASSERT
-			assert(m_OpRotateCounter[counteridx] <= localNumthreads);
-#endif
-			while(m_OpRotateFinishFlag[counteridx] ==0)
-			{
-				m_OpFinishCond.wait(LCK1);
+		if(myThreadRank!= m_asyncOpTokenFlag[myThreadRank]){
+			int do_thread = m_asyncOpTokenFlag[myThreadRank];
+			while(m_asyncOpThreadAtomic[do_thread].load() == 0){
+				_mm_pause();
 			}
-			// wake up after real op finish
-			m_OpRotateFinishFlag[counteridx]++;
-			if(m_OpRotateFinishFlag[counteridx] == localNumthreads)
-			{
-				//last leaving thread
-				m_OpRotateFinishFlag[counteridx]=0;
-				m_OpRotateCounter[counteridx]=0;
-				m_OpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
-
-				m_availableNoFinishedOpCount++;
-				m_availableNoFinishedCond.notify_one();
-
-				LCK1.unlock();
-			}
-			else
-			{
-				m_OpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
-				LCK1.unlock();
-			}
+			//
+			m_asyncOpTokenFlag[myThreadRank] = (m_asyncOpTokenFlag[myThreadRank]+1)%localNumthreads;
 		}
 		else
 		{
-			// first coming thread
-			while(m_availableNoFinishedOpCount==0)
-			{
-				m_availableNoFinishedCond.wait(LCK1);
-			}
-			m_availableNoFinishedOpCount--;
-			LCK1.unlock();
+			// this thread's turn
+			int next_thread = (m_asyncOpTokenFlag[myThreadRank]+1)%localNumthreads;
+			m_asyncOpThreadAtomic[next_thread].store(0);
 
 #ifdef USE_MPI_BASE
 			MPI_Request* req = m_asyncReadFinishSet[tag];
@@ -230,16 +188,8 @@ void XprocConduit::AsyncRead_Finish(int tag)
 			free(req);
 			m_asyncReadFinishSet.erase(tag);
 #endif
-
-			// change opfinishflag
-			LCK1.lock();
-#ifdef USE_DEBUG_ASSERT
-			assert(m_OpRotateFinishFlag[counteridx] ==0);
-#endif
-			m_OpRotateFinishFlag[counteridx]++;
-			m_OpFinishCond.notify_all();
-			m_OpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_noFinishedOpCapacity+1);
-			LCK1.unlock();
+			m_asyncOpThreadAtomic[m_asyncOpTokenFlag[myThreadRank]].store(1);
+			m_asyncOpTokenFlag[myThreadRank]= next_thread;
 
 		}// end first thread
 	}// end several thread
@@ -299,7 +249,12 @@ int XprocConduit::AsyncWrite(void *DataPtr, DataSize_t DataSize, int tag)
 #ifdef USE_MPI_BASE
 		MPI_Request *req = (MPI_Request*)malloc(sizeof(MPI_Request));
 		//TODO:
-		MPI_Isend(DataPtr, (int)DataSize, MPI_CHAR, mpiOtherEndProc,
+		MPI_Datatype datatype=MPI_CHAR;
+		if(DataSize > (1<<31)-1){
+			DataSize = (DataSize+3)/4;
+			datatype = MPI_INT;
+		}
+		MPI_Isend(DataPtr, (int)DataSize, datatype, mpiOtherEndProc,
 				(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD, req);
 		m_asyncWriteFinishSet[tag] = req;
 
@@ -307,18 +262,11 @@ int XprocConduit::AsyncWrite(void *DataPtr, DataSize_t DataSize, int tag)
 
 	}// end only one thread
 	else
-	{
-		std::unique_lock<std::mutex> LCK1(m_OpCheckMutex);
-		int counteridx = m_OpRotateCounterIdx[myThreadRank];
-		m_OpRotateCounter[counteridx]++;
-		if(m_OpRotateCounter[counteridx] == 1)
-		{
-			// fisrt coming thread
-			while(m_availableNoFinishedOpCount==0)
-			{
-				m_availableNoFinishedCond.wait(LCK1);
-			}
-			m_availableNoFinishedOpCount--;
+	{	// multiple threads
+		if(myThreadRank == m_asyncOpTokenFlag[myThreadRank]){
+			//
+			int next_thread = (m_asyncOpTokenFlag[myThreadRank]+1)%localNumthreads;
+			m_asyncOpThreadAtomic[next_thread].store(0);
 
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -328,38 +276,27 @@ int XprocConduit::AsyncWrite(void *DataPtr, DataSize_t DataSize, int tag)
 #ifdef USE_MPI_BASE
 			MPI_Request *req = (MPI_Request*)malloc(sizeof(MPI_Request));
 			//TODO:
-			MPI_Isend(DataPtr, (int)DataSize, MPI_CHAR, mpiOtherEndProc,
+			MPI_Datatype datatype=MPI_CHAR;
+			if(DataSize > (1<<31)-1){
+				DataSize = (DataSize+3)/4;
+				datatype = MPI_INT;
+			}
+			MPI_Isend(DataPtr, (int)DataSize, datatype, mpiOtherEndProc,
 					(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD, req);
 			m_asyncWriteFinishSet[tag] = req;
 #endif
-			m_OpRotateFinishFlag[counteridx]++;
-			m_OpFinishCond.notify_all();
-			m_OpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
-			LCK1.unlock();
+			m_asyncOpThreadAtomic[m_asyncOpTokenFlag[myThreadRank]].store(1);
+			m_asyncOpTokenFlag[myThreadRank]=next_thread;
 
 		}
 		else
-		{	// late coming thread
-			while(m_OpRotateFinishFlag[counteridx] ==0)
-			{
-				m_OpFinishCond.wait(LCK1);
+		{	// do wait
+			int do_thread = m_asyncOpTokenFlag[myThreadRank];
+			while(m_asyncOpThreadAtomic[do_thread].load() == 0){
+				_mm_pause();
 			}
-			m_OpRotateFinishFlag[counteridx]++;
-			if(m_OpRotateFinishFlag[counteridx] == localNumthreads)
-			{
-				// last thread
-				m_OpRotateCounter[counteridx]=0;
-				m_OpRotateFinishFlag[counteridx]=0;
-				m_OpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
-				m_availableNoFinishedOpCount++;
-				m_availableNoFinishedCond.notify_one();
-				LCK1.unlock();
-			}
-			else
-			{
-				m_OpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
-				LCK1.unlock();
-			}
+			//
+			m_asyncOpTokenFlag[myThreadRank] = (m_asyncOpTokenFlag[myThreadRank]+1)%localNumthreads;
 
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -427,49 +364,20 @@ void XprocConduit::AsyncWrite_Finish(int tag)
 	}
 	else
 	{
-		// there are several threads
-		std::unique_lock<std::mutex> LCK1(m_OpCheckMutex);
-		int counteridx = m_OpRotateCounterIdx[myThreadRank];
-		m_OpRotateCounter[counteridx]++;
-		if(m_OpRotateCounter[counteridx]>1)
-		{
-			// late coming thread
-#ifdef USE_DEBUG_ASSERT
-			assert(m_OpRotateCounter[counteridx] <= localNumthreads);
-#endif
-			while(m_OpRotateFinishFlag[counteridx] ==0)
-			{
-				m_OpFinishCond.wait(LCK1);
+		if(m_asyncOpTokenFlag[myThreadRank] != myThreadRank){
+			// do wait
+			int do_thread = m_asyncOpTokenFlag[myThreadRank];
+			while(m_asyncOpThreadAtomic[do_thread].load() == 0){
+				_mm_pause();
 			}
-			// wake up after real op finish
-			m_OpRotateFinishFlag[counteridx]++;
-			if(m_OpRotateFinishFlag[counteridx] == localNumthreads)
-			{
-				//last leaving thread
-				m_OpRotateFinishFlag[counteridx]=0;
-				m_OpRotateCounter[counteridx]=0;
-				m_OpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
+			//
+			m_asyncOpTokenFlag[myThreadRank] = (m_asyncOpTokenFlag[myThreadRank]+1)%localNumthreads;
 
-				m_availableNoFinishedOpCount++;
-				m_availableNoFinishedCond.notify_one();
-
-				LCK1.unlock();
-			}
-			else
-			{
-				m_OpRotateCounterIdx[myThreadRank]= (counteridx +1)%(m_noFinishedOpCapacity +1);
-				LCK1.unlock();
-			}
 		}
 		else
 		{
-			// first coming thread
-			while(m_availableNoFinishedOpCount==0)
-			{
-				m_availableNoFinishedCond.wait(LCK1);
-			}
-			m_availableNoFinishedOpCount--;
-			LCK1.unlock();
+			int next_thread = (m_asyncOpTokenFlag[myThreadRank]+1)%localNumthreads;
+			m_asyncOpThreadAtomic[next_thread].store(0);
 
 #ifdef USE_MPI_BASE
 			MPI_Request* req = m_asyncWriteFinishSet[tag];
@@ -477,16 +385,8 @@ void XprocConduit::AsyncWrite_Finish(int tag)
 			free(req);
 			m_asyncWriteFinishSet.erase(tag);
 #endif
-
-			// change opfinishflag
-			LCK1.lock();
-#ifdef USE_DEBUG_ASSERT
-			assert(m_OpRotateFinishFlag[counteridx] ==0);
-#endif
-			m_OpRotateFinishFlag[counteridx]++;
-			m_OpFinishCond.notify_all();
-			m_OpRotateCounterIdx[myThreadRank] = (counteridx +1)%(m_noFinishedOpCapacity+1);
-			LCK1.unlock();
+			m_asyncOpThreadAtomic[m_asyncOpTokenFlag[myThreadRank]].store(1);
+			m_asyncOpTokenFlag[myThreadRank]=next_thread;
 
 		}// end first thread
 	}// end several thread

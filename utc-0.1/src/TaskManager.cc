@@ -19,7 +19,7 @@ std::mutex TaskManager::m_mutexTaskIdDealer;
 
 boost::thread_specific_ptr<TaskInfo> TaskManager::m_taskInfo;
 
-std::ofstream* getProcOstream();
+//std::ofstream* getProcOstream();
 
 TaskManager::TaskManager(){}
 

@@ -1,11 +1,12 @@
 #include "InprocConduit.h"
 #include "UtcBasics.h"
 #include "TaskManager.h"
+#include "../include/TaskUtilities.h"
 
 #include <cassert>
 //#include <utility>
 #include <thread>
-#include "../include/TaskUtilities.h"
+
 
 namespace iUtc
 {

@@ -27,7 +27,7 @@ public:
 
 	Conduit(TaskBase* srctask, TaskBase* dsttask);
 
-	Conduit(TaskBase* srctask, TaskBase* dsttask, int capacity);
+	//Conduit(TaskBase* srctask, TaskBase* dsttask, int capacity);
 
 	//void setCapacity(int capacity);
 	int getCapacity();
@@ -41,17 +41,9 @@ public:
 
 	void Connect(TaskBase* src, TaskBase* dst);
 
-	int BWrite(void* DataPtr, DataSize_t DataSize, int tag);
-	int BWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
-	void BWriteBy_Finish(int tag);
-
 	int Write(void* DataPtr, DataSize_t DataSize, int tag);
 	int WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
 	void WriteBy_Finish(int tag);
-
-	int PWrite(void* DataPtr, DataSize_t DataSize, int tag);
-	int PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
-	void PWriteBy_Finish(int tag);
 
 	int Read(void* DataPtr, DataSize_t DataSize, int tag);
 	int ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
@@ -67,6 +59,8 @@ public:
 	~Conduit();
 
 private:
+	int initConduit(TaskBase* srctask, TaskBase* dsttask, int capacity);
+
 	ConduitManager* m_cdtMgr;
 
 	TaskBase* m_srcTask;
@@ -76,7 +70,6 @@ private:
 
 	std::string m_Name;
 	int m_conduitId;
-	// used for inproc-conduit, the number of available inner buffer items
 	int m_capacity;
 
 	//

@@ -1,6 +1,7 @@
 #include "InprocConduit.h"
 #include "TaskManager.h"
 #include "Task.h"
+
 #include <map>
 #include <cstdlib>
 #include <cstring>
@@ -8,14 +9,13 @@
 #include <cassert>
 #include "../include/TaskUtilities.h"
 
+
 namespace iUtc{
 
 /*
- * Unbuffered Blocking write operation.
- * Do not user intermediate buffer, pass address.
+ *
  */
-int InprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
-{
+int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
         m_threadOstream = getThreadOstream();
@@ -23,749 +23,217 @@ int InprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
     // current calling thread's belonging task id
     static thread_local int myTaskid = -1;
     static thread_local int myThreadRank = -1;
+    static thread_local int myLocalRank = -1;
     if(myTaskid == -1)
     {
         myTaskid = TaskManager::getCurrentTaskId();
         myThreadRank = TaskManager::getCurrentThreadRankinTask();
+        myLocalRank = TaskManager::getCurrentThreadRankInLocal();
+        m_srcBuffQueue->setThreadId(myLocalRank);
+        //m_srcInnerMsgQueue->setThreadId(myLocalRank);
+        //m_dstBuffQueue->setThreadId(myLocalRank);
+        //m_dstInnerMsgQueue->setThreadId(myLocalRank);
+
     }
 
-    if(myTaskid == m_srcId)
-    {
+    if(myTaskid == m_srcId){
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"src-thread "<<myThreadRank<<" call Pwrite...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
-        if(m_numSrcLocalThreads == 1)
+        if(m_numSrcLocalThreads ==1)
         {
-            // only one thread, no need to use op-counter
-            std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);
-            // check if there is available buff
-#ifdef USE_DEBUG_ASSERT
-            assert(m_srcAvailableBuffCount>=0);
-#endif
-            while(m_srcAvailableBuffCount == 0)
-            {
-                // buffpool full, wait for one
-                m_srcBuffAvailableCond.wait(LCK2);
-            }
-            // get buff, go on check if tag exist in pool
-            if(m_srcBuffPool.find(tag) != m_srcBuffPool.end())
-            {
-                // exist, this would be an tag reuse error
-                std::cerr<<"Error, tag resued!"<<std::endl;
-                LCK2.unlock();
+        	// only one local thread for the task
+            // get avilable msg buff
+        	MsgInfo_t *tmp_buffptr = m_srcInnerMsgQueue->pop();
+            if(tmp_buffptr == nullptr){
+                std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
                 exit(1);
             }
-
-            if(m_srcBuffPool.find(tag) == m_srcBuffPool.end())
-            {
-                // has buff and tag not exist now, can do the real write
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"src-thread "<<myThreadRank<<" doing Pwrite...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" doing Pwrite ...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+#endif        
+        	tmp_buffptr->dataPtr = DataPtr;
+            tmp_buffptr->dataSize = DataSize;
+            tmp_buffptr->usingPtr = true;
+            tmp_buffptr->msgTag = tag;
+            tmp_buffptr->safeRelease = &m_srcUsingPtrFinishFlag[myLocalRank];
+            m_srcUsingPtrFinishFlag[myLocalRank]=0;
+        	// push msg to buffqueue for reader to read
+        	if(m_srcBuffQueue->push(tmp_buffptr)){
+        		std::cerr<<"ERROR, potential write timeout!"<<std::endl;
+        		exit(1);
+        	}
+        	// as use ptr for data transfer, need wait for reader finish
+        	while(m_srcUsingPtrFinishFlag[myLocalRank] == 0){
+        		_mm_pause();
+        	}
+
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" finish Pwrite!:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
-                // no matter reader comes or not, just pass address
-                if(m_srcBuffPoolWaitlist.find(tag) != m_srcBuffPoolWaitlist.end())
-                {
-                    m_srcBuffPoolWaitlist.erase(tag);
-                }
-                int tmp_idx = m_srcBuffIdx.back();
-                m_srcBuffIdx.pop_back();
-                BuffInfo * tmp_buffinfo = &(m_srcAvailableBuff[tmp_idx]);
-                tmp_buffinfo->buffIdx = tmp_idx;
-                // set write thread count to 1
-                tmp_buffinfo->callingWriteThreadCount = 1;
-                // insert this buff to buffpool
-                m_srcBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
-                // decrease availabe buff
-                m_srcAvailableBuffCount--;
-                // pass the data address to pool, not malloc a buffer
-                tmp_buffinfo->dataPtr = DataPtr;
-                // set writtenflag
-                 m_srcBuffDataWrittenFlag[tmp_idx] =1;
-                //
-                LCK2.unlock();
-                // notify reader that one new item inserted to buff pool
-                m_srcNewBuffInsertedCond.notify_all();
-
-                // as pass address, we need wait reader memcpy finish to return
-                std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_idx]);
-                m_srcBuffDataReadCond[tmp_idx].wait(LCK3,
-                        [=](){return m_srcBuffDataReadFlag[tmp_idx] == 1;});
-                // wakeup when reader finish copy data
-                LCK3.unlock();
-
-                LCK2.lock();
-                m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
-                m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
-                tmp_buffinfo->dataPtr= nullptr;
-                tmp_buffinfo->callingReadThreadCount=0;
-                tmp_buffinfo->callingWriteThreadCount=0;
-                tmp_buffinfo->reduceBuffsizeSensor=0;
-                m_srcBuffIdx.push_back(tmp_buffinfo->buffIdx);
-                tmp_buffinfo->buffIdx = -1;
-                m_srcAvailableBuffCount++;
-                m_srcBuffPool.erase(tag);
-                m_srcBuffAvailableCond.notify_one();
-                LCK2.unlock();
-            }
-        } // end for only one local thread
-        else
-        {   // has several threads
-
-            // get op lock and check op counter value to see if need do real write
-            std::unique_lock<std::mutex> LCK1(m_srcOpCheckMutex);
-
-            int counteridx = m_srcOpRotateCounterIdx[myThreadRank];
-            m_srcOpRotateCounter[counteridx]++;
-            if(m_srcOpRotateCounter[counteridx] > 1)
+        	
+        }
+        else{
+        	// multi local threads in task
+        	if(myThreadRank == m_srcOpTokenFlag[myThreadRank])
             {
-                // a late coming thread, but at most = all local threads
-#ifdef USE_DEBUG_ASSERT
-                assert(m_srcOpRotateCounter[counteridx] <= m_numSrcLocalThreads);
+                // check if it's current thread rank's turn to do r/w
+
+                // reset next token's latch here
+                int next_thread = (m_srcOpTokenFlag[myThreadRank]+1) % m_numSrcLocalThreads;
+                m_srcOpThreadLatch[next_thread]->reset(1);
+                // do msg r/w
+                MsgInfo_t *tmp_buffptr = m_srcInnerMsgQueue->pop();
+                if(tmp_buffptr == nullptr){
+                    std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
+                    exit(1);
+                }
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" doing Pwrite ...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
+                tmp_buffptr->dataPtr = DataPtr;
+                tmp_buffptr->dataSize = DataSize;
+                tmp_buffptr->usingPtr = true;
+                tmp_buffptr->msgTag = tag;
+                tmp_buffptr->safeRelease = &m_srcUsingPtrFinishFlag[myLocalRank];
+            	m_srcUsingPtrFinishFlag[myLocalRank]=0;
+                // push msg to buffqueue for reader to read
+                if(m_srcBuffQueue->push(tmp_buffptr)){
+                    std::cerr<<"ERROR, potential write timeout!"<<std::endl;
+                    exit(1);
+                }
+                // as use ptr for data transfer, need wait for reader finish
+	        	while(m_srcUsingPtrFinishFlag[myLocalRank] == 0){
+	        		_mm_pause();
+	        	}
 
-                while(m_srcOpRotateFinishFlag[counteridx] == 0)
-                {
-                    // the first thread which do real write hasn't finish, we will wait for it to finish
-                    m_srcOpFinishCond.wait(LCK1);
-                }
-                // wake up, so the write is finished
-                m_srcOpRotateFinishFlag[counteridx]++;
-                if(m_srcOpRotateFinishFlag[counteridx] == m_numSrcLocalThreads)
-                {
-                    // last thread that will leave this write, reset counter and flag value
-                    m_srcOpRotateFinishFlag[counteridx] = 0;
-                    m_srcOpRotateCounter[counteridx] = 0;
-                    // update counter idx to next one
-                    m_srcOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
-                    // update nofinishcounter
-                    m_srcAvailableNoFinishedOpCount++;
-                    m_srcAvailableNoFinishedOpCond.notify_one();
-                    LCK1.unlock();
-                }
-                else
-                {
-                    // update counter idx to next one
-                    m_srcOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
-                    LCK1.unlock();
-
-                }
+                // wake up other waiting thread
+                m_srcOpThreadLatch[m_srcOpTokenFlag[myThreadRank]]->count_down();
+                m_srcOpTokenFlag[myThreadRank] = next_thread;
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" finish Pwrite!:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+#endif
+            }
+            else{
+                // not the op thread, just wait the op thread finish
+                int do_thread =  m_srcOpTokenFlag[myThreadRank];  //the op thread's rank
+                m_srcOpThreadLatch[do_thread]->wait();         // wait on associated latch
+                // wake up when do_thread finish, and update token flag to next value
+                m_srcOpTokenFlag[myThreadRank] = (m_srcOpTokenFlag[myThreadRank]+1)%m_numSrcLocalThreads; 
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"src-thread "<<myThreadRank<<" exit Pwrite...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
 
-			    return 0;
-            } //end for late coming thread
-            else
-            {
-                // firsrt coming thread
-                while(m_srcAvailableNoFinishedOpCount ==0)
-                {
-                    m_srcAvailableNoFinishedOpCond.wait(LCK1);
-                }
-                m_srcAvailableNoFinishedOpCount--;
-                LCK1.unlock();
-
-                std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);
-                // check if there is available buff
-#ifdef USE_DEBUG_ASSERT
-                assert(m_srcAvailableBuffCount>=0);
-#endif
-                while(m_srcAvailableBuffCount == 0)
-                {
-                    // buffpool full, wait for one
-                    m_srcBuffAvailableCond.wait(LCK2);
-                }
-                // get buff, go on check if tag exist in pool
-                if(m_srcBuffPool.find(tag) != m_srcBuffPool.end())
-                {
-                    // exist, this would be an tag reuse error
-                    std::cerr<<"Error, tag resued!"<<std::endl;
-                    LCK2.unlock();
-                    exit(1);
-                }
-
-                if(m_srcBuffPool.find(tag) == m_srcBuffPool.end())
-                {
-                    // has buff and tag not exist now, can do the real write
-#ifdef USE_DEBUG_LOG
-		PRINT_TIME_NOW(*m_threadOstream)
-		*m_threadOstream<<"src-thread "<<myThreadRank<<" doing Pwrite...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
-#endif
-                    // no matter reader comes or not, just pass address
-                    if(m_srcBuffPoolWaitlist.find(tag) != m_srcBuffPoolWaitlist.end())
-                    {
-                        m_srcBuffPoolWaitlist.erase(tag);
-                    }
-
-                    int tmp_idx = m_srcBuffIdx.back();
-                    m_srcBuffIdx.pop_back();
-                    BuffInfo * tmp_buffinfo = &(m_srcAvailableBuff[tmp_idx]);
-                    tmp_buffinfo->buffIdx = tmp_idx;
-                    // set write thread count to 1
-                    tmp_buffinfo->callingWriteThreadCount = 1;
-                    // insert this buff to buffpool
-                    m_srcBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
-                    // decrease availabe buff
-                    m_srcAvailableBuffCount--;
-                    // pass the data address to pool, not malloc a buffer
-                    tmp_buffinfo->dataPtr = DataPtr;
-                    // set writtenflag
-                     m_srcBuffDataWrittenFlag[tmp_idx] =1;
-                    //
-                     LCK2.unlock();
-                    // notify reader that one new item inserted to buff pool
-                    m_srcNewBuffInsertedCond.notify_all();
-
-                    // as pass address, we need wait reader memcpy finish to return
-                    std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_idx]);
-                    m_srcBuffDataReadCond[tmp_idx].wait(LCK3,
-                            [=](){return m_srcBuffDataReadFlag[tmp_idx] == 1;});
-                    // wakeup when reader finish copy data
-                    LCK3.unlock();
-
-                    // release buff
-                    LCK2.lock();
-                    m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
-                    m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
-                    tmp_buffinfo->dataPtr= nullptr;
-                    tmp_buffinfo->callingReadThreadCount=0;
-                    tmp_buffinfo->callingWriteThreadCount=0;
-                    tmp_buffinfo->reduceBuffsizeSensor=0;
-                    m_srcBuffIdx.push_back(tmp_buffinfo->buffIdx);
-                    tmp_buffinfo->buffIdx = -1;
-                    m_srcAvailableBuffCount++;
-                    m_srcBuffPool.erase(tag);
-                    m_srcBuffAvailableCond.notify_one();
-                    LCK2.unlock();
-
-                    // first coming thread finish write, change finishflag
-				    LCK1.lock();
-#ifdef USE_DEBUG_ASSERT
-				    assert(m_srcOpRotateFinishFlag[counteridx] == 0);
-#endif
-				    // set finish flag
-				    m_srcOpRotateFinishFlag[counteridx]++;
-				    // update counter idx to next one
-                    m_srcOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
-                    // notify other late coming threads to exit
-                    m_srcOpFinishCond.notify_all();
-                    LCK1.unlock();
-				}
-			}// end first coming thread
-		}// end for several threads
-#ifdef USE_DEBUG_LOG
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"src-thread "<<myThreadRank<<" finish Pwrite!:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
-#endif
-        return 0;
-    }
-    else if(myTaskid == m_dstId)
-    {
+            }
+        }
+    }// end src
+    else if(myTaskid == m_dstId){
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"dst-thread "<<myThreadRank<<" call Pwrite...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
-        if(m_numDstLocalThreads ==1)
-        {
-            //only one local thread
-            std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
-
-            // check if there is available buff
-            while(m_dstAvailableBuffCount == 0)
-            {
-                // buffpool full, wait for one
-                m_dstBuffAvailableCond.wait(LCK2);
-            }
-            // get buff, go on check if tag exist in pool
-            if(m_dstBuffPool.find(tag) != m_dstBuffPool.end())
-            {
-                // exist, this would be an tag reuse error
-                std::cerr<<"Error, tag resued!"<<std::endl;
-                LCK2.unlock();
+        if(m_numDstLocalThreads == 1){
+            MsgInfo_t *tmp_buffptr = m_dstInnerMsgQueue->pop();
+            if(tmp_buffptr == nullptr){
+                std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
                 exit(1);
             }
-
-            if(m_dstBuffPool.find(tag) == m_dstBuffPool.end())
-            {
-                // has buff now, can do the real write
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Pwrite...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Pwrite ...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
-
-                if(m_dstBuffPoolWaitlist.find(tag) != m_dstBuffPoolWaitlist.end())
-                {
-                    m_dstBuffPoolWaitlist.erase(tag);
-                }
-
-                int tmp_idx = m_dstBuffIdx.back();
-                m_dstBuffIdx.pop_back();
-                BuffInfo* tmp_buffinfo = &(m_dstAvailableBuff[tmp_idx]);
-                tmp_buffinfo->buffIdx = tmp_idx;
-                // set count to 1
-                tmp_buffinfo->callingWriteThreadCount = 1;
-                // insert this buff to buffpool
-                m_dstBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
-                // decrease availabe buff
-                m_dstAvailableBuffCount--;
-                // use address to pass msg
-                tmp_buffinfo->dataPtr = DataPtr;
-                // set written flag here
-                m_dstBuffDataWrittenFlag[tmp_idx] = 1;
-                // release buffmanager lock to allow other threads to get buff
-                LCK2.unlock();
-                // notify reader that one new item inserted to buff pool
-                m_dstNewBuffInsertedCond.notify_all();
-
-                // wait reader finish data copy
-                std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_idx]);
-                m_dstBuffDataReadCond[tmp_idx].wait(LCK3,
-                        [=](){return m_dstBuffDataReadFlag[tmp_idx] == 1;});
-                LCK3.unlock();
-
-                // release buff
-                LCK2.lock();
-                m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
-                m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
-                tmp_buffinfo->dataPtr= nullptr;
-                tmp_buffinfo->callingReadThreadCount=0;
-                tmp_buffinfo->callingWriteThreadCount=0;
-                tmp_buffinfo->reduceBuffsizeSensor=0;
-                m_dstBuffIdx.push_back(tmp_buffinfo->buffIdx);
-                tmp_buffinfo->buffIdx = -1;
-                m_dstAvailableBuffCount++;
-                m_dstBuffPool.erase(tag);
-                m_dstBuffAvailableCond.notify_one();
-                LCK2.unlock();
-
-            }
-        }// end for only one thread
-        else
-        {
-            // get write op lock and check op counter value to see if need do real write
-            std::unique_lock<std::mutex> LCK1(m_dstOpCheckMutex);
-
-            int counteridx = m_dstOpRotateCounterIdx[myThreadRank];
-            m_dstOpRotateCounter[counteridx]++;
-            if(m_dstOpRotateCounter[counteridx] >1)
-            {
-                // a late coming thread, but at most = all local threads
-#ifdef USE_DEBUG_ASSERT
-                assert(m_dstOpRotateCounter[counteridx] <= m_numDstLocalThreads);
-#endif
-
-                while(m_dstOpRotateFinishFlag[counteridx] == 0)
-                {
-                    // the first thread which do real write hasn't finish, we will wait for it to finish
-                    m_dstOpFinishCond.wait(LCK1);
-                }
-                // wake up, so the write is finished
-                m_dstOpRotateFinishFlag[counteridx]++;
-                if(m_dstOpRotateFinishFlag[counteridx] == m_numDstLocalThreads)
-                {
-                    // last thread that will leave this write, reset counter and flag value
-                    m_dstOpRotateFinishFlag[counteridx] = 0;
-                    m_dstOpRotateCounter[counteridx] = 0;
-                    // update counter idx to next one
-                    m_dstOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
-
-                    m_dstAvailableNoFinishedOpCount++;
-                    m_dstAvailableNoFinishedOpCond.notify_one();
-                    LCK1.unlock();
-                }
-                else
-                {
-                    // update counter idx to next one
-                    m_dstOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
-                    LCK1.unlock();
-                }
-#ifdef USE_DEBUG_LOG
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"dst-thread "<<myThreadRank<<" exit Pwrite...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
-#endif
-
-			    return 0;
-            } //end for late thread
+            if(DataSize < CONDUIT_BUFFER_SIZE)
+                tmp_buffptr->dataPtr = tmp_buffptr->smallDataBuff;
             else
+                tmp_buffptr->dataPtr = (char*)malloc(DataSize);
+            memcpy(tmp_buffptr, DataPtr, DataSize);
+            tmp_buffptr->dataSize = DataSize;
+            tmp_buffptr->usingPtr = true;
+            tmp_buffptr->msgTag = tag;
+            tmp_buffptr->safeRelease = &m_dstUsingPtrFinishFlag[myLocalRank];
+            m_dstUsingPtrFinishFlag[myLocalRank] = 0;
+            if(m_dstBuffQueue->push(tmp_buffptr)){
+                std::cerr<<"ERROR, potential write timeout!"<<std::endl;
+                exit(1);
+            }
+            // as use ptr for data transfer, need wait for reader finish
+        	while(m_dstUsingPtrFinishFlag[myLocalRank] == 0){
+        		_mm_pause();
+        		//__asm__ __volatile__ ("pause":::"memory");
+        		//asm volatile("pause":::"memocy");
+        	}
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" finish Pwrite!:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+#endif                
+        }
+        else{
+            if(myThreadRank == m_dstOpTokenFlag[myThreadRank])
             {
-                // the first coming thread, who will do real write
-                while(m_dstAvailableNoFinishedOpCount==0)
-                {
-                    m_dstAvailableNoFinishedOpCond.wait(LCK1);
-                }
-                m_dstAvailableNoFinishedOpCount--;
-                LCK1.unlock();
-
-                std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
-                // check if there is available buff
-                while(m_dstAvailableBuffCount == 0)
-                {
-                    // buffpool full, wait for one
-                    m_dstBuffAvailableCond.wait(LCK2);
-                }
-                // get buff, go on check if tag exist in pool
-                if(m_dstBuffPool.find(tag) != m_dstBuffPool.end())
-                {
-                    // exist, this would be an tag reuse error
-                    std::cerr<<"Error, tag resued!"<<std::endl;
-                    LCK2.unlock();
+                int next_thread = (m_dstOpTokenFlag[myThreadRank]+1) % m_numDstLocalThreads;
+                m_dstOpThreadLatch[next_thread]->reset(1);
+                MsgInfo_t *tmp_buffptr = m_dstInnerMsgQueue->pop();
+                if(tmp_buffptr == nullptr){
+                    std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
                     exit(1);
                 }
-
-                if(m_dstBuffPool.find(tag) == m_dstBuffPool.end())
-                {
-                    // has buff now, can do the real write
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Pwrite...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Pwrite ...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
-
-                    if(m_dstBuffPoolWaitlist.find(tag) != m_dstBuffPoolWaitlist.end())
-                    {
-                        m_dstBuffPoolWaitlist.erase(tag);
-                    }
-                    int tmp_idx = m_dstBuffIdx.back();
-                    m_dstBuffIdx.pop_back();
-                    BuffInfo* tmp_buffinfo = &(m_dstAvailableBuff[tmp_idx]);
-                    tmp_buffinfo->buffIdx = tmp_idx;
-                    // set count to 1
-                    tmp_buffinfo->callingWriteThreadCount = 1;
-                    // insert this buff to buffpool
-                    m_dstBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
-                    // decrease availabe buff
-                    m_dstAvailableBuffCount--;
-                    // use address to pass msg
-                    tmp_buffinfo->dataPtr = DataPtr;
-                    // set written flag here
-                    m_dstBuffDataWrittenFlag[tmp_idx] = 1;
-                    // release buffmanager lock to allow other threads to get buff
-                    LCK2.unlock();
-                    // notify reader that one new item inserted to buff pool
-                    m_dstNewBuffInsertedCond.notify_all();
-
-                    // wait reader finish data copy
-                    std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_idx]);
-                    m_dstBuffDataReadCond[tmp_idx].wait(LCK3,
-                            [=](){return m_dstBuffDataReadFlag[tmp_idx] == 1;});
-                    LCK3.unlock();
-
-                    // release buff
-                    LCK2.lock();
-                    m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
-                    m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
-                    tmp_buffinfo->dataPtr= nullptr;
-                    tmp_buffinfo->callingReadThreadCount=0;
-                    tmp_buffinfo->callingWriteThreadCount=0;
-                    tmp_buffinfo->reduceBuffsizeSensor=0;
-                    m_dstBuffIdx.push_back(tmp_buffinfo->buffIdx);
-                    tmp_buffinfo->buffIdx = -1;
-                    m_dstAvailableBuffCount++;
-                    m_dstBuffPool.erase(tag);
-                    m_dstBuffAvailableCond.notify_one();
-                    LCK2.unlock();
-
-                    // the first thread finish real write
-                    LCK1.lock();
-#ifdef USE_DEBUG_ASSERT
-                    assert(m_dstOpRotateFinishFlag[counteridx] == 0);
-#endif
-                    // set finish flag
-                    m_dstOpRotateFinishFlag[counteridx]++;
-                    // update counter idx to next one
-                    m_dstOpRotateCounterIdx[myThreadRank] = (counteridx+1)%(m_noFinishedOpCapacity+1);
-                    // notify other late coming threads to exit
-                    m_dstOpFinishCond.notify_all();
-                    LCK1.unlock();
+                if(DataSize < CONDUIT_BUFFER_SIZE)
+                    tmp_buffptr->dataPtr = tmp_buffptr->smallDataBuff;
+                else
+                    tmp_buffptr->dataPtr = (char*)malloc(DataSize);
+                memcpy(tmp_buffptr, DataPtr, DataSize);
+                tmp_buffptr->dataSize = DataSize;
+                tmp_buffptr->usingPtr = true;
+                tmp_buffptr->msgTag = tag;
+                tmp_buffptr->safeRelease = &m_dstUsingPtrFinishFlag[myLocalRank];
+                if(m_dstBuffQueue->push(tmp_buffptr)){
+                    std::cerr<<"ERROR, potential write timeout!"<<std::endl;
+                    exit(1);
                 }
-            }// end first coming thread
-        }// end for several threads
+                // as use ptr for data transfer, need wait for reader finish
+	        	while(m_dstUsingPtrFinishFlag[myLocalRank] == 0){
+	        		_mm_pause();
+	        	}
+
+                m_dstOpThreadLatch[m_srcOpTokenFlag[myThreadRank]]->count_down();
+                m_dstOpTokenFlag[myThreadRank] = next_thread;
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"dst-thread "<<myThreadRank<<" finish Pwrite!:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
+            }
+            else{
+                int do_thread =  m_dstOpTokenFlag[myThreadRank];  //the op thread's rank
+                m_dstOpThreadLatch[do_thread]->wait();         // wait on associated latch
+                // wake up when do_thread finish, and update token flag to next value
+                m_dstOpTokenFlag[myThreadRank] = (m_dstOpTokenFlag[myThreadRank]+1)%m_numDstLocalThreads;
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" exit Pwrite...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+#endif            
+            }
 
-        return 0;
-
-    }// end dsttask
-    else
-    {
-    	std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
-    	exit(1);
+        }
+    } //end dst
+    else{
+        std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
+        exit(1);
     }
 
     return 0;
-
-}// end pwrite()
-
-
-int InprocConduit::PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag)
-{
-#ifdef USE_DEBUG_LOG
-    if(!m_threadOstream)
-        m_threadOstream = getThreadOstream();
-#endif
-    static thread_local int myTaskid = -1;
-    static thread_local int myThreadRank = -1;
-    if(myTaskid == -1)
-    {
-        myTaskid = TaskManager::getCurrentTaskId();
-        myThreadRank = TaskManager::getCurrentThreadRankinTask();
-        //*m_threadOstream<<"dst-here"<<myTaskid<<std::endl;
-    }
-#ifdef USE_DEBUG_LOG
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"thread "<<myThreadRank<<" call Pwriteby..."<<std::endl;
-#endif
-    if(myThreadRank != thread)
-    {
-        if(thread >= TaskManager::getCurrentTask()->getNumTotalThreads())
-        {
-            std::cerr<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
-            exit(1);
-        }
-        // not the writing thread, just return, we will not wait for the real write
-        // finish!
-#ifdef USE_DEBUG_LOG
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"thread "<<myThreadRank<<" exit Pwriteby!"<<std::endl;
-#endif
-        return 0;
-    }
-    else
-    {
-    	// current thread is the writing thread
-    	if(myTaskid == m_srcId)
-    	{
-    		// Check if there's buff available
-    		std::unique_lock<std::mutex> LCK2(m_srcBuffManagerMutex);
-    		m_srcBuffAvailableCond.wait(LCK2,
-    				[=](){return m_srcAvailableBuffCount != 0;});
-    		// get buff, go on checking if tag reuse
-    		if(m_srcBuffPool.find(tag) != m_srcBuffPool.end())
-    		{
-    			// tag already exist
-    			std::cerr<<"Error, tag resued!"<<std::endl;
-    			LCK2.unlock();
-    			exit(1);
-    		}
-    		if(m_srcBuffPool.find(tag) == m_srcBuffPool.end())
-    		{
-    			// has buff and tag not exist, do real write
-#ifdef USE_DEBUG_LOG
-		PRINT_TIME_NOW(*m_threadOstream)
-		*m_threadOstream<<"src-thread "<<myThreadRank<<" doing Pwriteby...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
-#endif
-
-				if(m_srcBuffPoolWaitlist.find(tag) != m_srcBuffPoolWaitlist.end())
-				{
-					m_srcBuffPoolWaitlist.erase(tag);
-				}
-				int tmp_idx = m_srcBuffIdx.back();
-				m_srcBuffIdx.pop_back();
-				BuffInfo* tmp_buffinfo= &(m_srcAvailableBuff[tmp_idx]);
-				tmp_buffinfo->buffIdx = tmp_idx;
-				// set count to 1
-				tmp_buffinfo->callingWriteThreadCount = 1;
-				// insert this buff to buffpool
-				m_srcBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
-				// decrease availabe buff
-				m_srcAvailableBuffCount--;
-				// pass address
-				tmp_buffinfo->dataPtr = DataPtr;
-				m_srcBuffDataWrittenFlag[tmp_idx] = 1;
-				LCK2.unlock();
-				m_srcNewBuffInsertedCond.notify_all();
-
-				std::unique_lock<std::mutex> LCK3(m_srcBuffAccessMutex[tmp_idx]);
-				m_srcBuffDataReadCond[tmp_idx].wait(LCK3,
-						[=](){return m_srcBuffDataReadFlag[tmp_idx] == 1;});
-				// wakeup when reader finish copy data
-				LCK3.unlock();
-
-				// release buff
-                LCK2.lock();
-                m_srcBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
-                m_srcBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
-                tmp_buffinfo->dataPtr= nullptr;
-                tmp_buffinfo->callingReadThreadCount=0;
-                tmp_buffinfo->callingWriteThreadCount=0;
-                tmp_buffinfo->reduceBuffsizeSensor=0;
-                m_srcBuffIdx.push_back(tmp_buffinfo->buffIdx);
-                tmp_buffinfo->buffIdx = -1;
-                m_srcAvailableBuffCount++;
-                m_srcBuffPool.erase(tag);
-                m_srcBuffAvailableCond.notify_one();
-                LCK2.unlock();
-
-                if(m_numSrcLocalThreads > 1)
-				{
-					// record this op to readby finish set
-					std::lock_guard<std::mutex> LCK4(m_writebyFinishMutex);
-					//m_writebyFinishSet.insert(std::pair<int, int>((tag<<LOG_MAX_TASKS)+myTaskid,
-					//      m_numSrcLocalThreads-1));
-					m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = m_numSrcLocalThreads;
-					m_writebyFinishCond.notify_all();
-				}
-
-#ifdef USE_DEBUG_LOG
-		PRINT_TIME_NOW(*m_threadOstream)
-		*m_threadOstream<<"src-thread "<<myThreadRank<<" finish Pwriteby!:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
-#endif
-				return 0;
-    		}
-    	}// end srctask
-    	else if(myTaskid == m_dstId)
-    	{
-    		//dsttask calling write
-			std::unique_lock<std::mutex> LCK2(m_dstBuffManagerMutex);
-			m_dstBuffAvailableCond.wait(LCK2,
-					[=](){return m_dstAvailableBuffCount !=0;});
-			// get buff, go on check if tag exist in pool
-			if(m_dstBuffPool.find(tag) != m_dstBuffPool.end())
-			{
-				// exist, this would be an tag reuse error
-				std::cerr<<"Error, tag resued!"<<std::endl;
-				LCK2.unlock();
-				exit(1);
-			}
-			if(m_dstBuffPool.find(tag) == m_dstBuffPool.end())
-			{
-				// has buff now, can do the real write
-#ifdef USE_DEBUG_LOG
-		PRINT_TIME_NOW(*m_threadOstream)
-		*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Pwriteby...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
-#endif
-
-				if(m_dstBuffPoolWaitlist.find(tag) != m_dstBuffPoolWaitlist.end())
-				{
-					m_dstBuffPoolWaitlist.erase(tag);
-				}
-
-				int tmp_idx = m_dstBuffIdx.back();
-				m_dstBuffIdx.pop_back();
-				BuffInfo* tmp_buffinfo= &(m_dstAvailableBuff[tmp_idx]);
-				tmp_buffinfo->buffIdx = tmp_idx;
-				// set count to 1
-				tmp_buffinfo->callingWriteThreadCount = 1;
-				// insert this buff to buffpool
-				m_dstBuffPool.insert(std::pair<MessageTag_t, BuffInfo*>(tag, tmp_buffinfo));
-				// decrease availabe buff
-				m_dstAvailableBuffCount--;
-				//
-				tmp_buffinfo->dataPtr = DataPtr;
-				m_dstBuffDataWrittenFlag[tmp_idx] = 1;
-				LCK2.unlock();
-				m_dstNewBuffInsertedCond.notify_all();
-
-				// wait reader finish data copy
-				std::unique_lock<std::mutex> LCK3(m_dstBuffAccessMutex[tmp_idx]);
-				m_dstBuffDataReadCond[tmp_idx].wait(LCK3,
-						[=](){return m_dstBuffDataReadFlag[tmp_idx] == 1;});
-				LCK3.unlock();
-
-				// release buff
-                LCK2.lock();
-                m_dstBuffDataWrittenFlag[tmp_buffinfo->buffIdx]=0;
-                m_dstBuffDataReadFlag[tmp_buffinfo->buffIdx]=0;
-                tmp_buffinfo->dataPtr= nullptr;
-                tmp_buffinfo->callingReadThreadCount=0;
-                tmp_buffinfo->callingWriteThreadCount=0;
-                tmp_buffinfo->reduceBuffsizeSensor=0;
-                m_dstBuffIdx.push_back(tmp_buffinfo->buffIdx);
-                tmp_buffinfo->buffIdx = -1;
-                m_dstAvailableBuffCount++;
-                m_dstBuffPool.erase(tag);
-                m_dstBuffAvailableCond.notify_one();
-                LCK2.unlock();
-
-                if(m_numDstLocalThreads > 1)
-                {
-					// record this op to readby finish set
-					std::lock_guard<std::mutex> LCK4(m_writebyFinishMutex);
-					//m_writebyFinishSet.insert(std::pair<int, int>((tag<<LOG_MAX_TASKS)+myTaskid,
-					//      m_numDstLocalThreads-1));
-					m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = m_numDstLocalThreads;
-					m_writebyFinishCond.notify_all();
-                }
-
-#ifdef USE_DEBUG_LOG
-		PRINT_TIME_NOW(*m_threadOstream)
-		*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish Pwriteby!:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
-#endif
-				return 0;
-			}
-    	}// end dsttask
-    	else
-    	{
-    		std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
-    		exit(1);
-    	}
-
-    	return 0;
-    }//end threadrank==thread
-
-}// end pwriteby()
+} // end BWrite()
 
 
-void InprocConduit::PWriteBy_Finish(int tag)
-{
-#ifdef USE_DEBUG_LOG
-    if(!m_threadOstream)
-        m_threadOstream = getThreadOstream();
-#endif
-    static thread_local int myTaskid = -1;
-    static thread_local int myThreadRank = -1;
-    if(myTaskid == -1)
-    {
-        myTaskid = TaskManager::getCurrentTaskId();
-        myThreadRank = TaskManager::getCurrentThreadRankinTask();
-    }
-    if(myTaskid == m_srcId && m_numSrcLocalThreads == 1)
-    {
-#ifdef USE_DEBUG_LOG
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"thread "<<myThreadRank<<" exit wait Pwriteby!"<<std::endl;
-#endif
-    	return;
-    }
-    else if(myTaskid == m_dstId && m_numDstLocalThreads == 1)
-    {
-#ifdef USE_DEBUG_LOG
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"thread "<<myThreadRank<<" exit wait Pwriteby!"<<std::endl;
-#endif
-    	return;
-    }
-
-    std::unique_lock<std::mutex> LCK1(m_writebyFinishMutex);
-#ifdef USE_DEBUG_LOG
-		PRINT_TIME_NOW(*m_threadOstream)
-		*m_threadOstream<<"thread "<<myThreadRank<<" wait for Pwriteby..."<<std::endl;
-#endif
-	while(m_writebyFinishSet.find((tag<<LOG_MAX_TASKS)+myTaskid) ==
-			m_writebyFinishSet.end())
-	{
-		m_writebyFinishCond.wait(LCK1);
-	}
-	// find tag in finishset
-#ifdef USE_DEBUG_ASSERT
-	assert(m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]>0);
-#endif
-	m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]--;
-	if(m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid]==0)
-	{
-		m_writebyFinishSet.erase((tag<<LOG_MAX_TASKS)+myTaskid);
-	}
-#ifdef USE_DEBUG_LOG
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"thread "<<myThreadRank<<" finish wait Pwriteby!"<<std::endl;
-#endif
-
-    return;
-}// end pwriteby_finish()
+}
 
 
-}// end namespace iUtc
