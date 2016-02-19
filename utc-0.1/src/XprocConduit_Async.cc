@@ -55,7 +55,7 @@ int XprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)
 		MPI_Request *req = (MPI_Request*)malloc(sizeof(MPI_Request));
 		//TODO:
 		MPI_Datatype datatype=MPI_CHAR;
-		if(DataSize > (1<<31)-1){
+		if(DataSize > ((unsigned)1<<31)-1){
 			DataSize = (DataSize+3)/4;
 			datatype = MPI_INT;
 		}
@@ -82,7 +82,7 @@ int XprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)
 			MPI_Request *req = (MPI_Request*)malloc(sizeof(MPI_Request));
 			//TODO:
 			MPI_Datatype datatype=MPI_CHAR;
-			if(DataSize > (1<<31)-1){
+			if(DataSize > ((unsigned)1<<31)-1){
 				DataSize = (DataSize+3)/4;
 				datatype = MPI_INT;
 			}
@@ -250,7 +250,7 @@ int XprocConduit::AsyncWrite(void *DataPtr, DataSize_t DataSize, int tag)
 		MPI_Request *req = (MPI_Request*)malloc(sizeof(MPI_Request));
 		//TODO:
 		MPI_Datatype datatype=MPI_CHAR;
-		if(DataSize > (1<<31)-1){
+		if(DataSize > ((unsigned)1<<31)-1){
 			DataSize = (DataSize+3)/4;
 			datatype = MPI_INT;
 		}
@@ -277,7 +277,7 @@ int XprocConduit::AsyncWrite(void *DataPtr, DataSize_t DataSize, int tag)
 			MPI_Request *req = (MPI_Request*)malloc(sizeof(MPI_Request));
 			//TODO:
 			MPI_Datatype datatype=MPI_CHAR;
-			if(DataSize > (1<<31)-1){
+			if(DataSize > ((unsigned)1<<31)-1){
 				DataSize = (DataSize+3)/4;
 				datatype = MPI_INT;
 			}

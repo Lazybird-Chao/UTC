@@ -18,6 +18,9 @@
 //I
 #include "InprocConduit.h"
 
+//L
+#include "LockFreeRingbufferQueue.h"
+
 //R
 #include "RankList.h"
 #include "RootTask.h"

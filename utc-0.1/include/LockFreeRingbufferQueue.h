@@ -1,27 +1,9 @@
 /**
- * Implementation of Naive and Lock-free ring-buffer queues and
- * performance and verification tests.
  *
- * Build with (g++ version must be >= 4.5.0):
- * $ g++ -Wall -std=c++0x -Wl,--no-as-needed -O2 -D DCACHE1_LINESIZE=`getconf LEVEL1_DCACHE_LINESIZE` lockfree_rb_q.cc -lpthread
- *
- * I verified the program with g++ 4.5.3, 4.6.1, 4.6.3 and 4.8.1.
- *
- * Use -std=c++11 instead of -std=c++0x for g++ 4.8.
- *
- * Copyright (C) 2012-2013 Alexander Krizhanovsky (ak@natsys-lab.com).
- *
- * This file is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published
- * by the Free Software Foundation; either version 3, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- * See http://www.gnu.org/licenses/lgpl.html .
  */
+#ifndef LOCK_FREE_RINGBUFFER_QUEUE_
+#define LOCK_FREE_RINGBUFFER_QUEUE_
+
 #ifndef __x86_64__
 #warning "The program is developed for x86-64 architecture only."
 #endif
@@ -49,7 +31,7 @@
 #include <thread>
 
 #define QUEUE_SIZE	(32 * 1024)
-#define TIMEOUT_COUNT  1000
+//#define TIMEOUT_COUNT  1000
 /*
  * ------------------------------------------------------------------------
  * Naive serialized ring buffer queue
@@ -166,7 +148,6 @@ private:
  * ------------------------------------------------------------------------
  */
 
-
 template<class T,
 	unsigned long Q_SIZE = QUEUE_SIZE>
 class LockFreeQueue {
@@ -210,10 +191,28 @@ public:
 		thread_id = id;
 	}
 	// init queue
-	void initQueue(size_t data_size){
-		for(int i =0; i< Q_SIZE; i++){
-			ptr_array_[i] = (T*)std::malloc(data_size);
-		}
+	void setupInitPush(){
+		head_ = 0;
+	}
+	int initPush(T* ptr){
+		assert(tail_ == 0);
+		if(head_ > Q_SIZE)
+			return 1;    // push fail
+		ptr_array_[head_]=ptr;
+		head_++;
+		last_head_++;
+		return 0;		// push success
+	}
+	// destroy queue
+	void setupEndPop(){
+		tail_=0;
+	}
+	T* endPop(){
+		if(tail_ > Q_SIZE)
+			return nullptr;		// pop fail
+		T* ret = ptr_array_[tail_];
+		tail_++;
+		return ret;				// pop success
 	}
 
 	int
@@ -243,7 +242,7 @@ public:
 		 * We do not know when a consumer uses the pop()'ed pointer,
 		 * se we can not overwrite it and have to wait the lowest tail.
 		 */
-		int timeout_count=0;
+		//int timeout_count=0;
 		while (__builtin_expect(thr_p_[thread_id].head >= last_tail_ + Q_SIZE, 0))
 		{
 			auto min = tail_;
@@ -262,9 +261,9 @@ public:
 
 			if (thr_p_[thread_id].head < last_tail_ + Q_SIZE)
 				break;
-			timeout_count++;
+			/*timeout_count++;
 			if(timeout_count>TIMEOUT_COUNT)
-				return 1;
+				return 1;*/
 			_mm_pause();
 		}
 
@@ -282,7 +281,7 @@ public:
 		thr_p_[thread_id].head = __sync_fetch_and_add(&head_, 1);
 
 		
-		int timeout_count=0;
+		//int timeout_count=0;
 		while (__builtin_expect(thr_p_[thread_id].head >= last_tail_ + Q_SIZE, 0))
 		{
 			auto min = tail_;
@@ -301,9 +300,9 @@ public:
 
 			if (thr_p_[thread_id].head < last_tail_ + Q_SIZE)
 				break;
-			timeout_count++;
+			/*timeout_count++;
 			if(timeout_count>TIMEOUT_COUNT)
-				return 1;
+				return 1;*/
 			_mm_pause();
 		}
 
@@ -332,7 +331,7 @@ public:
 		 * last_head_ guaraties that no any consumer eats the item
 		 * before producer reserved the position writes to it.
 		 */
-		int timeout_count =0;
+		//int timeout_count =0;
 		while (__builtin_expect(thr_p_[thread_id].tail >= last_head_, 0))
 		{
 			auto min = head_;
@@ -351,9 +350,9 @@ public:
 
 			if (thr_p_[thread_id].tail < last_head_)
 				break;
-			timeout_count++;
+			/*timeout_count++;
 			if(timeout_count>TIMEOUT_COUNT)
-				return nullptr;
+				return nullptr;*/
 			_mm_pause();
 		}
 
@@ -383,7 +382,10 @@ private:
 	static thread_local unsigned int	thread_id;
 	T		**ptr_array_;
 };
+template<class T,
+	unsigned long Q_SIZE>
+thread_local unsigned int LockFreeQueue<T, Q_SIZE>::thread_id = -1;
 
-
+#endif
 
 

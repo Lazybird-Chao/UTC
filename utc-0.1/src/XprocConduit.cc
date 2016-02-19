@@ -124,7 +124,7 @@ int XprocConduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
 #ifdef USE_MPI_BASE
 		// TODO: solving int(datasize) problem
 		MPI_Datatype datatype=MPI_CHAR;
-		if(DataSize > (1<<31)-1){
+		if(DataSize > ((unsigned)1<<31)-1){
 			DataSize = (DataSize+3)/4;
 			datatype = MPI_INT;
 		}
@@ -137,7 +137,9 @@ int XprocConduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
 		if(myThreadRank != m_OpTokenFlag[myThreadRank]){
 			// not this thread's turn to do op
 			int do_thread = m_OpTokenFlag[myThreadRank];
-			m_OpThreadLatch[do_thread]->wait();
+			if(!m_OpThreadLatch[do_thread]->try_wait()){
+				m_OpThreadLatch[do_thread]->wait();
+			}
 			//
 			m_OpTokenFlag[myThreadRank]= (m_OpTokenFlag[myThreadRank]+1)% localNumthreads;
 
@@ -182,7 +184,7 @@ int XprocConduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
 			// the mpi msg will have different new tag
 			// TODO: solving int(datasize) problem
 			MPI_Datatype datatype=MPI_CHAR;
-			if(DataSize > (1<<31)-1){
+			if(DataSize > ((unsigned)1<<31)-1){
 				DataSize = (DataSize+3)/4;
 				datatype = MPI_INT;
 			}
@@ -282,7 +284,7 @@ int XprocConduit::WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSiz
 #ifdef USE_MPI_BASE
 	// TODO: int-datasize limitation
 	MPI_Datatype datatype=MPI_CHAR;
-	if(DataSize > (1<<31)-1){
+	if(DataSize > ((unsigned)1<<31)-1){
 		DataSize = (DataSize+3)/4;
 		datatype = MPI_INT;
 	}
@@ -457,7 +459,7 @@ int XprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
 #ifdef USE_MPI_BASE
 		// TODO: int-datasize limitation
 		MPI_Datatype datatype=MPI_CHAR;
-		if(DataSize > (1<<31)-1){
+		if(DataSize > ((unsigned)1<<31)-1){
 			DataSize = (DataSize+3)/4;
 			datatype = MPI_INT;
 		}
@@ -470,7 +472,9 @@ int XprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
 		if(myThreadRank != m_OpTokenFlag[myThreadRank]){
 			// not this thread's turn to do w/r
 			int do_thread = m_OpTokenFlag[myThreadRank];
-			m_OpThreadLatch[do_thread]->wait();
+			if(!m_OpThreadLatch[do_thread]->try_wait()){
+				m_OpThreadLatch[do_thread]->wait();
+			}
 			//
 			m_OpTokenFlag[myThreadRank]= (m_OpTokenFlag[myThreadRank]+1)% localNumthreads;
 
@@ -510,7 +514,7 @@ int XprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
 #ifdef USE_MPI_BASE
 			// TODO: int-datasize limitation
 			MPI_Datatype datatype=MPI_CHAR;
-			if(DataSize > (1<<31)-1){
+			if(DataSize > ((unsigned)1<<31)-1){
 				DataSize = (DataSize+3)/4;
 				datatype = MPI_INT;
 			}
@@ -610,7 +614,7 @@ int XprocConduit::PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSi
 #ifdef USE_MPI_BASE
 	// TODO: int-datasize limitation
 	MPI_Datatype datatype=MPI_CHAR;
-	if(DataSize > (1<<31)-1){
+	if(DataSize > ((unsigned)1<<31)-1){
 		DataSize = (DataSize+3)/4;
 		datatype = MPI_INT;
 	}
@@ -765,7 +769,7 @@ int XprocConduit::Read(void* DataPtr, DataSize_t DataSize, int tag)
 #ifdef USE_MPI_BASE
 		// TODO:
 		MPI_Datatype datatype=MPI_CHAR;
-		if(DataSize > (1<<31)-1){
+		if(DataSize > ((unsigned)1<<31)-1){
 			DataSize = (DataSize+3)/4;
 			datatype = MPI_INT;
 		}
@@ -778,7 +782,9 @@ int XprocConduit::Read(void* DataPtr, DataSize_t DataSize, int tag)
 		if(myThreadRank != m_OpTokenFlag[myThreadRank]){
 			//
 			int do_thread = m_OpTokenFlag[myThreadRank];
-			m_OpThreadLatch[do_thread]->wait();
+			if(!m_OpThreadLatch[do_thread]->try_wait()){
+				m_OpThreadLatch[do_thread]->wait();
+			}
 			//
 			m_OpTokenFlag[myThreadRank] = (m_OpTokenFlag[myThreadRank]+1)%localNumthreads;
 #ifdef USE_DEBUG_LOG
@@ -816,7 +822,7 @@ int XprocConduit::Read(void* DataPtr, DataSize_t DataSize, int tag)
 #ifdef USE_MPI_BASE
 			// TODO:
 			MPI_Datatype datatype=MPI_CHAR;
-			if(DataSize > (1<<31)-1){
+			if(DataSize > ((unsigned)1<<31)-1){
 				DataSize = (DataSize+3)/4;
 				datatype = MPI_INT;
 			}
@@ -912,7 +918,7 @@ int XprocConduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize
 #ifdef USE_MPI_BASE
 	//TODO:
 	MPI_Datatype datatype=MPI_CHAR;
-	if(DataSize > (1<<31)-1){
+	if(DataSize > ((unsigned)1<<31)-1){
 		DataSize = (DataSize+3)/4;
 		datatype = MPI_INT;
 	}

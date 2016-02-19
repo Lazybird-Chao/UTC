@@ -1,8 +1,8 @@
 #include "Task.h"
 #include "RootTask.h"
-#include <functional>
-
 #include "../include/TaskUtilities.h"
+
+#include <functional>
 #include "boost/filesystem.hpp"
 
 namespace iUtc{

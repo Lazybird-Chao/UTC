@@ -58,15 +58,15 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
             tmp_buffptr->dataSize = DataSize;
             tmp_buffptr->usingPtr = true;
             tmp_buffptr->msgTag = tag;
+            m_srcUsingPtrFinishFlag[myLocalRank].store(0);
             tmp_buffptr->safeRelease = &m_srcUsingPtrFinishFlag[myLocalRank];
-            m_srcUsingPtrFinishFlag[myLocalRank]=0;
         	// push msg to buffqueue for reader to read
         	if(m_srcBuffQueue->push(tmp_buffptr)){
         		std::cerr<<"ERROR, potential write timeout!"<<std::endl;
         		exit(1);
         	}
         	// as use ptr for data transfer, need wait for reader finish
-        	while(m_srcUsingPtrFinishFlag[myLocalRank] == 0){
+        	while(m_srcUsingPtrFinishFlag[myLocalRank].load()==0){
         		_mm_pause();
         	}
 
@@ -99,15 +99,15 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
                 tmp_buffptr->dataSize = DataSize;
                 tmp_buffptr->usingPtr = true;
                 tmp_buffptr->msgTag = tag;
+                m_srcUsingPtrFinishFlag[myLocalRank].store(0);
                 tmp_buffptr->safeRelease = &m_srcUsingPtrFinishFlag[myLocalRank];
-            	m_srcUsingPtrFinishFlag[myLocalRank]=0;
                 // push msg to buffqueue for reader to read
                 if(m_srcBuffQueue->push(tmp_buffptr)){
                     std::cerr<<"ERROR, potential write timeout!"<<std::endl;
                     exit(1);
                 }
                 // as use ptr for data transfer, need wait for reader finish
-	        	while(m_srcUsingPtrFinishFlag[myLocalRank] == 0){
+	        	while(m_srcUsingPtrFinishFlag[myLocalRank].load() == 0){
 	        		_mm_pause();
 	        	}
 
@@ -122,7 +122,9 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
             else{
                 // not the op thread, just wait the op thread finish
                 int do_thread =  m_srcOpTokenFlag[myThreadRank];  //the op thread's rank
-                m_srcOpThreadLatch[do_thread]->wait();         // wait on associated latch
+                if(!m_srcOpThreadLatch[do_thread]->try_wait()){
+                	m_srcOpThreadLatch[do_thread]->wait();         // wait on associated latch
+                }
                 // wake up when do_thread finish, and update token flag to next value
                 m_srcOpTokenFlag[myThreadRank] = (m_srcOpTokenFlag[myThreadRank]+1)%m_numSrcLocalThreads; 
 #ifdef USE_DEBUG_LOG
@@ -148,22 +150,18 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Pwrite ...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
-            if(DataSize < CONDUIT_BUFFER_SIZE)
-                tmp_buffptr->dataPtr = tmp_buffptr->smallDataBuff;
-            else
-                tmp_buffptr->dataPtr = (char*)malloc(DataSize);
-            memcpy(tmp_buffptr, DataPtr, DataSize);
+            tmp_buffptr->dataPtr = DataPtr;
             tmp_buffptr->dataSize = DataSize;
             tmp_buffptr->usingPtr = true;
             tmp_buffptr->msgTag = tag;
+            m_dstUsingPtrFinishFlag[myLocalRank].store(0);
             tmp_buffptr->safeRelease = &m_dstUsingPtrFinishFlag[myLocalRank];
-            m_dstUsingPtrFinishFlag[myLocalRank] = 0;
             if(m_dstBuffQueue->push(tmp_buffptr)){
                 std::cerr<<"ERROR, potential write timeout!"<<std::endl;
                 exit(1);
             }
             // as use ptr for data transfer, need wait for reader finish
-        	while(m_dstUsingPtrFinishFlag[myLocalRank] == 0){
+        	while(m_dstUsingPtrFinishFlag[myLocalRank].load()==0){
         		_mm_pause();
         		//__asm__ __volatile__ ("pause":::"memory");
         		//asm volatile("pause":::"memocy");
@@ -187,14 +185,11 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing Pwrite ...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
-                if(DataSize < CONDUIT_BUFFER_SIZE)
-                    tmp_buffptr->dataPtr = tmp_buffptr->smallDataBuff;
-                else
-                    tmp_buffptr->dataPtr = (char*)malloc(DataSize);
-                memcpy(tmp_buffptr, DataPtr, DataSize);
+                tmp_buffptr->dataPtr = DataPtr;
                 tmp_buffptr->dataSize = DataSize;
                 tmp_buffptr->usingPtr = true;
                 tmp_buffptr->msgTag = tag;
+                m_dstUsingPtrFinishFlag[myLocalRank].store(0);
                 tmp_buffptr->safeRelease = &m_dstUsingPtrFinishFlag[myLocalRank];
                 if(m_dstBuffQueue->push(tmp_buffptr)){
                     std::cerr<<"ERROR, potential write timeout!"<<std::endl;
@@ -205,7 +200,7 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 	        		_mm_pause();
 	        	}
 
-                m_dstOpThreadLatch[m_srcOpTokenFlag[myThreadRank]]->count_down();
+                m_dstOpThreadLatch[m_dstOpTokenFlag[myThreadRank]]->count_down();
                 m_dstOpTokenFlag[myThreadRank] = next_thread;
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
@@ -214,7 +209,9 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
             }
             else{
                 int do_thread =  m_dstOpTokenFlag[myThreadRank];  //the op thread's rank
-                m_dstOpThreadLatch[do_thread]->wait();         // wait on associated latch
+                if(!m_dstOpThreadLatch[do_thread]->try_wait()){
+                	m_dstOpThreadLatch[do_thread]->wait();         // wait on associated latch
+                }
                 // wake up when do_thread finish, and update token flag to next value
                 m_dstOpTokenFlag[myThreadRank] = (m_dstOpTokenFlag[myThreadRank]+1)%m_numDstLocalThreads;
 #ifdef USE_DEBUG_LOG

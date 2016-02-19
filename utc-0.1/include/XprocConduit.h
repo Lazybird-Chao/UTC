@@ -9,6 +9,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <fstream>
+#include <atomic>
 #include "boost/thread/latch.hpp"
 
 namespace iUtc{
@@ -76,7 +77,7 @@ private:
 
 
 
-	///// for OpBy
+	///// for OpByFinish
 	std::map<int, int> m_readbyFinishSet;
 	std::mutex m_readbyFinishMutex;
 	std::condition_variable m_readbyFinishCond;

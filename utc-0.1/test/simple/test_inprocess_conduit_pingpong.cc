@@ -4,9 +4,9 @@
 
 using namespace iUtc;
 
-#define TEST_BWRITE
+//#define TEST_BWRITE
 //#define TEST_WRITE
-//#define TEST_PWRITE
+#define TEST_PWRITE
 
 #define SIZE (1024*1024)
 
@@ -125,6 +125,7 @@ int main()
 	Task<user_taskA> task1("ping", r_list1);
 	Task<user_taskB> task2("pong", r_list2);
 	Conduit cdt1(&task1, &task2);
+
 	Timer timer(MILLISEC);
 
 	timer.start();

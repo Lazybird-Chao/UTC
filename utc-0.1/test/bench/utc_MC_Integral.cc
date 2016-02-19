@@ -126,7 +126,7 @@ public:
 		clock_t systime = cst2.tms_stime - cst1.tms_stime;*/
 
 		timer.stop();
-		//double t2 = timer.getThreadCpuTime();
+		double t2 = timer.getThreadCpuTime();
 		intra_Barrier();
 		if(my_thread==0)
 		{
@@ -141,10 +141,10 @@ public:
 		}
 
 
-		/*sleep_for(my_thread);
+		sleep_for(my_thread);
 		std::cout<<my_thread<<": "<<getpid()<<": "<<syscall(SYS_gettid)<<": "<<pthread_self()<<": "<<std::this_thread::get_id()
 					<<"  "<<t2<<"  "<<m_loopN<<std::endl;
-					*/
+
 		/*
 		// check thread affinity
 		CPU_ZERO(&cpuset);

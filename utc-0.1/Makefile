@@ -60,7 +60,7 @@ test: $(LIB_UTC) $(TARGET_OBJ)
 
 ### library required object files
 $(LIB_UTC): $(obj)
-	ar -crv -o libutc.a $(obj)
+	ar -r -uv libutc.a $(obj)
 	mkdir -p lib; cd lib; mv ../*.o ./; mv ../*.a ./
 RankList.o: RankList.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)

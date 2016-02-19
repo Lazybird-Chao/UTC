@@ -86,11 +86,11 @@ namespace iUtc{
 			if(tmp_buffptr->usingPtr){
 				// use ptr for transfer
 #ifdef USE_DEBUG_ASSERT
-                assert(*(tmp_buffptr->safeRelease)==0);
+                assert((tmp_buffptr->safeRelease)->load()==0);
 #endif				
 				memcpy(DataPtr, tmp_buffptr->dataPtr, DataSize);
 				// tell writer, here finish read, he can go
-				*(tmp_buffptr->safeRelease) = 1;
+				(tmp_buffptr->safeRelease)->store(1);
 				// 
 				tmp_buffptr->dataSize = 0;
 				tmp_buffptr->usingPtr = false;
@@ -105,6 +105,7 @@ namespace iUtc{
 			}
 			else{
 				// use intermediate buffer
+				//*m_threadOstream<<tmp_buffptr->msgTag<<"  "<<tmp_buffptr->dataPtr<<std::endl;
 				memcpy(DataPtr, tmp_buffptr->dataPtr,DataSize);
 				if(DataSize > CONDUIT_BUFFER_SIZE)
 					// big msg space is malloced, need free after read
@@ -170,11 +171,11 @@ namespace iUtc{
 				if(tmp_buffptr->usingPtr){
 					// use ptr for transfer
 #ifdef USE_DEBUG_ASSERT
-            		assert(*(tmp_buffptr->safeRelease)==0);
+            		assert((tmp_buffptr->safeRelease)->load()==0);
 #endif				
 					memcpy(DataPtr, tmp_buffptr->dataPtr, DataSize);
 					// tell writer, here finish read, he can go
-					*(tmp_buffptr->safeRelease) = 1;
+					(tmp_buffptr->safeRelease)->store(1);
 					// 
 					tmp_buffptr->dataSize = 0;
 					tmp_buffptr->usingPtr = false;
@@ -214,8 +215,10 @@ namespace iUtc{
 			}
 			else{
 				// not the op thread
-				int do_thread =  m_srcOpTokenFlag[myThreadRank]; 
-				m_srcOpThreadLatch[do_thread]->wait();
+				int do_thread =  m_srcOpTokenFlag[myThreadRank];
+				if(!m_srcOpThreadLatch[do_thread]->try_wait()){
+					m_srcOpThreadLatch[do_thread]->wait();
+				}
 				//
 				m_srcOpTokenFlag[myThreadRank] = (m_srcOpTokenFlag[myThreadRank]+1)%m_numSrcLocalThreads;
 #ifdef USE_DEBUG_LOG
@@ -272,11 +275,11 @@ namespace iUtc{
 			if(tmp_buffptr->usingPtr){
 				// use ptr for transfer
 #ifdef USE_DEBUG_ASSERT
-                assert(*(tmp_buffptr->safeRelease)==0);
+                assert((tmp_buffptr->safeRelease)->load()==0);
 #endif				
 				memcpy(DataPtr, tmp_buffptr->dataPtr, DataSize);
 				// tell writer, here finish read, he can go
-				*(tmp_buffptr->safeRelease) = 1;
+				(tmp_buffptr->safeRelease)->store(1);
 				// 
 				tmp_buffptr->dataSize = 0;
 				tmp_buffptr->usingPtr = false;
@@ -312,7 +315,7 @@ namespace iUtc{
 		}// end one thread
 		else{
 			// multiple threads in task
-			if(myThreadRank == m_srcOpTokenFlag[myThreadRank])
+			if(myThreadRank == m_dstOpTokenFlag[myThreadRank])
 			{
 				// the right thread's turn do r/w
 				int next_thread = (m_dstOpTokenFlag[myThreadRank]+1) % m_numDstLocalThreads;
@@ -356,11 +359,11 @@ namespace iUtc{
 				if(tmp_buffptr->usingPtr){
 					// use ptr for transfer
 #ifdef USE_DEBUG_ASSERT
-            		assert(*(tmp_buffptr->safeRelease)==0);
+            		assert((tmp_buffptr->safeRelease)->load()==0);
 #endif				
 					memcpy(DataPtr, tmp_buffptr->dataPtr, DataSize);
 					// tell writer, here finish read, he can go
-					*(tmp_buffptr->safeRelease) = 1;
+					(tmp_buffptr->safeRelease)->store(1);
 					// 
 					tmp_buffptr->dataSize = 0;
 					tmp_buffptr->usingPtr = false;
@@ -400,10 +403,12 @@ namespace iUtc{
 			}
 			else{
 				// not the op thread
-				int do_thread =  m_dstOpTokenFlag[myThreadRank]; 
-				 m_dstOpThreadLatch[do_thread]->wait();
+				int do_thread =  m_dstOpTokenFlag[myThreadRank];
+				if(!m_dstOpThreadLatch[do_thread]->try_wait()){
+					m_dstOpThreadLatch[do_thread]->wait();
+				}
 				 //
-				  m_dstOpTokenFlag[myThreadRank] = (m_dstOpTokenFlag[myThreadRank]+1)%m_numDstLocalThreads;
+				 m_dstOpTokenFlag[myThreadRank] = (m_dstOpTokenFlag[myThreadRank]+1)%m_numDstLocalThreads;
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"dst-thread "<<myThreadRank<<" exit read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;

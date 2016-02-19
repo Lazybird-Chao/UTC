@@ -1,5 +1,7 @@
 #include "TaskManager.h"
 #include "UtcException.h"
+#include "../include/TaskUtilities.h"
+
 #include <iostream>
 #include <cassert>
 

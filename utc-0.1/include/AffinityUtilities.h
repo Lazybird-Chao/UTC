@@ -23,17 +23,6 @@ namespace iUtc{
 /*
  * get the cpu affinity configuration of calling thread
  */
-inline std::vector<int> getAffinity()
-{
-#ifdef _LINUX_
-	return getAffinityLinux();
-#endif
-#ifdef _MAC_
-	return getAffinityMAc();
-#endif
-
-}
-
 inline std::vector<int> getAffinityLinux(){
 	cpu_set_t cpuset;
 	pthread_t thread;
@@ -55,22 +44,26 @@ inline std::vector<int> getAffinityLinux(){
 }
 
 inline std::vector<int> getAffinityMac(){
-	return 0;
+	return std::vector<int>(0);
 }
+
+
+inline std::vector<int> getAffinity()
+{
+#ifdef _LINUX_
+	return getAffinityLinux();
+#endif
+#ifdef _MAC_
+	return getAffinityMAc();
+#endif
+
+}
+
+
 
 /*
  * modify calling thread's cpu affinity as desired
  */
-inline void setAffinity(std::vector<int> cpus)
-{
-#ifdef _LINUX_
-	setAffinityLinux(cpus);
-#endif
-#ifdef _MAC_
-	setAffinityMac(cpus);
-#endif
-}
-
 inline void setAffinityLinux(std::vector<int> cpus){
 	cpu_set_t cpuset;
 	pthread_t thread;
@@ -92,6 +85,17 @@ inline void setAffinityLinux(std::vector<int> cpus){
 
 inline void setAffinityMac(std::vector<int> cpus){
 	return;
+}
+
+
+inline void setAffinity(std::vector<int> cpus)
+{
+#ifdef _LINUX_
+	setAffinityLinux(cpus);
+#endif
+#ifdef _MAC_
+	setAffinityMac(cpus);
+#endif
 }
 
 /*

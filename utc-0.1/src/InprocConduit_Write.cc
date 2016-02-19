@@ -142,7 +142,9 @@ int InprocConduit::Write(void *DataPtr, DataSize_t DataSize, int tag){
             else{
                 // not the op thread, just wait the op thread finish
                 int do_thread =  m_srcOpTokenFlag[myThreadRank];  //the op thread's rank
-                m_srcOpThreadLatch[do_thread]->wait();         // wait on associated latch
+                if(!m_srcOpThreadLatch[do_thread]->try_wait()){
+                	m_srcOpThreadLatch[do_thread]->wait();         // wait on associated latch
+                }
                 // wake up when do_thread finish, and update token flag to next value
                 m_srcOpTokenFlag[myThreadRank] = (m_srcOpTokenFlag[myThreadRank]+1)%m_numSrcLocalThreads; 
 #ifdef USE_DEBUG_LOG
@@ -236,7 +238,7 @@ int InprocConduit::Write(void *DataPtr, DataSize_t DataSize, int tag){
 		        	}
 	            }
 
-                m_dstOpThreadLatch[m_srcOpTokenFlag[myThreadRank]]->count_down();
+                m_dstOpThreadLatch[m_dstOpTokenFlag[myThreadRank]]->count_down();
                 m_dstOpTokenFlag[myThreadRank] = next_thread;
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
@@ -245,7 +247,9 @@ int InprocConduit::Write(void *DataPtr, DataSize_t DataSize, int tag){
             }
             else{
                 int do_thread =  m_dstOpTokenFlag[myThreadRank];  //the op thread's rank
-                m_dstOpThreadLatch[do_thread]->wait();         // wait on associated latch
+                if(!m_dstOpThreadLatch[do_thread]->try_wait()){
+                	m_dstOpThreadLatch[do_thread]->wait();         // wait on associated latch
+                }
                 // wake up when do_thread finish, and update token flag to next value
                 m_dstOpTokenFlag[myThreadRank] = (m_dstOpTokenFlag[myThreadRank]+1)%m_numDstLocalThreads;
 #ifdef USE_DEBUG_LOG
@@ -262,7 +266,7 @@ int InprocConduit::Write(void *DataPtr, DataSize_t DataSize, int tag){
     }
 
     return 0;
-} // end BWrite()
+} // end Write()
 
 
 }// end namespace iUtc
