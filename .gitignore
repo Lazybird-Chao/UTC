@@ -28,6 +28,6 @@
 *.app
 
 # eclipse project files
-#*.project
-#*.cproject
+*.project
+*.cproject
 

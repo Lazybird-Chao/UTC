@@ -13,3 +13,6 @@
 /pof2.txt
 /for-mac.mk
 /for-vm.mk
+
+.project
+.cproject
