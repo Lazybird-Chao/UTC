@@ -195,7 +195,7 @@ public:
 		head_ = 0;
 	}
 	int initPush(T* ptr){
-		assert(tail_ == 0);
+		//assert(tail_ == 0);
 		if(head_ > Q_SIZE)
 			return 1;    // push fail
 		ptr_array_[head_]=ptr;
@@ -215,8 +215,7 @@ public:
 		return ret;				// pop success
 	}
 
-	int
-	push(T *ptr)
+	int push(T *ptr)
 	{
 		/*
 		 * Request next place to push.
@@ -274,6 +273,49 @@ public:
 		return 0;
 	}
 
+	// pass thread id as arg, do not use internal 'thread_id'
+	int push(T *ptr, unsigned int my_id)
+		{
+			thr_p_[my_id].head = head_;
+			thr_p_[my_id].head = __sync_fetch_and_add(&head_, 1);
+
+			/*
+			 * We do not know when a consumer uses the pop()'ed pointer,
+			 * se we can not overwrite it and have to wait the lowest tail.
+			 */
+			//int timeout_count=0;
+			while (__builtin_expect(thr_p_[my_id].head >= last_tail_ + Q_SIZE, 0))
+			{
+				auto min = tail_;
+
+				// Update the last_tail_.
+				for (size_t i = 0; i < n_consumers_; ++i) {
+					auto tmp_t = thr_p_[i].tail;
+
+					// Force compiler to use tmp_h exactly once.
+					asm volatile("" ::: "memory");
+
+					if (tmp_t < min)
+						min = tmp_t;
+				}
+				last_tail_ = min;
+
+				if (thr_p_[my_id].head < last_tail_ + Q_SIZE)
+					break;
+				/*timeout_count++;
+				if(timeout_count>TIMEOUT_COUNT)
+					return 1;*/
+				_mm_pause();
+			}
+
+			ptr_array_[thr_p_[my_id].head & Q_MASK] = ptr;
+
+			// Allow consumers eat the item.
+			thr_p_[my_id].head = ULONG_MAX;
+			return 0;
+		}
+
+
 	// only advance head index, not actual data push
 	int push()
 	{
@@ -311,8 +353,7 @@ public:
 		return 0;
 	}
 
-	T *
-	pop()
+T *pop()
 	{
 		/*
 		 * Request next place from which to pop.
@@ -361,6 +402,45 @@ public:
 		thr_p_[thread_id].tail = ULONG_MAX;
 		return ret;
 	}
+
+//
+T *pop(unsigned int my_id)
+	{
+		thr_p_[my_id].tail = tail_;
+		thr_p_[my_id].tail = __sync_fetch_and_add(&tail_, 1);
+
+		//int timeout_count =0;
+		while (__builtin_expect(thr_p_[my_id].tail >= last_head_, 0))
+		{
+			auto min = head_;
+
+			// Update the last_head_.
+			for (size_t i = 0; i < n_producers_; ++i) {
+				auto tmp_h = thr_p_[i].head;
+
+				// Force compiler to use tmp_h exactly once.
+				asm volatile("" ::: "memory");
+
+				if (tmp_h < min)
+					min = tmp_h;
+			}
+			last_head_ = min;
+
+			if (thr_p_[my_id].tail < last_head_)
+				break;
+			/*timeout_count++;
+			if(timeout_count>TIMEOUT_COUNT)
+				return nullptr;*/
+			_mm_pause();
+		}
+
+		T *ret = ptr_array_[thr_p_[my_id].tail & Q_MASK];
+		// Allow producers rewrite the slot.
+		thr_p_[my_id].tail = ULONG_MAX;
+		return ret;
+	}
+
+
 
 private:
 	/*

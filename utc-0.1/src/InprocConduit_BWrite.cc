@@ -32,10 +32,7 @@ int InprocConduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag){
         myTaskid = TaskManager::getCurrentTaskId();
         myThreadRank = TaskManager::getCurrentThreadRankinTask();
         myLocalRank = TaskManager::getCurrentThreadRankInLocal();
-        m_srcBuffQueue->setThreadId(myLocalRank);
-        //m_srcInnerMsgQueue->setThreadId(myLocalRank);
-        //m_dstBuffQueue->setThreadId(myLocalRank);
-        //m_dstInnerMsgQueue->setThreadId(myLocalRank);
+        //m_srcBuffQueue->setThreadId(myLocalRank);
     }
 
     if(myTaskid == m_srcId){
@@ -68,7 +65,7 @@ int InprocConduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag){
             tmp_buffptr->usingPtr = false;
             tmp_buffptr->msgTag = tag;
         	// push msg to buffqueue for reader to read
-        	if(m_srcBuffQueue->push(tmp_buffptr)){
+        	if(m_srcBuffQueue->push(tmp_buffptr,myLocalRank)){
         		std::cerr<<"ERROR, potential write timeout!"<<std::endl;
         		exit(1);
         	}
@@ -109,7 +106,7 @@ int InprocConduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag){
                 tmp_buffptr->usingPtr = false;
                 tmp_buffptr->msgTag = tag;
                 // push msg to buffqueue for reader to read
-                if(m_srcBuffQueue->push(tmp_buffptr)){
+                if(m_srcBuffQueue->push(tmp_buffptr,myLocalRank)){
                     std::cerr<<"ERROR, potential write timeout!"<<std::endl;
                     exit(1);
                 }
@@ -162,7 +159,7 @@ int InprocConduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag){
             tmp_buffptr->dataSize = DataSize;
             tmp_buffptr->usingPtr = false;
             tmp_buffptr->msgTag = tag;
-            if(m_dstBuffQueue->push(tmp_buffptr)){
+            if(m_dstBuffQueue->push(tmp_buffptr,myLocalRank)){
                 std::cerr<<"ERROR, potential write timeout!"<<std::endl;
                 exit(1);
             }
@@ -193,7 +190,7 @@ int InprocConduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag){
                 tmp_buffptr->dataSize = DataSize;
                 tmp_buffptr->usingPtr = false;
                 tmp_buffptr->msgTag = tag;
-                if(m_dstBuffQueue->push(tmp_buffptr)){
+                if(m_dstBuffQueue->push(tmp_buffptr,myLocalRank)){
                     std::cerr<<"ERROR, potential write timeout!"<<std::endl;
                     exit(1);
                 }

@@ -29,11 +29,7 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
         myTaskid = TaskManager::getCurrentTaskId();
         myThreadRank = TaskManager::getCurrentThreadRankinTask();
         myLocalRank = TaskManager::getCurrentThreadRankInLocal();
-        m_srcBuffQueue->setThreadId(myLocalRank);
-        //m_srcInnerMsgQueue->setThreadId(myLocalRank);
-        //m_dstBuffQueue->setThreadId(myLocalRank);
-        //m_dstInnerMsgQueue->setThreadId(myLocalRank);
-
+        //m_srcBuffQueue->setThreadId(myLocalRank);
     }
 
     if(myTaskid == m_srcId){
@@ -45,7 +41,7 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
         {
         	// only one local thread for the task
             // get avilable msg buff
-        	MsgInfo_t *tmp_buffptr = m_srcInnerMsgQueue->pop();
+        	MsgInfo_t *tmp_buffptr = m_srcInnerMsgQueue->pop(myLocalRank);
             if(tmp_buffptr == nullptr){
                 std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
                 exit(1);
@@ -61,7 +57,7 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
             m_srcUsingPtrFinishFlag[myLocalRank].store(0);
             tmp_buffptr->safeRelease = &m_srcUsingPtrFinishFlag[myLocalRank];
         	// push msg to buffqueue for reader to read
-        	if(m_srcBuffQueue->push(tmp_buffptr)){
+        	if(m_srcBuffQueue->push(tmp_buffptr,myLocalRank)){
         		std::cerr<<"ERROR, potential write timeout!"<<std::endl;
         		exit(1);
         	}
@@ -86,7 +82,7 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
                 int next_thread = (m_srcOpTokenFlag[myThreadRank]+1) % m_numSrcLocalThreads;
                 m_srcOpThreadLatch[next_thread]->reset(1);
                 // do msg r/w
-                MsgInfo_t *tmp_buffptr = m_srcInnerMsgQueue->pop();
+                MsgInfo_t *tmp_buffptr = m_srcInnerMsgQueue->pop(myLocalRank);
                 if(tmp_buffptr == nullptr){
                     std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
                     exit(1);
@@ -102,7 +98,7 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
                 m_srcUsingPtrFinishFlag[myLocalRank].store(0);
                 tmp_buffptr->safeRelease = &m_srcUsingPtrFinishFlag[myLocalRank];
                 // push msg to buffqueue for reader to read
-                if(m_srcBuffQueue->push(tmp_buffptr)){
+                if(m_srcBuffQueue->push(tmp_buffptr,myLocalRank)){
                     std::cerr<<"ERROR, potential write timeout!"<<std::endl;
                     exit(1);
                 }
@@ -141,7 +137,7 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
         *m_threadOstream<<"dst-thread "<<myThreadRank<<" call Pwrite...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
         if(m_numDstLocalThreads == 1){
-            MsgInfo_t *tmp_buffptr = m_dstInnerMsgQueue->pop();
+            MsgInfo_t *tmp_buffptr = m_dstInnerMsgQueue->pop(myLocalRank);
             if(tmp_buffptr == nullptr){
                 std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
                 exit(1);
@@ -156,7 +152,7 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
             tmp_buffptr->msgTag = tag;
             m_dstUsingPtrFinishFlag[myLocalRank].store(0);
             tmp_buffptr->safeRelease = &m_dstUsingPtrFinishFlag[myLocalRank];
-            if(m_dstBuffQueue->push(tmp_buffptr)){
+            if(m_dstBuffQueue->push(tmp_buffptr,myLocalRank)){
                 std::cerr<<"ERROR, potential write timeout!"<<std::endl;
                 exit(1);
             }
@@ -176,7 +172,7 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
             {
                 int next_thread = (m_dstOpTokenFlag[myThreadRank]+1) % m_numDstLocalThreads;
                 m_dstOpThreadLatch[next_thread]->reset(1);
-                MsgInfo_t *tmp_buffptr = m_dstInnerMsgQueue->pop();
+                MsgInfo_t *tmp_buffptr = m_dstInnerMsgQueue->pop(myLocalRank);
                 if(tmp_buffptr == nullptr){
                     std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
                     exit(1);
@@ -191,7 +187,7 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
                 tmp_buffptr->msgTag = tag;
                 m_dstUsingPtrFinishFlag[myLocalRank].store(0);
                 tmp_buffptr->safeRelease = &m_dstUsingPtrFinishFlag[myLocalRank];
-                if(m_dstBuffQueue->push(tmp_buffptr)){
+                if(m_dstBuffQueue->push(tmp_buffptr,myLocalRank)){
                     std::cerr<<"ERROR, potential write timeout!"<<std::endl;
                     exit(1);
                 }

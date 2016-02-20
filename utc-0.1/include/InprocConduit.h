@@ -118,6 +118,8 @@ private:
 	 */
 	std::vector<boost::latch*>	m_srcOpThreadLatch;
 	int 	*m_srcOpTokenFlag;
+	// for small msg, do not use latch, use atomic as fake latch
+	std::atomic<int> *m_srcOpThreadAtomic;
 	/*
 	 * when transfer msg using address, writer need wait reader finish
 	 * copy data and then return. So using this atomic flag for reader 
@@ -135,6 +137,7 @@ private:
 	//
 	std::vector<boost::latch*>	m_dstOpThreadLatch;
 	int 	*m_dstOpTokenFlag;
+	std::atomic<int> 	*m_dstOpThreadAtomic;
 	//
 	std::atomic<int> 	*m_dstUsingPtrFinishFlag;
 

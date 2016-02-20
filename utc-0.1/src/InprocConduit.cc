@@ -51,16 +51,19 @@ void InprocConduit::initInprocConduit(){
     m_srcBuffMap.clear();
 
     m_srcOpTokenFlag = new int[m_numSrcLocalThreads];
+    m_srcOpThreadAtomic = new std::atomic<int>[m_numSrcLocalThreads];
     for(int i=0; i<m_numSrcLocalThreads; i++){
         m_srcOpTokenFlag[i]=0;
         boost::latch *tmp_latch = new boost::latch(1);
-        m_srcOpThreadLatch.push_back(tmp_latch);       
+        m_srcOpThreadLatch.push_back(tmp_latch);
+        m_srcOpThreadAtomic[i].store(1);
     }
 
     m_srcUsingPtrFinishFlag = new std::atomic<int>[m_numSrcLocalThreads];
     for(int i=0; i<m_numSrcLocalThreads; i++){
         m_srcUsingPtrFinishFlag[i].store(0);
     }
+
 
 
     // init dst side
@@ -77,10 +80,12 @@ void InprocConduit::initInprocConduit(){
     m_dstBuffMap.clear();
 
     m_dstOpTokenFlag = new int[m_numDstLocalThreads];
+    m_dstOpThreadAtomic = new std::atomic<int>[m_numDstLocalThreads];
     for(int i=0; i<m_numDstLocalThreads; i++){
         m_dstOpTokenFlag[i]=0;
         boost::latch *tmp_latch = new boost::latch(1);
         m_dstOpThreadLatch.push_back(tmp_latch);
+        m_dstOpThreadAtomic[i].store(1);
     }
 
     m_dstUsingPtrFinishFlag = new std::atomic<int>[m_numDstLocalThreads];
@@ -149,12 +154,14 @@ void InprocConduit::clear(){
     }
     m_srcBuffMap.clear();
     delete m_srcOpTokenFlag;
+    delete m_srcOpThreadAtomic;
     delete m_srcUsingPtrFinishFlag;
     for(int i=0; i<m_numSrcLocalThreads; i++){
         delete m_srcOpThreadLatch[i];       
     }
     m_srcOpThreadLatch.clear();
 
+    //
     m_dstInnerMsgQueue->setupEndPop();
     for(int i=0; i< INPROC_CONDUIT_CAPACITY_DEFAULT; i++)
     {
@@ -163,6 +170,7 @@ void InprocConduit::clear(){
     }
     m_dstBuffMap.clear();
     delete m_dstOpTokenFlag;
+    delete m_dstOpThreadAtomic;
     delete m_dstUsingPtrFinishFlag;
     for(int i=0; i<m_numDstLocalThreads; i++){
         delete m_dstOpThreadLatch[i];       

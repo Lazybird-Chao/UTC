@@ -29,10 +29,7 @@ namespace iUtc{
         myTaskid = TaskManager::getCurrentTaskId();
         myThreadRank = TaskManager::getCurrentThreadRankinTask();
        	myLocalRank = TaskManager::getCurrentThreadRankInLocal();
-       	m_srcBuffQueue->setThreadId(myLocalRank);
-       	//m_srcInnerMsgQueue->setThreadId(myLocalRank);
-        //m_dstBuffQueue->setThreadId(myLocalRank);
-        //m_dstInnerMsgQueue->setThreadId(myLocalRank);
+       	//m_srcBuffQueue->setThreadId(myLocalRank);
     }
 
     if(myTaskid == m_srcId){
@@ -45,7 +42,7 @@ namespace iUtc{
 			MsgInfo_t *tmp_buffptr;
 
 			// fetch one msg from buffer queue
-			tmp_buffptr = m_dstBuffQueue->pop();
+			tmp_buffptr = m_dstBuffQueue->pop(myLocalRank);
 			if(tmp_buffptr == nullptr){
 				// can't get new item form queue, means no items in queue that wirter writes to
 				std::cerr<<"ERROR, potential read timeout!"<<std::endl;
@@ -65,7 +62,7 @@ namespace iUtc{
 				}
 				else{
 					// not in map, it can be only still in queue
-					while((tmp_buffptr = m_dstBuffQueue->pop())!=nullptr){
+					while((tmp_buffptr = m_dstBuffQueue->pop(myLocalRank))!=nullptr){
 						if(tmp_buffptr->msgTag == tag)
 							break;
 						else
@@ -98,7 +95,7 @@ namespace iUtc{
 				tmp_buffptr->dataPtr = nullptr;
 				tmp_buffptr->safeRelease = nullptr;
 				// return this buffer to dst's inner msg queue
-				if(m_dstInnerMsgQueue->push(tmp_buffptr)){
+				if(m_dstInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
 	        		std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
 	        		exit(1);
 	        	}
@@ -114,7 +111,7 @@ namespace iUtc{
 				tmp_buffptr->dataSize = 0;
 				tmp_buffptr->usingPtr = false;
 				tmp_buffptr->msgTag = -1;
-				if(m_dstInnerMsgQueue->push(tmp_buffptr)){
+				if(m_dstInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
 	        		std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
 	        		exit(1);
 	        	}
@@ -135,7 +132,7 @@ namespace iUtc{
 				//
 				MsgInfo_t	*tmp_buffptr;
 				// fetch one msg from buffer queue
-				tmp_buffptr = m_dstBuffQueue->pop();
+				tmp_buffptr = m_dstBuffQueue->pop(myLocalRank);
 				if(tmp_buffptr == nullptr){
 					// can't get new item form queue, means no items in queue that wirter writes to
 					std::cerr<<"ERROR, potential read timeout!"<<std::endl;
@@ -150,7 +147,7 @@ namespace iUtc{
 					}
 					else{
 						// not in map, it can be only still in queue
-						while((tmp_buffptr = m_dstBuffQueue->pop())!=nullptr){
+						while((tmp_buffptr = m_dstBuffQueue->pop(myLocalRank))!=nullptr){
 							if(tmp_buffptr->msgTag == tag)
 								break;
 							else
@@ -183,7 +180,7 @@ namespace iUtc{
 					tmp_buffptr->dataPtr = nullptr;
 					tmp_buffptr->safeRelease = nullptr;
 					// return this buffer to dst's inner msg queue
-					if(m_dstInnerMsgQueue->push(tmp_buffptr)){
+					if(m_dstInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
 		        		std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
 		        		exit(1);
 		        	}
@@ -198,7 +195,7 @@ namespace iUtc{
 					tmp_buffptr->dataSize = 0;
 					tmp_buffptr->usingPtr = false;
 					tmp_buffptr->msgTag = -1;
-					if(m_dstInnerMsgQueue->push(tmp_buffptr)){
+					if(m_dstInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
 		        		std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
 		        		exit(1);
 		        	}
@@ -238,7 +235,7 @@ namespace iUtc{
 			MsgInfo_t *tmp_buffptr;
 
 			// fetch one msg from buffer queue
-			tmp_buffptr = m_srcBuffQueue->pop();
+			tmp_buffptr = m_srcBuffQueue->pop(myLocalRank);
 			if(tmp_buffptr == nullptr){
 				// can't get new item form queue, means no items in queue that wirter writes to
 				std::cerr<<"ERROR, potential read timeout!"<<std::endl;
@@ -254,7 +251,7 @@ namespace iUtc{
 				}
 				else{
 					// not in map, it can be only still in queue
-					while((tmp_buffptr = m_srcBuffQueue->pop())!=nullptr){
+					while((tmp_buffptr = m_srcBuffQueue->pop(myLocalRank))!=nullptr){
 						if(tmp_buffptr->msgTag == tag)
 							break;
 						else
@@ -287,7 +284,7 @@ namespace iUtc{
 				tmp_buffptr->dataPtr = nullptr;
 				tmp_buffptr->safeRelease = nullptr;
 				// return this buffer to dst's inner msg queue
-				if(m_srcInnerMsgQueue->push(tmp_buffptr)){
+				if(m_srcInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
 	        		std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
 	        		exit(1);
 	        	}
@@ -302,7 +299,7 @@ namespace iUtc{
 				tmp_buffptr->dataSize = 0;
 				tmp_buffptr->usingPtr = false;
 				tmp_buffptr->msgTag = -1;
-				if(m_srcInnerMsgQueue->push(tmp_buffptr)){
+				if(m_srcInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
 	        		std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
 	        		exit(1);
 	        	}
@@ -323,7 +320,7 @@ namespace iUtc{
 				//
 				MsgInfo_t	*tmp_buffptr;
 				// fetch one msg from buffer queue
-				tmp_buffptr = m_srcBuffQueue->pop();
+				tmp_buffptr = m_srcBuffQueue->pop(myLocalRank);
 				if(tmp_buffptr == nullptr){
 					// can't get new item form queue, means no items in queue that wirter writes to
 					std::cerr<<"ERROR, potential read timeout!"<<std::endl;
@@ -338,7 +335,7 @@ namespace iUtc{
 					}
 					else{
 						// not in map, it can be only still in queue
-						while((tmp_buffptr = m_dstBuffQueue->pop())!=nullptr){
+						while((tmp_buffptr = m_dstBuffQueue->pop(myLocalRank))!=nullptr){
 							if(tmp_buffptr->msgTag == tag)
 								break;
 							else
@@ -371,7 +368,7 @@ namespace iUtc{
 					tmp_buffptr->dataPtr = nullptr;
 					tmp_buffptr->safeRelease = nullptr;
 					// return this buffer to dst's inner msg queue
-					if(m_srcInnerMsgQueue->push(tmp_buffptr)){
+					if(m_srcInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
 		        		std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
 		        		exit(1);
 		        	}
@@ -386,7 +383,7 @@ namespace iUtc{
 					tmp_buffptr->dataSize = 0;
 					tmp_buffptr->usingPtr = false;
 					tmp_buffptr->msgTag = -1;
-					if(m_srcInnerMsgQueue->push(tmp_buffptr)){
+					if(m_srcInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
 		        		std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
 		        		exit(1);
 		        	}
