@@ -14,5 +14,5 @@
 /for-mac.mk
 /for-vm.mk
 
-.project
-.cproject
+/.project
+/.cproject
