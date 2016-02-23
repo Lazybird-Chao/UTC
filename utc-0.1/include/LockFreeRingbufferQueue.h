@@ -439,7 +439,40 @@ T *pop(unsigned int my_id)
 		thr_p_[my_id].tail = ULONG_MAX;
 		return ret;
 	}
+// do not block if there's nothing to pop
+T* try_pop(unsigned int my_id){
+	thr_p_[my_id].tail = tail_;
+	thr_p_[my_id].tail = __sync_fetch_and_add(&tail_, 1);
 
+	T* ret = nullptr;
+	// change while to if, so just check for one time
+	if(__builtin_expect(thr_p_[my_id].tail >= last_head_, 0))
+	{
+		_mm_pause();
+		auto min = head_;
+
+		// Update the last_head_.
+		for (size_t i = 0; i < n_producers_; ++i) {
+			auto tmp_h = thr_p_[i].head;
+
+			// Force compiler to use tmp_h exactly once.
+			asm volatile("" ::: "memory");
+
+			if (tmp_h < min)
+				min = tmp_h;
+		}
+		last_head_ = min;
+
+		if (thr_p_[my_id].tail < last_head_)
+			ret = ptr_array_[thr_p_[my_id].tail & Q_MASK];
+	}
+	else{
+		ret = ptr_array_[thr_p_[my_id].tail & Q_MASK];
+	}
+
+	thr_p_[my_id].tail = ULONG_MAX;
+	return ret;
+}
 
 
 private:

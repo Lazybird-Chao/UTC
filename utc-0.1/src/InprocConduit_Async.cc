@@ -20,10 +20,12 @@ int InprocConduit::AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag)
     // current calling thread's belonging task id
     static thread_local int myTaskid = -1;
     static thread_local int myThreadRank = -1;
+    static thread_local int myLocalRank = -1;
     if(myTaskid == -1)
     {
         myTaskid = TaskManager::getCurrentTaskId();
         myThreadRank = TaskManager::getCurrentThreadRankinTask();
+        myLocalRank = TaskManager::getCurrentThreadRankInLocal();
     }
 
 

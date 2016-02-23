@@ -80,6 +80,12 @@ private:
 
 	void clear();
 
+	void asyncWorkerImpl(int myTaskid);
+
+	int threadWriteImpl(void* DataPtr, DataSize_t DataSize, int tag, int myTaskid);
+
+	int threadReadImpl(void* DataPtr, DataSize_t DataSize, int tag, int myTaskid);
+
 
 	/*
 	 *
@@ -166,23 +172,22 @@ private:
 		int tag = -1;
 		int WorkType = 0;  // 1: read, 2: write
 	};
+	typedef struct AsyncWorkArgs AsyncWorkArgs_t;
 	std::map<int, std::promise<void>> m_srcAsyncReadFinishSet;
 	std::map<int, std::promise<void>> m_srcAsyncWriteFinishSet;
-	bool m_srcNewAsyncWork;
-	bool m_srcAsyncWorkerCloseSig;
-	bool m_srcAsyncWorkerOn;
-	std::deque<AsyncWorkArgs> m_srcAsyncWorkQueue;
-	std::condition_variable m_srcNewAsyncWorkCond;
-	std::mutex m_srcNewAsyncWorkMutex;
-
+	int		*m_srcAsyncOpTokenFlag;
+	std::atomic<int>	*m_srcAsyncOpThreadAtomic;
+	int		*m_dstAsyncOpTokenFlag;
+	std::atomic<int>	*m_dstAsyncOpThreadAtomic;
+	LockFreeQueue<AsyncWorkArgs_t, INPROC_CONDUIT_CAPACITY_DEFAULT> *m_srcAsyncWorkQueue;
+	LockFreeQueue<AsyncWorkArgs_t, INPROC_CONDUIT_CAPACITY_DEFAULT> *m_dstAsyncWorkQueue;
+	std::map<int, std::promise<void>> m_srcAsyncReadFinishSet;
+	std::map<int, std::promise<void>> m_srcAsyncWriteFinishSet;
 	std::map<int, std::promise<void>> m_dstAsyncReadFinishSet;
 	std::map<int, std::promise<void>> m_dstAsyncWriteFinishSet;
-	bool m_dstNewAsyncWork;
-	bool m_dstAsyncWorkerCloseSig;
-	bool m_dstAsyncWorkerOn;
-	std::deque<AsyncWorkArgs> m_dstAsyncWorkQueue;
-	std::condition_variable m_dstNewAsyncWorkCond;
-	std::mutex m_dstNewAsyncWorkMutex;
+	std::atomic<bool> m_srcAsyncWorkerOn;
+	std::atomic<bool> m_dstAsyncWorkerOn;
+
 
 
     // the max time period in second that reader wait for writer transferring data
