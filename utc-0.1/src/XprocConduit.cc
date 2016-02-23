@@ -33,10 +33,12 @@ XprocConduit::XprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId)
 	int numLocalThreads = m_numSrcLocalThreads > m_numDstLocalThreads?
 			m_numSrcLocalThreads: m_numDstLocalThreads;
 	m_OpTokenFlag = new int[numLocalThreads];
+	m_OpThreadAtomic = new std::atomic<int>[numLocalThreads];
 	for(int i=0; i<numLocalThreads; i++){
 		m_OpTokenFlag[i]=0;
 		boost::latch *tmp_latch = new boost::latch(1);
 		m_OpThreadLatch.push_back(tmp_latch);
+		m_OpThreadAtomic[i].store(1);
 	}
 
 	//
@@ -51,8 +53,10 @@ XprocConduit::XprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId)
 #endif
 	m_asyncOpTokenFlag = new int[numLocalThreads];
 	m_asyncOpThreadAtomic = new std::atomic<int>[numLocalThreads];
-	for(int i=0; i<numLocalThreads;i++)
-		m_asyncOpThreadAtomic[i].store(0);
+	for(int i=0; i<numLocalThreads;i++){
+		m_asyncOpTokenFlag[i] = 0;
+		m_asyncOpThreadAtomic[i].store(1);
+	}
 
 
 #ifdef USE_DEBUG_LOG
@@ -137,8 +141,15 @@ int XprocConduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
 		if(myThreadRank != m_OpTokenFlag[myThreadRank]){
 			// not this thread's turn to do op
 			int do_thread = m_OpTokenFlag[myThreadRank];
-			if(!m_OpThreadLatch[do_thread]->try_wait()){
-				m_OpThreadLatch[do_thread]->wait();
+			if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
+				if(!m_OpThreadLatch[do_thread]->try_wait()){
+					m_OpThreadLatch[do_thread]->wait();
+				}
+			}
+			else{
+				while(m_OpThreadAtomic[do_thread] !=0){
+					_mm_pause();
+				}
 			}
 			//
 			m_OpTokenFlag[myThreadRank]= (m_OpTokenFlag[myThreadRank]+1)% localNumthreads;
@@ -162,7 +173,7 @@ int XprocConduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
 			// this thread's turn to do op
 			int next_thread = (m_OpTokenFlag[myThreadRank]+1)% localNumthreads;
 			m_OpThreadLatch[next_thread]->reset(1);
-
+			m_OpThreadAtomic[next_thread].store(1);
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
 	{
@@ -192,7 +203,10 @@ int XprocConduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
 					(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
 #endif
 
-			m_OpThreadLatch[m_OpTokenFlag[myThreadRank]]->count_down();
+			if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD)
+				m_OpThreadLatch[m_OpTokenFlag[myThreadRank]]->count_down();
+			else
+				m_OpThreadAtomic[m_OpTokenFlag[myThreadRank]].store(0);
 			m_OpTokenFlag[myThreadRank] = next_thread;
 		}
 
@@ -472,8 +486,15 @@ int XprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
 		if(myThreadRank != m_OpTokenFlag[myThreadRank]){
 			// not this thread's turn to do w/r
 			int do_thread = m_OpTokenFlag[myThreadRank];
-			if(!m_OpThreadLatch[do_thread]->try_wait()){
-				m_OpThreadLatch[do_thread]->wait();
+			if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
+				if(!m_OpThreadLatch[do_thread]->try_wait()){
+					m_OpThreadLatch[do_thread]->wait();
+				}
+			}
+			else{
+				while(m_OpThreadAtomic[do_thread].load() !=0){
+					_mm_pause();
+				}
 			}
 			//
 			m_OpTokenFlag[myThreadRank]= (m_OpTokenFlag[myThreadRank]+1)% localNumthreads;
@@ -497,7 +518,7 @@ int XprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
 			// this thread's turn to do op
 			int next_thread = (m_OpTokenFlag[myThreadRank]+1)% localNumthreads;
 			m_OpThreadLatch[next_thread]->reset(1);
-
+			m_OpThreadAtomic[next_thread].store(1);
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
 	{
@@ -521,7 +542,10 @@ int XprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
 			MPI_Ssend(DataPtr, (int)DataSize, datatype, mpiOtherEndProc,
 					(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
 #endif
-			m_OpThreadLatch[m_OpTokenFlag[myThreadRank]]->count_down();
+			if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD)
+				m_OpThreadLatch[m_OpTokenFlag[myThreadRank]]->count_down();
+			else
+				m_OpThreadAtomic[m_OpTokenFlag[myThreadRank]].store(0);
 			m_OpTokenFlag[myThreadRank] = next_thread;
 		}
 
@@ -782,8 +806,15 @@ int XprocConduit::Read(void* DataPtr, DataSize_t DataSize, int tag)
 		if(myThreadRank != m_OpTokenFlag[myThreadRank]){
 			//
 			int do_thread = m_OpTokenFlag[myThreadRank];
-			if(!m_OpThreadLatch[do_thread]->try_wait()){
-				m_OpThreadLatch[do_thread]->wait();
+			if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
+				if(!m_OpThreadLatch[do_thread]->try_wait()){
+					m_OpThreadLatch[do_thread]->wait();
+				}
+			}
+			else{
+				while(m_OpThreadAtomic[do_thread].load() !=0){
+					_mm_pause();
+				}
 			}
 			//
 			m_OpTokenFlag[myThreadRank] = (m_OpTokenFlag[myThreadRank]+1)%localNumthreads;
@@ -806,6 +837,7 @@ int XprocConduit::Read(void* DataPtr, DataSize_t DataSize, int tag)
 			// this thread's turn to do r/w
 			int next_thread = (m_OpTokenFlag[myThreadRank]+1)%localNumthreads;
 			m_OpThreadLatch[next_thread]->reset(1);
+			m_OpThreadAtomic[next_thread].store(1);
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
 	{
@@ -829,7 +861,10 @@ int XprocConduit::Read(void* DataPtr, DataSize_t DataSize, int tag)
 			MPI_Recv(DataPtr, (int)DataSize, datatype, mpiOtherEndProc,
 					(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 #endif
-			m_OpThreadLatch[m_OpTokenFlag[myThreadRank]]->count_down();
+			if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD)
+				m_OpThreadLatch[m_OpTokenFlag[myThreadRank]]->count_down();
+			else
+				m_OpThreadAtomic[m_OpTokenFlag[myThreadRank]].store(0);
 			m_OpTokenFlag[myThreadRank] = next_thread;
 		}
 	}// end several threads
@@ -1024,7 +1059,7 @@ XprocConduit::~XprocConduit()
 		delete it;
 	}
 	m_OpThreadLatch.clear();
-
+	delete m_OpThreadAtomic;
 	//
 	m_readbyFinishSet.clear();
 	m_writebyFinishSet.clear();

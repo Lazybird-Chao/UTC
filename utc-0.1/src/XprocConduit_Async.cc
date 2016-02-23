@@ -1,8 +1,9 @@
 #include "XprocConduit.h"
 #include "UtcBasics.h"
 #include "TaskManager.h"
-#include <cassert>
 #include "../include/TaskUtilities.h"
+#include <cassert>
+
 
 namespace iUtc{
 
@@ -71,7 +72,7 @@ int XprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)
 		if(myThreadRank == m_asyncOpTokenFlag[myThreadRank]){
 			//
 			int next_thread = (m_asyncOpTokenFlag[myThreadRank]+1)%localNumthreads;
-			m_asyncOpThreadAtomic[next_thread].store(0);
+			m_asyncOpThreadAtomic[next_thread].store(1);
 
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -90,14 +91,14 @@ int XprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)
 					(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD, req);
 			m_asyncReadFinishSet[tag] = req;
 #endif
-			m_asyncOpThreadAtomic[m_asyncOpTokenFlag[myThreadRank]].store(1);
+			m_asyncOpThreadAtomic[m_asyncOpTokenFlag[myThreadRank]].store(0);
 			m_asyncOpTokenFlag[myThreadRank] = next_thread;
 
 		}
 		else
 		{	// not this thread's turn to do
 			int do_thread = m_asyncOpTokenFlag[myThreadRank];
-			while(m_asyncOpThreadAtomic[do_thread].load() == 0){
+			while(m_asyncOpThreadAtomic[do_thread].load() != 0){
 				_mm_pause();
 			}
 			//
@@ -266,7 +267,7 @@ int XprocConduit::AsyncWrite(void *DataPtr, DataSize_t DataSize, int tag)
 		if(myThreadRank == m_asyncOpTokenFlag[myThreadRank]){
 			//
 			int next_thread = (m_asyncOpTokenFlag[myThreadRank]+1)%localNumthreads;
-			m_asyncOpThreadAtomic[next_thread].store(0);
+			m_asyncOpThreadAtomic[next_thread].store(1);
 
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -285,14 +286,14 @@ int XprocConduit::AsyncWrite(void *DataPtr, DataSize_t DataSize, int tag)
 					(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD, req);
 			m_asyncWriteFinishSet[tag] = req;
 #endif
-			m_asyncOpThreadAtomic[m_asyncOpTokenFlag[myThreadRank]].store(1);
+			m_asyncOpThreadAtomic[m_asyncOpTokenFlag[myThreadRank]].store(0);
 			m_asyncOpTokenFlag[myThreadRank]=next_thread;
 
 		}
 		else
 		{	// do wait
 			int do_thread = m_asyncOpTokenFlag[myThreadRank];
-			while(m_asyncOpThreadAtomic[do_thread].load() == 0){
+			while(m_asyncOpThreadAtomic[do_thread].load() != 0){
 				_mm_pause();
 			}
 			//

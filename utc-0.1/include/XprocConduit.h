@@ -73,6 +73,7 @@ private:
 	 * each thread responds for doing the r/w one by one
 	 */
 	std::vector<boost::latch*> m_OpThreadLatch;
+	std::atomic<int> *m_OpThreadAtomic;
 	int *m_OpTokenFlag;
 
 

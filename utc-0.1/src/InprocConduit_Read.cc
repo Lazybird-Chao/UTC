@@ -16,7 +16,7 @@ namespace iUtc{
 /*
  *
  */
- int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
+int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
         m_threadOstream = getThreadOstream();
@@ -85,42 +85,53 @@ namespace iUtc{
 #ifdef USE_DEBUG_ASSERT
                 assert((tmp_buffptr->safeRelease)->load()==0);
 #endif				
-				memcpy(DataPtr, tmp_buffptr->dataPtr, DataSize);
+				char *p_s = (char*)tmp_buffptr->dataPtr;
+				char *p_d = (char*)DataPtr;
+				long tmp_size = DataSize;
+				for(int i=0; i<(DataSize+INPROC_COPY_THRESHHOLD-1)/INPROC_COPY_THRESHHOLD -1; i++)
+				{
+					memcpy(p_d, p_s, INPROC_COPY_THRESHHOLD);
+					p_d=p_d+INPROC_COPY_THRESHHOLD;
+					p_s=p_s+INPROC_COPY_THRESHHOLD;
+					tmp_size = tmp_size - INPROC_COPY_THRESHHOLD;
+				}
+				memcpy(p_d, p_s, tmp_size);
 				// tell writer, here finish read, he can go
 				(tmp_buffptr->safeRelease)->store(1);
-				// 
-				tmp_buffptr->dataSize = 0;
-				tmp_buffptr->usingPtr = false;
-				tmp_buffptr->msgTag = -1;
-				tmp_buffptr->dataPtr = nullptr;
-				tmp_buffptr->safeRelease = nullptr;
-				// return this buffer to dst's inner msg queue
-				if(m_dstInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
-	        		std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
-	        		exit(1);
-	        	}
 			}
 			else{
 				// use intermediate buffer
 				//*m_threadOstream<<tmp_buffptr->msgTag<<"  "<<tmp_buffptr->dataPtr<<std::endl;
-				memcpy(DataPtr, tmp_buffptr->dataPtr,DataSize);
+				char *p_s = (char*)tmp_buffptr->dataPtr;
+				char *p_d = (char*)DataPtr;
+				long tmp_size = DataSize;
+				for(int i=0; i<(DataSize+INPROC_COPY_THRESHHOLD-1)/INPROC_COPY_THRESHHOLD -1; i++)
+				{
+					memcpy(p_d, p_s, INPROC_COPY_THRESHHOLD);
+					p_d=p_d+INPROC_COPY_THRESHHOLD;
+					p_s=p_s+INPROC_COPY_THRESHHOLD;
+					tmp_size -= INPROC_COPY_THRESHHOLD;
+				}
+				memcpy(p_d, p_s, tmp_size);
 				if(DataSize > CONDUIT_BUFFER_SIZE)
 					// big msg space is malloced, need free after read
 					free(tmp_buffptr->dataPtr);
-				tmp_buffptr->dataPtr = nullptr;
-				tmp_buffptr->dataSize = 0;
-				tmp_buffptr->usingPtr = false;
-				tmp_buffptr->msgTag = -1;
-				if(m_dstInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
-	        		std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
-	        		exit(1);
-	        	}
+	        }
+			//
+			tmp_buffptr->dataSize = 0;
+			tmp_buffptr->usingPtr = false;
+			tmp_buffptr->msgTag = -1;
+			tmp_buffptr->dataPtr = nullptr;
+			tmp_buffptr->safeRelease = nullptr;
+			// return this buffer to dst's inner msg queue
+			if(m_dstInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
+				std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
+				exit(1);
 			}
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"src-thread "<<myThreadRank<<" finish read:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
-
 		}// end one thread
 		else{
 			// multiple threads in task
@@ -129,6 +140,7 @@ namespace iUtc{
 				// the right thread's turn do r/w
 				int next_thread = (m_srcOpTokenFlag[myThreadRank]+1) % m_numSrcLocalThreads;
 				m_srcOpThreadLatch[next_thread]->reset(1);
+				m_srcOpThreadAtomic[next_thread].store(1);
 				//
 				MsgInfo_t	*tmp_buffptr;
 				// fetch one msg from buffer queue
@@ -170,51 +182,72 @@ namespace iUtc{
 #ifdef USE_DEBUG_ASSERT
             		assert((tmp_buffptr->safeRelease)->load()==0);
 #endif				
-					memcpy(DataPtr, tmp_buffptr->dataPtr, DataSize);
+            		char *p_s = (char*)tmp_buffptr->dataPtr;
+					char *p_d = (char*)DataPtr;
+					long tmp_size = DataSize;
+					for(int i=0; i<(DataSize+INPROC_COPY_THRESHHOLD-1)/INPROC_COPY_THRESHHOLD -1; i++)
+					{
+						memcpy(p_d, p_s, INPROC_COPY_THRESHHOLD);
+						p_d=p_d+INPROC_COPY_THRESHHOLD;
+						p_s=p_s+INPROC_COPY_THRESHHOLD;
+						tmp_size -= INPROC_COPY_THRESHHOLD;
+					}
+					memcpy(p_d, p_s, tmp_size);
 					// tell writer, here finish read, he can go
 					(tmp_buffptr->safeRelease)->store(1);
-					// 
-					tmp_buffptr->dataSize = 0;
-					tmp_buffptr->usingPtr = false;
-					tmp_buffptr->msgTag = -1;
-					tmp_buffptr->dataPtr = nullptr;
-					tmp_buffptr->safeRelease = nullptr;
-					// return this buffer to dst's inner msg queue
-					if(m_dstInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
-		        		std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
-		        		exit(1);
-		        	}
 				}
 				else{
 					// use intermediate buffer
-					memcpy(DataPtr, tmp_buffptr->dataPtr, DataSize);
+					char *p_s = (char*)tmp_buffptr->dataPtr;
+					char *p_d = (char*)DataPtr;
+					long tmp_size = DataSize;
+					for(int i=0; i<(DataSize+INPROC_COPY_THRESHHOLD-1)/INPROC_COPY_THRESHHOLD -1; i++)
+					{
+						memcpy(p_d, p_s, INPROC_COPY_THRESHHOLD);
+						p_d=p_d+INPROC_COPY_THRESHHOLD;
+						p_s=p_s+INPROC_COPY_THRESHHOLD;
+						tmp_size -= INPROC_COPY_THRESHHOLD;
+					}
+					memcpy(p_d, p_s, tmp_size);
 					if(DataSize > CONDUIT_BUFFER_SIZE)
 						// big msg space is malloced, need free after read
 						free(tmp_buffptr->dataPtr);
-					tmp_buffptr->dataPtr = nullptr;
-					tmp_buffptr->dataSize = 0;
-					tmp_buffptr->usingPtr = false;
-					tmp_buffptr->msgTag = -1;
-					if(m_dstInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
-		        		std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
-		        		exit(1);
-		        	}
+				}
+				//
+				tmp_buffptr->dataSize = 0;
+				tmp_buffptr->usingPtr = false;
+				tmp_buffptr->msgTag = -1;
+				tmp_buffptr->dataPtr = nullptr;
+				tmp_buffptr->safeRelease = nullptr;
+				// return this buffer to dst's inner msg queue
+				if(m_dstInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
+					std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
+					exit(1);
 				}
 				// wake up other threads
-				m_srcOpThreadLatch[m_srcOpTokenFlag[myThreadRank]]->count_down();
+				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD)
+					m_srcOpThreadLatch[m_srcOpTokenFlag[myThreadRank]]->count_down();
+				else
+					m_srcOpThreadAtomic[m_srcOpTokenFlag[myThreadRank]].store(0);
                 m_srcOpTokenFlag[myThreadRank] = next_thread;
 
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"src-thread "<<myThreadRank<<" finish read:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
-
 			}
 			else{
 				// not the op thread
 				int do_thread =  m_srcOpTokenFlag[myThreadRank];
-				if(!m_srcOpThreadLatch[do_thread]->try_wait()){
-					m_srcOpThreadLatch[do_thread]->wait();
+				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
+					if(!m_srcOpThreadLatch[do_thread]->try_wait()){
+						m_srcOpThreadLatch[do_thread]->wait();
+					}
+				}
+				else{
+					while(m_srcOpThreadAtomic[do_thread].load() !=0){
+						_mm_pause();
+					}
 				}
 				//
 				m_srcOpTokenFlag[myThreadRank] = (m_srcOpTokenFlag[myThreadRank]+1)%m_numSrcLocalThreads;
@@ -274,35 +307,47 @@ namespace iUtc{
 #ifdef USE_DEBUG_ASSERT
                 assert((tmp_buffptr->safeRelease)->load()==0);
 #endif				
-				memcpy(DataPtr, tmp_buffptr->dataPtr, DataSize);
+                char *p_s = (char*)tmp_buffptr->dataPtr;
+				char *p_d = (char*)DataPtr;
+				long tmp_size = DataSize;
+				for(int i=0; i<(DataSize+INPROC_COPY_THRESHHOLD-1)/INPROC_COPY_THRESHHOLD -1; i++)
+				{
+					memcpy(p_d, p_s, INPROC_COPY_THRESHHOLD);
+					p_d=p_d+INPROC_COPY_THRESHHOLD;
+					p_s=p_s+INPROC_COPY_THRESHHOLD;
+					tmp_size -= INPROC_COPY_THRESHHOLD;
+				}
+				memcpy(p_d, p_s, tmp_size);
 				// tell writer, here finish read, he can go
 				(tmp_buffptr->safeRelease)->store(1);
-				// 
-				tmp_buffptr->dataSize = 0;
-				tmp_buffptr->usingPtr = false;
-				tmp_buffptr->msgTag = -1;
-				tmp_buffptr->dataPtr = nullptr;
-				tmp_buffptr->safeRelease = nullptr;
-				// return this buffer to dst's inner msg queue
-				if(m_srcInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
-	        		std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
-	        		exit(1);
-	        	}
 			}
 			else{
 				// use intermediate buffer
-				memcpy(DataPtr, tmp_buffptr->dataPtr, DataSize);
+				char *p_s = (char*)tmp_buffptr->dataPtr;
+				char *p_d = (char*)DataPtr;
+				long tmp_size = DataSize;
+				for(int i=0; i<(DataSize+INPROC_COPY_THRESHHOLD-1)/INPROC_COPY_THRESHHOLD -1; i++)
+				{
+					memcpy(p_d, p_s, INPROC_COPY_THRESHHOLD);
+					p_d=p_d+INPROC_COPY_THRESHHOLD;
+					p_s=p_s+INPROC_COPY_THRESHHOLD;
+					tmp_size -= INPROC_COPY_THRESHHOLD;
+				}
+				memcpy(p_d, p_s, tmp_size);
 				if(DataSize > CONDUIT_BUFFER_SIZE)
 					// big msg space is malloced, need free after read
 					free(tmp_buffptr->dataPtr);
-				tmp_buffptr->dataPtr = nullptr;
-				tmp_buffptr->dataSize = 0;
-				tmp_buffptr->usingPtr = false;
-				tmp_buffptr->msgTag = -1;
-				if(m_srcInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
-	        		std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
-	        		exit(1);
-	        	}
+			}
+			//
+			tmp_buffptr->dataSize = 0;
+			tmp_buffptr->usingPtr = false;
+			tmp_buffptr->msgTag = -1;
+			tmp_buffptr->dataPtr = nullptr;
+			tmp_buffptr->safeRelease = nullptr;
+			// return this buffer to dst's inner msg queue
+			if(m_srcInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
+				std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
+				exit(1);
 			}
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
@@ -317,6 +362,7 @@ namespace iUtc{
 				// the right thread's turn do r/w
 				int next_thread = (m_dstOpTokenFlag[myThreadRank]+1) % m_numDstLocalThreads;
 				m_dstOpThreadLatch[next_thread]->reset(1);
+				m_dstOpThreadAtomic[next_thread].store(1);
 				//
 				MsgInfo_t	*tmp_buffptr;
 				// fetch one msg from buffer queue
@@ -358,38 +404,53 @@ namespace iUtc{
 #ifdef USE_DEBUG_ASSERT
             		assert((tmp_buffptr->safeRelease)->load()==0);
 #endif				
-					memcpy(DataPtr, tmp_buffptr->dataPtr, DataSize);
+            		char *p_s = (char*)tmp_buffptr->dataPtr;
+					char *p_d = (char*)DataPtr;
+					long tmp_size = DataSize;
+					for(int i=0; i<(DataSize+INPROC_COPY_THRESHHOLD-1)/INPROC_COPY_THRESHHOLD -1; i++)
+					{
+						memcpy(p_d, p_s, INPROC_COPY_THRESHHOLD);
+						p_d=p_d+INPROC_COPY_THRESHHOLD;
+						p_s=p_s+INPROC_COPY_THRESHHOLD;
+						tmp_size -= INPROC_COPY_THRESHHOLD;
+					}
+					memcpy(p_d, p_s, tmp_size);
 					// tell writer, here finish read, he can go
 					(tmp_buffptr->safeRelease)->store(1);
-					// 
-					tmp_buffptr->dataSize = 0;
-					tmp_buffptr->usingPtr = false;
-					tmp_buffptr->msgTag = -1;
-					tmp_buffptr->dataPtr = nullptr;
-					tmp_buffptr->safeRelease = nullptr;
-					// return this buffer to dst's inner msg queue
-					if(m_srcInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
-		        		std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
-		        		exit(1);
-		        	}
 				}
 				else{
 					// use intermediate buffer
-					memcpy(DataPtr, tmp_buffptr->dataPtr, DataSize);
+					char *p_s = (char*)tmp_buffptr->dataPtr;
+					char *p_d = (char*)DataPtr;
+					long tmp_size = DataSize;
+					for(int i=0; i<(DataSize+INPROC_COPY_THRESHHOLD-1)/INPROC_COPY_THRESHHOLD -1; i++)
+					{
+						memcpy(p_d, p_s, INPROC_COPY_THRESHHOLD);
+						p_d=p_d+INPROC_COPY_THRESHHOLD;
+						p_s=p_s+INPROC_COPY_THRESHHOLD;
+						tmp_size -= INPROC_COPY_THRESHHOLD;
+					}
+					memcpy(p_d, p_s, tmp_size);
 					if(DataSize > CONDUIT_BUFFER_SIZE)
 						// big msg space is malloced, need free after read
 						free(tmp_buffptr->dataPtr);
-					tmp_buffptr->dataPtr = nullptr;
-					tmp_buffptr->dataSize = 0;
-					tmp_buffptr->usingPtr = false;
-					tmp_buffptr->msgTag = -1;
-					if(m_srcInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
-		        		std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
-		        		exit(1);
-		        	}
 				}
 				//
-				m_dstOpThreadLatch[m_dstOpTokenFlag[myThreadRank]]->count_down();
+				tmp_buffptr->dataSize = 0;
+				tmp_buffptr->usingPtr = false;
+				tmp_buffptr->msgTag = -1;
+				tmp_buffptr->dataPtr = nullptr;
+				tmp_buffptr->safeRelease = nullptr;
+				// return this buffer to dst's inner msg queue
+				if(m_srcInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
+					std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
+					exit(1);
+				}
+				//
+				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD)
+					m_dstOpThreadLatch[m_dstOpTokenFlag[myThreadRank]]->count_down();
+				else
+					m_dstOpThreadAtomic[m_dstOpTokenFlag[myThreadRank]].store(0);
                 m_dstOpTokenFlag[myThreadRank] = next_thread;
 
 #ifdef USE_DEBUG_LOG
@@ -401,8 +462,15 @@ namespace iUtc{
 			else{
 				// not the op thread
 				int do_thread =  m_dstOpTokenFlag[myThreadRank];
-				if(!m_dstOpThreadLatch[do_thread]->try_wait()){
-					m_dstOpThreadLatch[do_thread]->wait();
+				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
+					if(!m_dstOpThreadLatch[do_thread]->try_wait()){
+						m_dstOpThreadLatch[do_thread]->wait();
+					}
+				}
+				else{
+					while(m_dstOpThreadAtomic[do_thread].load() !=0){
+						_mm_pause();
+					}
 				}
 				 //
 				 m_dstOpTokenFlag[myThreadRank] = (m_dstOpTokenFlag[myThreadRank]+1)%m_numDstLocalThreads;

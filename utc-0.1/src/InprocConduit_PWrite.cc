@@ -81,6 +81,7 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
                 // reset next token's latch here
                 int next_thread = (m_srcOpTokenFlag[myThreadRank]+1) % m_numSrcLocalThreads;
                 m_srcOpThreadLatch[next_thread]->reset(1);
+                m_srcOpThreadAtomic[next_thread].store(1);
                 // do msg r/w
                 MsgInfo_t *tmp_buffptr = m_srcInnerMsgQueue->pop(myLocalRank);
                 if(tmp_buffptr == nullptr){
@@ -108,7 +109,10 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 	        	}
 
                 // wake up other waiting thread
-                m_srcOpThreadLatch[m_srcOpTokenFlag[myThreadRank]]->count_down();
+                if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD)
+                	m_srcOpThreadLatch[m_srcOpTokenFlag[myThreadRank]]->count_down();
+                else
+                	m_srcOpThreadAtomic[m_srcOpTokenFlag[myThreadRank]].store(0);
                 m_srcOpTokenFlag[myThreadRank] = next_thread;
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
@@ -118,8 +122,15 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
             else{
                 // not the op thread, just wait the op thread finish
                 int do_thread =  m_srcOpTokenFlag[myThreadRank];  //the op thread's rank
-                if(!m_srcOpThreadLatch[do_thread]->try_wait()){
-                	m_srcOpThreadLatch[do_thread]->wait();         // wait on associated latch
+                if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
+					if(!m_srcOpThreadLatch[do_thread]->try_wait()){
+						m_srcOpThreadLatch[do_thread]->wait();         // wait on associated latch
+					}
+                }
+                else{
+                	while(m_srcOpThreadAtomic[do_thread].load() !=0){
+                		_mm_pause();
+                	}
                 }
                 // wake up when do_thread finish, and update token flag to next value
                 m_srcOpTokenFlag[myThreadRank] = (m_srcOpTokenFlag[myThreadRank]+1)%m_numSrcLocalThreads; 
@@ -172,6 +183,7 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
             {
                 int next_thread = (m_dstOpTokenFlag[myThreadRank]+1) % m_numDstLocalThreads;
                 m_dstOpThreadLatch[next_thread]->reset(1);
+                m_dstOpThreadAtomic[next_thread].store(1);
                 MsgInfo_t *tmp_buffptr = m_dstInnerMsgQueue->pop(myLocalRank);
                 if(tmp_buffptr == nullptr){
                     std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
@@ -196,7 +208,10 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 	        		_mm_pause();
 	        	}
 
-                m_dstOpThreadLatch[m_dstOpTokenFlag[myThreadRank]]->count_down();
+                if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD)
+                	m_dstOpThreadLatch[m_dstOpTokenFlag[myThreadRank]]->count_down();
+                else
+                	m_dstOpThreadAtomic[m_dstOpTokenFlag[myThreadRank]].store(0);
                 m_dstOpTokenFlag[myThreadRank] = next_thread;
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
@@ -205,8 +220,15 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
             }
             else{
                 int do_thread =  m_dstOpTokenFlag[myThreadRank];  //the op thread's rank
-                if(!m_dstOpThreadLatch[do_thread]->try_wait()){
-                	m_dstOpThreadLatch[do_thread]->wait();         // wait on associated latch
+                if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
+					if(!m_dstOpThreadLatch[do_thread]->try_wait()){
+						m_dstOpThreadLatch[do_thread]->wait();         // wait on associated latch
+					}
+                }
+                else{
+                	while(m_dstOpThreadAtomic[do_thread].load() !=0){
+                		_mm_pause();
+                	}
                 }
                 // wake up when do_thread finish, and update token flag to next value
                 m_dstOpTokenFlag[myThreadRank] = (m_dstOpTokenFlag[myThreadRank]+1)%m_numDstLocalThreads;
