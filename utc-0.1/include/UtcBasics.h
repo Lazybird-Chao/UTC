@@ -66,7 +66,7 @@ extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
 /*
  *
  */
-typedef  int	RankId_t;  // >=0
+typedef  int	Rank_t;  // >=0
 typedef  int	ProcRank_t; // >=0
 typedef  int	ThreadRank_t; // >=0
 typedef  int	TaskId_t; // >=0

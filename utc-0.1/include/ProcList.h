@@ -6,70 +6,70 @@
 
 namespace iUtc{
 
-    class RankList
+    class ProcList
     {
 
     public:
 
-        RankList();
+    	ProcList();
 
         /// \brief Constructor
         /// Construct a ThreadRankList, given an STL vector of ranks.
-        RankList(const std::vector<RankId_t> &);
+    	ProcList(const std::vector<ProcRank_t> &);
 
         /// \brief Constructor
-        /// Construct a RankList, a number of ranks.  A ThreadRankList containing
-        /// 0  will be constructed.
-        RankList(int size);
-        RankList(int size, int proc);
+        /// Construct a ProcList that only has one member which is proc
+    	ProcList(ProcRank_t proc);
+    	/// // Construct a ProcList that contains size copys of proc
+    	ProcList(int size, ProcRank_t proc);
 
         /// \brief Constructor
         /// Construct a ThreadRankList, given a size and C-style array of RankIds.
-        RankList(int size, const RankId_t * ranks);
+    	ProcList(int size, const int * ranks);
 
         /// \brief Copy constructor
         /// Create a RankList, given another RankList.
-        RankList(const RankList &);
+    	ProcList(const ProcList &);
 
         /// \brief Destructor
-        ~RankList();
+        ~ProcList();
 
         /// \brief getElement
         /// Return the rank at the requested position.
-        RankId_t getRank(int index) const;
+        ProcRank_t getProc(int index) const;
 
         /// \brief getNumRanks
         /// Return the size of the RankList.
-        int getNumRanks() const;
+        int getNumProcs() const;
 
         /// \brief getRankListVector
         /// Return the rank at the requested position.
-        void getRankListVector(std::vector<RankId_t> &) const;
+        void getProcListVector(std::vector<ProcRank_t> &) const;
 
         /// \brief hasRank
         /// Return a boolean indicating if the supplied rank is held in
         /// the RankList.
-        bool hasRank(int rank) const;
+        bool hasProc(int proc) const;
 
         /// \brief setRank
         /// Set a rank value in the RankList.
-        void setRank(unsigned int index, unsigned int value);
+        void setProc(unsigned int index, unsigned int value);
 
 
         /// \brief Assignment operator
-        const RankList & operator=(const RankList & other);
+        const ProcList & operator=(const ProcList & other);
 
         /// \brief Equality operator
-        bool operator==(const RankList & other) const;
+        bool operator==(const ProcList & other) const;
 
         /// \brief Inequality operator
-        bool operator!=(const RankList & other) const;
+        bool operator!=(const ProcList & other) const;
 
     private:
 
         /// \brief m_ranks
         /// Container for the ranks.
-        std::vector<RankId_t> m_rankList;
+        std::vector<ProcRank_t> m_procList;
 
 
 

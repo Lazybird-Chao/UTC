@@ -22,11 +22,11 @@ Task<T>::Task()
 	int ntasks = TaskManager::getNumTasks();
 	std::string name = "Task";
 	name.append(std::to_string(ntasks));
-	CreateTask(name, RankList(1));
+	CreateTask(name, ProcList(0));
  }
 
 template<class T>
-Task<T>::Task(RankList rList)
+Task<T>::Task(ProcList rList)
 :TaskBase()
  {
 	m_taskThreads.clear();
@@ -51,7 +51,7 @@ Task<T>::Task(RankList rList)
  }
 
 template<class T>
-Task<T>::Task( std::string name,  RankList rList)
+Task<T>::Task( std::string name,  ProcList rList)
 :TaskBase()
  {
 	m_taskThreads.clear();
@@ -426,7 +426,7 @@ void Task<T>::threadExit(ThreadRank_t trank)
 }
 
 template<class T>
-void Task<T>::CreateTask(const std::string name, const RankList rList)
+void Task<T>::CreateTask(const std::string name, const ProcList rList)
 {
 	RootTask *root = TaskManager::getRootTask();
 	m_procOstream = root->getProcOstream();
@@ -439,7 +439,7 @@ void Task<T>::CreateTask(const std::string name, const RankList rList)
 	m_Name = name;
 	m_TaskId = TaskManager::getNewTaskId();
 	m_ParentTaskId = TaskManager::getCurrentTaskId();  // here we will get root task's id
-	rList.getRankListVector(m_TaskRankList);
+	rList.getProcListVector(m_TaskRankList);
 	m_numTotalThreads = m_TaskRankList.size();
 	int currentProcRank = root->getCurrentProcRank();
 	m_processRank = currentProcRank;

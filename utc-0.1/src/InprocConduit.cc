@@ -37,10 +37,12 @@ InprocConduit::InprocConduit(TaskBase *srctask, TaskBase *dsttask, int cdtId)
 void InprocConduit::initInprocConduit(){
 
     // init src side
+	// src push, dst pop, extra one is for async op thread
 	m_srcBuffQueue = new LockFreeQueue<MsgInfo_t, INPROC_CONDUIT_CAPACITY_DEFAULT>(
-		m_numSrcLocalThreads, m_numDstLocalThreads);
+		m_numSrcLocalThreads+1, m_numDstLocalThreads+1);
+	// src pop, dst push, extra one is for async op thread
     m_srcInnerMsgQueue = new LockFreeQueue<MsgInfo_t, INPROC_CONDUIT_CAPACITY_DEFAULT>(
-        m_numSrcLocalThreads, m_numDstLocalThreads);
+        m_numDstLocalThreads+1, m_numSrcLocalThreads+1);
 
     for(int i=0; i< INPROC_CONDUIT_CAPACITY_DEFAULT; i++)
     {
@@ -58,19 +60,21 @@ void InprocConduit::initInprocConduit(){
         m_srcOpThreadLatch.push_back(tmp_latch);
         m_srcOpThreadAtomic[i].store(1);
     }
-
-    m_srcUsingPtrFinishFlag = new std::atomic<int>[m_numSrcLocalThreads];
-    for(int i=0; i<m_numSrcLocalThreads; i++){
+    // extra one for async op
+    m_srcUsingPtrFinishFlag = new std::atomic<int>[m_numSrcLocalThreads+1];
+    for(int i=0; i<m_numSrcLocalThreads+1; i++){
         m_srcUsingPtrFinishFlag[i].store(0);
     }
 
 
 
     // init dst side
+    // dst push, src pop, extra one is for async op thread
 	m_dstBuffQueue = new LockFreeQueue<MsgInfo_t, INPROC_CONDUIT_CAPACITY_DEFAULT>(
-		m_numDstLocalThreads, m_numSrcLocalThreads);
+		m_numDstLocalThreads+1, m_numSrcLocalThreads+1);
+	// dst pop, src push
     m_dstInnerMsgQueue = new LockFreeQueue<MsgInfo_t, INPROC_CONDUIT_CAPACITY_DEFAULT>(
-    		m_numDstLocalThreads, m_numSrcLocalThreads);
+    		m_numSrcLocalThreads+1, m_numDstLocalThreads+1);
     for(int i=0; i< INPROC_CONDUIT_CAPACITY_DEFAULT; i++)
     {
         MsgInfo_t *tmpbuff = new MsgInfo_t;
@@ -87,9 +91,9 @@ void InprocConduit::initInprocConduit(){
         m_dstOpThreadLatch.push_back(tmp_latch);
         m_dstOpThreadAtomic[i].store(1);
     }
-
-    m_dstUsingPtrFinishFlag = new std::atomic<int>[m_numDstLocalThreads];
-    for(int i=0; i<m_numDstLocalThreads; i++){
+    // extra one for async op
+    m_dstUsingPtrFinishFlag = new std::atomic<int>[m_numDstLocalThreads+1];
+    for(int i=0; i<m_numDstLocalThreads+1; i++){
         m_dstUsingPtrFinishFlag[i].store(0);
     }
 
@@ -104,17 +108,27 @@ void InprocConduit::initInprocConduit(){
     // init Async op related
     m_srcAsyncReadFinishSet.clear();
     m_srcAsyncWriteFinishSet.clear();
-    m_srcNewAsyncWork=false;
-    m_srcAsyncWorkerCloseSig=false;
-    m_srcAsyncWorkerOn=false;
-    m_srcAsyncWorkQueue.clear();
-
     m_dstAsyncReadFinishSet.clear();
     m_dstAsyncWriteFinishSet.clear();
-    m_dstNewAsyncWork=false;
-    m_dstAsyncWorkerCloseSig=false;
-    m_dstAsyncWorkerOn=false;
-    m_dstAsyncWorkQueue.clear();
+    m_srcAsyncWorkQueue = new LockFreeQueue<AsyncWorkArgs_t, INPROC_CONDUIT_CAPACITY_DEFAULT>(
+            m_numSrcLocalThreads, 1);
+    m_dstAsyncWorkQueue = new LockFreeQueue<AsyncWorkArgs_t, INPROC_CONDUIT_CAPACITY_DEFAULT>(
+            m_numDstLocalThreads, 1);
+    m_srcAsyncOpTokenFlag = new int[m_numSrcLocalThreads];
+    m_srcAsyncOpThreadAtomic = new std::atomic<int>[m_numSrcLocalThreads];
+    for(int i=0;i< m_numSrcLocalThreads; i++){
+    	m_srcAsyncOpTokenFlag[i] = 0;
+    	m_srcAsyncOpThreadAtomic[i].store(1);
+    }
+    m_dstAsyncOpTokenFlag = new int[m_numDstLocalThreads];
+    m_dstAsyncOpThreadAtomic = new std::atomic<int>[m_numDstLocalThreads];
+    for(int i=0; i<m_numDstLocalThreads; i++){
+    	m_dstAsyncOpTokenFlag[i] = 0;
+    	m_dstAsyncOpThreadAtomic[i].store(1);
+    }
+    m_srcAsyncWorkerOn.store(false);
+    m_dstAsyncWorkerOn.store(false);
+
 
 
 #ifdef USE_DEBUG_LOG
@@ -136,6 +150,7 @@ InprocConduit::~InprocConduit(){
     PRINT_TIME_NOW(*procOstream)
     *procOstream<<"InprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
                 <<"] destroyed on proc "<<m_srcTask->getCurrentProcRank()<<"!!!"<<std::endl;
+    *procOstream<<"WokerCount: "<<m_asyncWorkerCount<<std::endl;
 #endif
 
 }
@@ -184,11 +199,17 @@ void InprocConduit::clear(){
     //
     m_srcAsyncReadFinishSet.clear();
     m_srcAsyncWriteFinishSet.clear();
-    m_srcAsyncWorkQueue.clear();
+    delete m_srcAsyncWorkQueue;
+    delete m_srcAsyncOpTokenFlag;
+    delete m_srcAsyncOpThreadAtomic;
 
     m_dstAsyncReadFinishSet.clear();
     m_dstAsyncWriteFinishSet.clear();
-    m_dstAsyncWorkQueue.clear();
+    delete m_dstAsyncWorkQueue;
+	delete m_dstAsyncOpTokenFlag;
+	delete m_dstAsyncOpThreadAtomic;
+
+
 }
 
 

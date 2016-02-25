@@ -1,7 +1,6 @@
 #ifndef UTC_TASKBASE_H_
 #define UTC_TASKBASE_H_
 
-#include "RankList.h"
 #include "UtcBasics.h"
 #include "TaskInfo.h"
 
@@ -13,6 +12,7 @@
 #include "boost/thread/thread.hpp"
 #include <mutex>
 #include <condition_variable>
+#include "ProcList.h"
 
 namespace iUtc{
 

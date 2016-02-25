@@ -62,18 +62,21 @@ public:
 	/*
 	 *
 	 */
-	int AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag){};
-	void AsyncWrite_Finish(int tag){};
+	int AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag);
+	void AsyncWrite_Finish(int tag);
 
 
-	int AsyncRead(void* DataPtr, DataSize_t DataSize, int tag){};
-	void AsyncRead_Finish(int tag){};
+	int AsyncRead(void* DataPtr, DataSize_t DataSize, int tag);
+	void AsyncRead_Finish(int tag);
 
 
 	/*
 	 *
 	 */
 	~InprocConduit();
+
+
+
 
 private:
 	void initInprocConduit();
@@ -181,19 +184,16 @@ private:
 	std::atomic<int>	*m_dstAsyncOpThreadAtomic;
 	LockFreeQueue<AsyncWorkArgs_t, INPROC_CONDUIT_CAPACITY_DEFAULT> *m_srcAsyncWorkQueue;
 	LockFreeQueue<AsyncWorkArgs_t, INPROC_CONDUIT_CAPACITY_DEFAULT> *m_dstAsyncWorkQueue;
-	std::map<int, std::promise<void>> m_srcAsyncReadFinishSet;
-	std::map<int, std::promise<void>> m_srcAsyncWriteFinishSet;
 	std::map<int, std::promise<void>> m_dstAsyncReadFinishSet;
 	std::map<int, std::promise<void>> m_dstAsyncWriteFinishSet;
 	std::atomic<bool> m_srcAsyncWorkerOn;
 	std::atomic<bool> m_dstAsyncWorkerOn;
 
+	int m_closeWorkerCountMax = 10000;
+#ifdef USE_DEBUG_LOG
+	long m_asyncWorkerCount=0;
+#endif
 
-
-    // the max time period in second that reader wait for writer transferring data
-    int TIME_OUT = 100;
-    // the max time period in microsecods that an async worker wait for workload
-    int ASYNC_TIME_OUT = 3000;
 
     // output debug log to specific file
     static thread_local std::ofstream *m_threadOstream;

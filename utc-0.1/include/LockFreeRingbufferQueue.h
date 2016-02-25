@@ -441,7 +441,7 @@ T *pop(unsigned int my_id)
 	}
 // do not block if there's nothing to pop
 T* try_pop(unsigned int my_id){
-	thr_p_[my_id].tail = tail_;
+	/*thr_p_[my_id].tail = tail_;
 	thr_p_[my_id].tail = __sync_fetch_and_add(&tail_, 1);
 
 	T* ret = nullptr;
@@ -470,6 +470,35 @@ T* try_pop(unsigned int my_id){
 		ret = ptr_array_[thr_p_[my_id].tail & Q_MASK];
 	}
 
+	thr_p_[my_id].tail = ULONG_MAX;
+	return ret;*/
+	T* ret = nullptr;
+	do{
+		thr_p_[my_id].tail = tail_;
+		if(__builtin_expect(thr_p_[my_id].tail >= last_head_, 0))
+		{
+			auto min = head_;
+
+			// Update the last_head_.
+			for (size_t i = 0; i < n_producers_; ++i) {
+				auto tmp_h = thr_p_[i].head;
+
+				// Force compiler to use tmp_h exactly once.
+				asm volatile("" ::: "memory");
+
+				if (tmp_h < min)
+					min = tmp_h;
+			}
+			last_head_ = min;
+
+			if (thr_p_[my_id].tail < last_head_)
+				ret = ptr_array_[thr_p_[my_id].tail & Q_MASK];
+		}
+		else{
+			ret = ptr_array_[thr_p_[my_id].tail & Q_MASK];
+		}
+
+	}while(ret!=nullptr && __sync_bool_compare_and_swap(&tail_, thr_p_[my_id].tail, thr_p_[my_id].tail+1)==false);
 	thr_p_[my_id].tail = ULONG_MAX;
 	return ret;
 }

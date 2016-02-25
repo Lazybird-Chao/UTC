@@ -41,7 +41,7 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 			// only one thread in task
 			MsgInfo_t *tmp_buffptr;
 
-			// fetch one msg from buffer queue
+			/*// fetch one msg from buffer queue
 			tmp_buffptr = m_dstBuffQueue->pop(myLocalRank);
 			if(tmp_buffptr == nullptr){
 				// can't get new item form queue, means no items in queue that wirter writes to
@@ -75,6 +75,23 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 					}
 				}
 				// find wanted msg
+			}*/
+			while(1){
+				tmp_buffptr = m_dstBuffQueue->try_pop(myLocalRank);
+				if(tmp_buffptr!=nullptr && tmp_buffptr->msgTag == tag)
+					break;
+				else{
+					if(tmp_buffptr!=nullptr)
+						m_dstBuffMap.insert(std::pair<int, MsgInfo_t*>(tmp_buffptr->msgTag, tmp_buffptr));
+					if(m_dstBuffMap.find(tag) != m_dstBuffMap.end()){
+						// find msg in map
+						tmp_buffptr = m_dstBuffMap[tag];
+						m_dstBuffMap.erase(tag);
+						break;
+					}
+
+				}
+				_mm_pause();
 			}
 #ifdef USE_DEBUG_LOG
     PRINT_TIME_NOW(*m_threadOstream)
@@ -143,7 +160,7 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 				m_srcOpThreadAtomic[next_thread].store(1);
 				//
 				MsgInfo_t	*tmp_buffptr;
-				// fetch one msg from buffer queue
+				/*// fetch one msg from buffer queue
 				tmp_buffptr = m_dstBuffQueue->pop(myLocalRank);
 				if(tmp_buffptr == nullptr){
 					// can't get new item form queue, means no items in queue that wirter writes to
@@ -172,6 +189,23 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 						}
 					}
 					// find wanted msg
+				}*/
+				while(1){
+					tmp_buffptr = m_dstBuffQueue->try_pop(myLocalRank);
+					if(tmp_buffptr!=nullptr && tmp_buffptr->msgTag == tag)
+						break;
+					else{
+						if(tmp_buffptr!=nullptr)
+							m_dstBuffMap.insert(std::pair<int, MsgInfo_t*>(tmp_buffptr->msgTag, tmp_buffptr));
+						if(m_dstBuffMap.find(tag) != m_dstBuffMap.end()){
+							// find msg in map
+							tmp_buffptr = m_dstBuffMap[tag];
+							m_dstBuffMap.erase(tag);
+							break;
+						}
+
+					}
+					_mm_pause();
 				}
 #ifdef USE_DEBUG_LOG
     PRINT_TIME_NOW(*m_threadOstream)
@@ -267,7 +301,7 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 			// only one thread in task
 			MsgInfo_t *tmp_buffptr;
 
-			// fetch one msg from buffer queue
+			/*// fetch one msg from buffer queue
 			tmp_buffptr = m_srcBuffQueue->pop(myLocalRank);
 			if(tmp_buffptr == nullptr){
 				// can't get new item form queue, means no items in queue that wirter writes to
@@ -297,6 +331,23 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 					}
 				}
 				// find wanted msg
+			}*/
+			while(1){
+				tmp_buffptr = m_srcBuffQueue->try_pop(myLocalRank);
+				if(tmp_buffptr!=nullptr && tmp_buffptr->msgTag == tag)
+					break;
+				else{
+					if(tmp_buffptr!=nullptr)
+						m_srcBuffMap.insert(std::pair<int, MsgInfo_t*>(tmp_buffptr->msgTag, tmp_buffptr));
+					if(m_srcBuffMap.find(tag) != m_srcBuffMap.end()){
+						// find msg in map
+						tmp_buffptr = m_srcBuffMap[tag];
+						m_srcBuffMap.erase(tag);
+						break;
+					}
+
+				}
+				_mm_pause();
 			}
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -365,8 +416,9 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 				m_dstOpThreadAtomic[next_thread].store(1);
 				//
 				MsgInfo_t	*tmp_buffptr;
-				// fetch one msg from buffer queue
+				/*// fetch one msg from buffer queue
 				tmp_buffptr = m_srcBuffQueue->pop(myLocalRank);
+				// *m_threadOstream<<tmp_buffptr<<std::endl;
 				if(tmp_buffptr == nullptr){
 					// can't get new item form queue, means no items in queue that wirter writes to
 					std::cerr<<"ERROR, potential read timeout!"<<std::endl;
@@ -394,6 +446,23 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 						}
 					}
 					// find wanted msg
+				}*/
+				while(1){
+					tmp_buffptr = m_srcBuffQueue->try_pop(myLocalRank);
+					if(tmp_buffptr!=nullptr && tmp_buffptr->msgTag == tag)
+						break;
+					else{
+						if(tmp_buffptr!=nullptr)
+							m_srcBuffMap.insert(std::pair<int, MsgInfo_t*>(tmp_buffptr->msgTag, tmp_buffptr));
+						if(m_srcBuffMap.find(tag) != m_srcBuffMap.end()){
+							// find msg in map
+							tmp_buffptr = m_srcBuffMap[tag];
+							m_srcBuffMap.erase(tag);
+							break;
+						}
+
+					}
+					_mm_pause();
 				}
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)

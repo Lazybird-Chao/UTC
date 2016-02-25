@@ -6,7 +6,6 @@
 #include "TaskManager.h"
 #include "TaskInfo.h"
 #include "TaskBase.h"
-#include "RankList.h"
 #include "UtcException.h"
 #include "Barrier.h"
 
@@ -24,6 +23,7 @@
 #include <unistd.h>
 #include "boost/filesystem.hpp"
 #include "boost/thread/tss.hpp"
+#include "ProcList.h"
 
 namespace iUtc{
 
@@ -34,8 +34,8 @@ public:
 	typedef T FunctionObjectType;
 
 	Task();
-	Task(RankList rList);
-	Task( std::string name , RankList rList=RankList(1));
+	Task(ProcList rList);
+	Task( std::string name , ProcList rList=ProcList(0));
 
 	~Task();
 
@@ -78,7 +78,7 @@ private:
 	void threadExit(ThreadRank_t trank);
 
 	void CreateTask(const std::string name,
-			const RankList rList);
+			const ProcList rList);
 
 	void LaunchThreads(std::vector<ThreadRank_t> &tRankList);
 
