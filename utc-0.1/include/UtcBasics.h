@@ -12,8 +12,8 @@
 /*
  *
  */
-//#define USE_DEBUG_LOG
-//#define USE_DEBUG_ASSERT
+#define USE_DEBUG_LOG
+#define USE_DEBUG_ASSERT
 
 
 

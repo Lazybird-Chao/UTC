@@ -5,8 +5,8 @@
 using namespace iUtc;
 
 //#define TEST_BWRITE
-//#define TEST_WRITE
-#define TEST_PWRITE
+#define TEST_WRITE
+//#define TEST_PWRITE
 
 #define SIZE (1024*1024)
 
@@ -127,9 +127,9 @@ int main()
 	std::ofstream* pout= getProcOstream();
 	*pout<<"proc rank:"<<ctx.getProcRank()<<" processor name:"<<pname.c_str()<<std::endl;
 
-	RankList r_list1(3,0);
+	ProcList r_list1(3,0);
 	Task<user_taskA> task1("writer", r_list1);
-	RankList r_list2(2,0);
+	ProcList r_list2(2,0);
 	Task<user_taskB> task2("reader", r_list2);
 	Conduit cdt1(&task1, &task2);
 	Timer timer(MILLISEC);

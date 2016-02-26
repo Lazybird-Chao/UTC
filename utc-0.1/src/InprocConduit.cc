@@ -148,9 +148,10 @@ InprocConduit::~InprocConduit(){
 #ifdef USE_DEBUG_LOG
     std::ofstream* procOstream = getProcOstream();
     PRINT_TIME_NOW(*procOstream)
+    *procOstream<<"InprocAsyncWokerCount: "<<m_asyncWorkerCount<<std::endl;
+    PRINT_TIME_NOW(*procOstream)
     *procOstream<<"InprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
                 <<"] destroyed on proc "<<m_srcTask->getCurrentProcRank()<<"!!!"<<std::endl;
-    *procOstream<<"WokerCount: "<<m_asyncWorkerCount<<std::endl;
 #endif
 
 }

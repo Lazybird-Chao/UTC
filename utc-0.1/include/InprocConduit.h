@@ -38,26 +38,26 @@ public:
 	 *
 	 */
 	int Write(void* DataPtr, DataSize_t DataSize, int tag);
-    //int WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
-    //void WriteBy_Finish(int tag);
+    int WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
+    void WriteBy_Finish(int tag);
 	
 	/*
 	 *
 	 */
 	int BWrite(void* DataPtr, DataSize_t DataSize, int tag);
-	//int BWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
-	//void BWriteBy_Finish(int tag);
+	int BWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
+	void BWriteBy_Finish(int tag);
 
 	/*
 	 *
 	 */
 	int PWrite(void* DataPtr, DataSize_t DataSize, int tag);
-    //int PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
-    //void PWriteBy_Finish(int tag);
+    int PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
+    void PWriteBy_Finish(int tag);
 
     int Read(void* DataPtr, DataSize_t DataSize, int tag);
-	//int ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
-	//void ReadBy_Finish(int tag);
+	int ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
+	void ReadBy_Finish(int tag);
 
 	/*
 	 *
