@@ -202,10 +202,10 @@ int main(int argc, char*argv[])
 	int rank[16];
 	for(int i=0;i<16;i++)
 		rank[i]=i;
-	RankList rlist(nthreads, rank);
+	ProcList rlist(nthreads, rank);
 #endif
 #ifdef USE_THREAD
-	RankList rlist(nthreads, 0);	//create nthreads runing on proc 0
+	ProcList rlist(nthreads, 0);	//create nthreads runing on proc 0
 #endif
 	Task<IntegralCaculator> integral_f(rlist);
 
