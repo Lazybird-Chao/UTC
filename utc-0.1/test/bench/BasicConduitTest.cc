@@ -111,8 +111,8 @@ int main()
         /* construct task map rank list */
         int rvA[3]={0,0,0};
         int rvB[2]={0,0};
-        RankList rlA(3, rvA);
-        RankList rlB(2, rvB);
+        ProcList rlA(3, rvA);
+        ProcList rlB(2, rvB);
 
         /* define task */
         Task<RWtask> taskA("TaskA", rlA);
@@ -143,8 +143,8 @@ int main()
 	{
 	    int rvA[2]={0,0};
         int rvB[3]={1,1,1};
-        RankList rlA(2, rvA);
-        RankList rlB(3, rvB);
+        ProcList rlA(2, rvA);
+        ProcList rlB(3, rvB);
 
         Task<RWtask> taskA("TaskA", rlA);
         Task<RWtask> taskB("TaskB", rlB);

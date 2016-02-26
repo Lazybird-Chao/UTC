@@ -145,12 +145,12 @@ int main(int argc, char**argv)
 	if(nproc > MIN_PROCS)
 	{
 		/* construct a task map rank list */
-		std::vector<RankId_t> rv;
+		std::vector<Rank_t> rv;
 		for(int i=0; i<nproc; i++)
 		{
 			rv.push_back(i);
 		}
-		RankList rl(rv);
+		ProcList rl(rv);
 
 		/* define task */
 		Task<TaskTest> taskA("TaskA", rl);
@@ -177,14 +177,14 @@ int main(int argc, char**argv)
 	/********************************************/
 	if(nproc > MIN_PROCS)
 	{
-		std::vector<RankId_t> rv;
+		std::vector<Rank_t> rv;
 		for(int i=0; i<nproc; i++)
 		{
 			rv.push_back(i);
 			rv.push_back(i);
 			rv.push_back(i);
 		}
-		RankList rl(rv);
+		ProcList rl(rv);
 
 		Task<TaskTest> taskA("TaskA", rl);
 		taskA.display();
@@ -208,8 +208,8 @@ int main(int argc, char**argv)
 	/****************************************************************/
 	if(nproc > MIN_PROCS)
 	{
-		std::vector<RankId_t> rvA;
-		std::vector<RankId_t> rvB;
+		std::vector<Rank_t> rvA;
+		std::vector<Rank_t> rvB;
 		for (int i=0; i<nproc; i++)
 		{
 			if ((i%2) == 0)
@@ -226,8 +226,8 @@ int main(int argc, char**argv)
 				rvB.push_back(i);
 			}
 		}
-		RankList rlA(rvA);
-		RankList rlB(rvB);
+		ProcList rlA(rvA);
+		ProcList rlB(rvB);
 		Task<TaskTest> taskA("TaskA", rlA);
 		Task<TaskTest> taskB("TaskB", rlB);
 		taskA.display();

@@ -89,10 +89,12 @@ int main(int argc, char*argv[])
 			{
 				if(i==skip)
 					t_start= MPI_Wtime();
-				for(j=0; j<window_size; j++)
+				/*for(j=0; j<window_size; j++)
 					MPI_Isend(s_buf, size, MPI_CHAR, myid+1, i*window_size+j, MPI_COMM_WORLD, request+j);
 				for(j=0; j<window_size; j++)
-					MPI_Wait(request+j, reqstat+j);
+					MPI_Wait(request+j, reqstat+j);*/
+				for(j=0; j<window_size; j++)
+					MPI_Send(s_buf, size, MPI_CHAR, myid+1, i*window_size+j, MPI_COMM_WORLD);
 				MPI_Recv(r_buf, 4, MPI_CHAR, myid+1, i*window_size+j, MPI_COMM_WORLD, &reqstat[0]);
 			}
 			t_end = MPI_Wtime();
@@ -105,10 +107,12 @@ int main(int argc, char*argv[])
 		{
 			for(i=0; i<loop+skip; i++)
 			{
-				for(j=0; j<window_size; j++)
+				/*for(j=0; j<window_size; j++)
 					MPI_Irecv(r_buf, size, MPI_CHAR, myid-1, i*window_size+j, MPI_COMM_WORLD, request+j);
 				for(j=0; j<window_size; j++)
-					MPI_Wait(request+j, reqstat+j);
+					MPI_Wait(request+j, reqstat+j);*/
+				for(j=0; j<window_size; j++)
+					MPI_Recv(r_buf, size, MPI_CHAR, myid-1, i*window_size+j, MPI_COMM_WORLD, reqstat+j);
 				MPI_Send(r_buf, 4, MPI_CHAR, myid-1, i*window_size+j, MPI_COMM_WORLD);
 			}
 		}
