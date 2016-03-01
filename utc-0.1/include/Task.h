@@ -7,6 +7,7 @@
 #include "TaskInfo.h"
 #include "TaskBase.h"
 #include "UtcException.h"
+#include "ProcList.h"
 #include "Barrier.h"
 
 #include <thread>
@@ -23,7 +24,9 @@
 #include <unistd.h>
 #include "boost/filesystem.hpp"
 #include "boost/thread/tss.hpp"
-#include "ProcList.h"
+#include "boost/thread/barrier.hpp"
+#include "boost/thread/latch.hpp"
+
 
 namespace iUtc{
 
@@ -60,6 +63,7 @@ public:
 
 	void waitTillDone();
 
+	void finish();
 
 	//
 
@@ -67,7 +71,6 @@ public:
 protected:
 	int initImpl();
 
-	int runImpl();
 
 
 
@@ -81,6 +84,10 @@ private:
 			const ProcList rList);
 
 	void LaunchThreads(std::vector<ThreadRank_t> &tRankList);
+
+	void threadSync();
+
+	void threadWait();
 
 
 	//
@@ -100,39 +107,29 @@ private:
 	T *m_userTaskObjPtr;
 
 	//
-	int m_threadTerminateSignal;
-	int m_calledRun;
-	int m_calledInit;
+	bool callTaskFinish;
 
 	//
-	std::mutex m_threadReady2InitMutex;
-	std::condition_variable m_threadReady2InitCond;
-	int m_threadReady2InitCounter;
-
-	/*std::mutex m_threadFinishInitMutex;
-	std::condition_variable m_threadFinishInitCond;
-	int m_threadFinishInitConuter;*/
-
-	std::mutex m_threadSyncInitMutex;
-	std::condition_variable m_threadSyncInitCond;
-	int m_threadSyncInitCounterComing;
-	int m_threadSyncInitCounterLeaving; //a pair of counter used for synch among threads
-
-	//
-	std::mutex m_threadReady2RunMutex;
-	std::condition_variable m_threadReady2RunCond;
-	int m_threadReady2RunCounter;
-
-
-	/*std::mutex m_threadFinishRunMutex;
-	std::condition_variable m_threadFinishRunCond;
-	int m_threadFinishRunCounter;*/
-
+	boost::barrier *m_threadSync;
 
 	//
 	std::function<void()> m_userTaskInitFunctionHandle;
 
 	std::function<void()> m_userTaskRunFunctionHandle;
+
+	enum threadJobType{
+		job_init = 0,
+		job_run,
+		job_finish,
+		job_wait,
+		job_user_defined
+	};
+	std::vector<threadJobType> m_jobQueue;
+	std::mutex m_jobExecMutex;
+	std::condition_variable m_jobExecCond;
+	int *m_threadJobIdx;
+
+	boost::latch *m_jobDoneWait;
 
 	//
 	Task& operator=(const Task& other)=delete;

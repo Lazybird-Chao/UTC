@@ -79,7 +79,7 @@ protected:
 
     ProcRank_t m_processRank;    // the current running process's rank value
 
-    ProcRank_t m_mainResideProcess;  // a main process rank that a task maped to
+    ProcRank_t m_mainResideProcess;  // a main process rank that a task mapped to
 
     std::vector<ProcRank_t> m_TaskRankList;  //how task threads map to proc
 

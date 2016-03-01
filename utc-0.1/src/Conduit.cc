@@ -162,7 +162,9 @@ void Conduit::Connect(TaskBase* srctask, TaskBase* dsttask)
 
 Conduit::~Conduit()
 {
-	if(m_srcTask)
+	// TODO: if conduit destruct too early so that task-threads still using cdt, this
+	// may cause problem. Should handle this properly.
+	/*if(m_srcTask)
 	{
 		if(TaskManager::hasTaskItem(m_srcId))
 		{   // task not destroyed
@@ -178,7 +180,8 @@ Conduit::~Conduit()
 		if(TaskManager::hasTaskItem(m_dstId))
 			if(m_dstTask->hasActiveLocalThread())
 				m_dstTask->waitLocalThreadFinish();
-	}
+	}*/
+
 	// delete this conduit item from conduit registry
 	m_cdtMgr->unregisterConduit(this, m_conduitId);
 

@@ -120,8 +120,8 @@ int main()
 	std::ofstream* pout= getProcOstream();
 	*pout<<"proc rank:"<<ctx.getProcRank()<<" processor name:"<<pname.c_str()<<std::endl;
 
-	RankList r_list1(3);
-	RankList r_list2(5);
+	ProcList r_list1(3,0);
+	ProcList r_list2(5,0);
 	Task<user_taskA> task1("ping", r_list1);
 	Task<user_taskB> task2("pong", r_list2);
 	Conduit cdt1(&task1, &task2);
@@ -143,6 +143,7 @@ int main()
 	task2.waitTillDone();
 	double t2 = timer.stop();
 
+	task1.finish();
 	*pout<<t1<<std::endl<<t2<<std::endl;
 
 	return 0;
