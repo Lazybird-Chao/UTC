@@ -7,6 +7,9 @@
 
 namespace iUtc{
 
+
+/* Task utility methods */
+
 std::ofstream* getProcOstream()
 {
 	int currentTaskid = TaskManager::getCurrentTaskId();

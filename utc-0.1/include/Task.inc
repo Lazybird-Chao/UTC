@@ -92,6 +92,7 @@ Task<T>::~Task()
 		delete m_jobDoneWait;
 		delete m_threadJobIdx;
 		m_jobQueue.clear();
+		m_jobHandleQueue.clear();
 	}
 
 	if(m_taskBarrierObjPtr!=nullptr)
@@ -142,6 +143,7 @@ void Task<T>::init()
 
 	//set up user task's init function
 	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr);
+	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
 	// ask all threads to do task.init
 	initImpl();
 
@@ -160,6 +162,7 @@ void Task<T>::init(T1 arg1)
 
 	//set up user task's init function
 	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1);
+	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
 	// ask all threads to do task.init
 	initImpl();
 
@@ -178,6 +181,7 @@ void Task<T>::init(T1 arg1, T2 arg2)
 
 	//set up user task's init function
 	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2);
+	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
 	// ask all threads to do task.init
 	initImpl();
 
@@ -196,6 +200,7 @@ void Task<T>::init(T1 arg1, T2 arg2, T3 arg3)
 
 	//set up user task's init function
 	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3);
+	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
 	// ask all threads to do task.init
 	initImpl();
 
@@ -205,19 +210,94 @@ template<class T>
 template<typename T1, typename T2, typename T3, typename T4>
 void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4)
 {
-    // no task threads on this process, just return.
-    // same as m_userTaskObjPtr==nullptr
     if(m_numLocalThreads ==0)
-    {
-        return;
-    }
+    	return;
 	//set up user task's init function
 	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3, arg4);
+	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
 	// ask all threads to do task.init
 	initImpl();
-
 	return;
 }
+template<class T>
+template<typename T1, typename T2, typename T3, typename T4, typename T5>
+void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5)
+{
+    if(m_numLocalThreads ==0)
+    	return;
+	//set up user task's init function
+	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5);
+	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
+	// ask all threads to do task.init
+	initImpl();
+	return;
+}
+template<class T>
+template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
+void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6)
+{
+    if(m_numLocalThreads ==0)
+    	return;
+	//set up user task's init function
+	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5, arg6);
+	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
+	// ask all threads to do task.init
+	initImpl();
+	return;
+}
+template<class T>
+template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7>
+void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7)
+{
+    if(m_numLocalThreads ==0)
+    	return;
+	//set up user task's init function
+	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
+	// ask all threads to do task.init
+	initImpl();
+	return;
+}
+template<class T>
+template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8>
+void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8)
+{
+    if(m_numLocalThreads ==0)
+    	return;
+	//set up user task's init function
+	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
+	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
+	// ask all threads to do task.init
+	initImpl();
+	return;
+}
+template<class T>
+template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9>
+void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9)
+{
+    if(m_numLocalThreads ==0)
+    	return;
+	//set up user task's init function
+	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
+	// ask all threads to do task.init
+	initImpl();
+	return;
+}
+template<class T>
+template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9, typename T10>
+void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10)
+{
+    if(m_numLocalThreads ==0)
+    	return;
+	//set up user task's init function
+	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
+	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
+	// ask all threads to do task.init
+	initImpl();
+	return;
+}
+
 
 
 template<class T>
@@ -230,13 +310,38 @@ void Task<T>::run()
         return;
     }
     m_userTaskRunFunctionHandle = std::bind(&T::run, m_userTaskObjPtr);
-    std::unique_lock<std::mutex> LCK1(m_jobExecMutex);
-    m_jobQueue.push_back(threadJobType::job_run);
-    LCK1.unlock();
-    m_jobExecCond.notify_all();
-
-
+    m_jobHandleQueue.push_back(m_userTaskRunFunctionHandle);
+    runImpl();
+    return;
 }
+
+template<class T>
+void Task<T>::waitTillDone(){
+	if(m_numLocalThreads ==0)
+	{
+		return;
+	}
+	m_jobHandleQueue.push_back(m_nullJobHandle);
+	std::unique_lock<std::mutex> LCK1(m_jobExecMutex);
+	m_jobDoneWait->reset(m_numLocalThreads);
+	m_jobQueue.push_back(threadJobType::job_wait);
+	LCK1.unlock();
+	m_jobExecCond.notify_all();
+
+#ifdef USE_DEBUG_LOG
+    PRINT_TIME_NOW(*m_procOstream)
+	(*m_procOstream)<<"["<<m_Name<<"] before wait!"<<std::endl;
+#endif
+
+	m_jobDoneWait->wait();
+
+#ifdef USE_DEBUG_LOG
+    PRINT_TIME_NOW(*m_procOstream)
+	(*m_procOstream)<<"["<<m_Name<<"] after wait!"<<std::endl;
+#endif
+	return;
+}
+
 
 template<class T>
 void Task<T>::finish()
@@ -250,6 +355,7 @@ void Task<T>::finish()
 #ifdef USE_DEBUG_ASSERT
     assert(callTaskFinish==false);
 #endif
+    m_jobHandleQueue.push_back(m_nullJobHandle);
     std::unique_lock<std::mutex> LCK1(m_jobExecMutex);
 	m_jobQueue.push_back(threadJobType::job_finish);
 	LCK1.unlock();
@@ -263,6 +369,35 @@ void Task<T>::finish()
 #endif
 }
 
+template<class T>
+void Task<T>::exec(void (T::*user_fun)()){
+	if(m_numLocalThreads ==0)
+		return;
+	m_userTaskExecHandle = std::bind(user_fun, m_userTaskObjPtr);
+	m_jobHandleQueue.push_back(m_userTaskExecHandle);
+	execImpl();
+	return;
+}
+template<class T>
+template<typename T1>
+void Task<T>::exec(void (T::*user_fun)(T1), T1 arg1){
+	if(m_numLocalThreads ==0)
+		return;
+	//m_userTaskExecHandle = std::bind(static_cast<void(T::*)(T1)>(user_fun), m_userTaskObjPtr, arg1);
+	m_userTaskExecHandle = std::bind(user_fun, m_userTaskObjPtr, arg1);
+	m_jobHandleQueue.push_back(m_userTaskExecHandle);
+	execImpl();
+	return;
+}
+
+template<class T>
+int Task<T>::execImpl(){
+	std::unique_lock<std::mutex> LCK1(m_jobExecMutex);
+	m_jobQueue.push_back(threadJobType::job_user_defined);
+	LCK1.unlock();
+	m_jobExecCond.notify_all();
+	return 0;
+}
 
 template<class T>
 int Task<T>::initImpl()
@@ -274,6 +409,13 @@ int Task<T>::initImpl()
 	return 0;
 }
 
+template<class T>
+int Task<T>::runImpl(){
+	std::unique_lock<std::mutex> LCK1(m_jobExecMutex);
+	m_jobQueue.push_back(threadJobType::job_run);
+	LCK1.unlock();
+	m_jobExecCond.notify_all();
+}
 
 
 template<class T>
@@ -386,7 +528,6 @@ void Task<T>::threadImpl(ThreadRank_t trank, ThreadRank_t lrank, std::ofstream *
 		m_jobExecCond.wait(LCK1,
 				[=](){return m_jobQueue.size()> m_threadJobIdx[lrank];});
 		int tmpJobHandle = m_jobQueue[m_threadJobIdx[lrank]];
-		m_threadJobIdx[lrank]++;
 		LCK1.unlock();
 
 		switch(tmpJobHandle){
@@ -410,13 +551,16 @@ void Task<T>::threadImpl(ThreadRank_t trank, ThreadRank_t lrank, std::ofstream *
 			//threadSync();
 			break;
 		case threadJobType::job_user_defined:
-			//
+			// run user specified function
+			//m_userTaskExecHandle();
+			m_jobHandleQueue[m_threadJobIdx[lrank]]();
+			threadSync();
 			break;
 		default:
 			std::cerr<<"Error! Undefined Task job type!"<<std::endl;
 			break;
 		}
-
+		m_threadJobIdx[lrank]++;
 		if(tmpJobHandle == threadJobType::job_finish)
 			break;
 	}
@@ -429,33 +573,6 @@ void Task<T>::threadWait(){
 	m_jobDoneWait->count_down();
 
 }
-
-template<class T>
-void Task<T>::waitTillDone(){
-	if(m_numLocalThreads ==0)
-	{
-		return;
-	}
-	std::unique_lock<std::mutex> LCK1(m_jobExecMutex);
-	m_jobDoneWait->reset(m_numLocalThreads);
-	m_jobQueue.push_back(threadJobType::job_wait);
-	LCK1.unlock();
-	m_jobExecCond.notify_all();
-
-#ifdef USE_DEBUG_LOG
-    PRINT_TIME_NOW(*m_procOstream)
-	(*m_procOstream)<<"["<<m_Name<<"] before wait!"<<std::endl;
-#endif
-
-	m_jobDoneWait->wait();
-
-#ifdef USE_DEBUG_LOG
-    PRINT_TIME_NOW(*m_procOstream)
-	(*m_procOstream)<<"["<<m_Name<<"] after wait!"<<std::endl;
-#endif
-	return;
-}
-
 
 
 template<class T>
@@ -588,11 +705,13 @@ void Task<T>::LaunchThreads(std::vector<ThreadRank_t> &tRankList)
 	m_threadSync = new boost::barrier(m_numLocalThreads);
 	m_jobDoneWait = new boost::latch(m_numLocalThreads);
 	m_jobQueue.clear();
+	m_jobHandleQueue.clear();
 	m_threadJobIdx = new int[m_numLocalThreads];
 	for(int i=0;i<m_numLocalThreads;i++)
 		m_threadJobIdx[i]=0;
 	callTaskFinish = false;
 
+	////
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_procOstream)
 	(*m_procOstream)<<"start launching threads for ["<<m_Name<<"] on proc "<<m_processRank

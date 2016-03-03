@@ -58,12 +58,34 @@ public:
 	template<typename T1, typename T2, typename T3, typename T4>
 	void init(T1 arg1, T2 arg2, T3 arg3, T4 arg4);
 
+	template<typename T1, typename T2, typename T3, typename T4, typename T5>
+	void init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5);
+
+	template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
+	void init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6);
+
+	template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7>
+	void init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7);
+
+	template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8>
+	void init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8);
+
+	template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9>
+	void init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9);
+
+	template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9, typename T10>
+	void init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10);
 	//
 	void run();
-
+	//
 	void waitTillDone();
-
+	//
 	void finish();
+	//
+	void exec(void (T::*user_fun)());
+	template<typename T1>
+	void exec(void (T::*user_fun)(T1), T1 arg1);
+
 
 	//
 
@@ -71,7 +93,9 @@ public:
 protected:
 	int initImpl();
 
+	int runImpl();
 
+	int execImpl();
 
 
 private:
@@ -116,6 +140,11 @@ private:
 	std::function<void()> m_userTaskInitFunctionHandle;
 
 	std::function<void()> m_userTaskRunFunctionHandle;
+
+	std::function<void()> m_userTaskExecHandle;
+
+	std::vector<std::function<void()>> m_jobHandleQueue;
+	std::function<void()> m_nullJobHandle;
 
 	enum threadJobType{
 		job_init = 0,

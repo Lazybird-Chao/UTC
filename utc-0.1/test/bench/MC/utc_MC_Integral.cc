@@ -163,6 +163,13 @@ public:
 		std::cout<<utime<<"  "<<systime<<std::endl;*/
 	}
 
+	void test(){
+		std::cout<<"test for user specified function:"<<m_loopN<<std::endl;
+	}
+	void test(int x){
+		std::cout<<"test for user specified function:"<<x<<std::endl;
+	}
+
 private:
 	long m_loopN;
 	double *m_res;
@@ -213,8 +220,10 @@ int main(int argc, char*argv[])
 	long loopN = std::atol(argv[2]);
 	integral_f.init(loopN, 8, 1.0, 10.0);
 
-	integral_f.run();
-
+	//integral_f.run();
+	integral_f.exec(&IntegralCaculator::test);
+	//integral_f.waitTillDone();
+	integral_f.exec(&IntegralCaculator::test, 9);
 	integral_f.waitTillDone();
 
 	return 0;
