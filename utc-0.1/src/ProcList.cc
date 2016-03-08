@@ -24,7 +24,7 @@ namespace iUtc{
 	{
 		for(int i = 0; i < size; i++)
 		{
-			m_procList.push_back(static_cast<ProcRank_t>(proc));
+			m_procList.push_back(proc);
 		}
 	}
 

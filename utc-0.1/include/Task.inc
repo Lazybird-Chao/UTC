@@ -9,18 +9,15 @@ Task<T>::Task()
 	m_procOstream = nullptr;
 	m_taskBarrierObjPtr = nullptr;
 
-	/*m_threadSync = new boost::barrier(m_numLocalThreads);
-	m_jobDoneWait = new boost::latch(m_numLocalThreads);
-	m_jobQueue.clear();
-	m_threadJobIdx = new int[m_numLocalThreads];
-	for(int i=0;i<m_numLocalThreads;i++)
-		m_threadJobIdx[i]=0;
-	callTaskFinish = false;*/
-
 	int ntasks = TaskManager::getNumTasks();
 	std::string name = "Task";
 	name.append(std::to_string(ntasks));
-	CreateTask(name, ProcList(0));
+
+	int numProcess = TaskManager::getRootTask()->getNumProcesses();
+	std::vector<int> rlist;
+	for(int i=0;i<numProcess;i++)
+		rlist.push_back(i);
+	CreateTask(name, ProcList(rlist));
  }
 
 template<class T>
@@ -32,19 +29,26 @@ Task<T>::Task(ProcList rList)
 	m_procOstream = nullptr;
 	m_taskBarrierObjPtr = nullptr;
 
-
-	/*m_threadSync = new boost::barrier(m_numLocalThreads);
-	m_jobDoneWait = new boost::latch(m_numLocalThreads);
-	m_jobQueue.clear();
-	m_threadJobIdx = new int[m_numLocalThreads];
-	for(int i=0;i<m_numLocalThreads;i++)
-		m_threadJobIdx[i]=0;
-	callTaskFinish = false;*/
-
 	int ntasks = TaskManager::getNumTasks();
 	std::string name = "Task";
 	name.append(std::to_string(ntasks));
 	CreateTask(name, rList);
+ }
+
+template<class T>
+Task<T>::Task(std::string name)
+:TaskBase()
+ {
+	m_taskThreads.clear();
+	m_userTaskObjPtr = nullptr;
+	m_procOstream = nullptr;
+	m_taskBarrierObjPtr = nullptr;
+
+	int numProcess = TaskManager::getRootTask()->getNumProcesses();
+	std::vector<int> rlist;
+	for(int i=0;i<numProcess;i++)
+		rlist.push_back(i);
+	CreateTask(name, rlist);
  }
 
 template<class T>
@@ -55,14 +59,6 @@ Task<T>::Task( std::string name,  ProcList rList)
 	m_userTaskObjPtr = nullptr;
 	m_procOstream = nullptr;
 	m_taskBarrierObjPtr = nullptr;
-
-	/*m_threadSync = new boost::barrier(m_numLocalThreads);
-	m_jobDoneWait = new boost::latch(m_numLocalThreads);
-	m_jobQueue.clear();
-	m_threadJobIdx = new int[m_numLocalThreads];
-	for(int i=0;i<m_numLocalThreads;i++)
-		m_threadJobIdx[i]=0;
-	callTaskFinish = false;*/
 
 	CreateTask(name, rList);
  }

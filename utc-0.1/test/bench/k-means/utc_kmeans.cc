@@ -28,29 +28,153 @@ public:
 		this->numCoords = numCoords;
 		this->numObjs = numObjs;
 		this->numClusters = numClusters;
-		this->membership = numClusters;
+		this->membership = membership;
 		this->clusters = clusters;
-		threshold = 1;
+		threshold = 0.01;
+		numChanges =0;
+		newClusters    = (float**) malloc(numClusters *            sizeof(float*));
+		assert(newClusters != NULL);
+		newClusters[0] = (float*)  calloc(numClusters * numCoords, sizeof(float));
+		assert(newClusters[0] != NULL);
+
 	}
 
 	void run(){
+		int taskThreadId = getTrank();
+		int numTotalThreads = getGsize();
+		/* local cluster centers used in each thread*/
+		float **localClusters;
+		localClusters    = (float**) malloc(numClusters *            sizeof(float*));
+		assert(localClusters != NULL);
+		localClusters[0] = (float*)  calloc(numClusters * numCoords, sizeof(float));
+		assert(localClusters[0] != NULL);
+		/* recored each cluster's size */
+		for (int i=1; i<numClusters; i++)
+			localClusters[i] = localClusters[i-1] + numCoords;
+		int *localClusterSize = (int*) calloc(numClusters, sizeof(int));
+	    assert(localClusterSize != NULL);
 
+		int localComputeSize = numObjs / numTotalThreads;
+		int startObjIdx = localComputeSize*taskThreadId;
+		int endObjIdx = startObjIdx + localComputeSize -1;
+		int loopcounter =0;
+		int changedObjs;
+		Timer timer;
+		timer.start();
+		/* the main compute procedure */
+		do{
+			changedObjs =0;
+			loopcounter++;
+			/* find each object's belonged cluster */
+			for(int i= startObjIdx; i<= endObjIdx; i++){
+				int idx = find_nearest_cluster(numClusters, numCoords, objects[i], clusters);
+				/* check if membership changed */
+				if(idx != membership[i]){
+					changedObjs++;
+					membership[i] = idx;
+				}
+				/* record this obj in cluster[idx] */
+				localClusterSize[idx]++;
+				for(int j=0; j<numCoords; j++)
+					localClusters[idx][j] += objects[i][j];
+			}
+			/* update task-threads shared newClusters with localClusters */
+			updateNewCluster.write_lock();
+			for(int i=0; i<numClusters; i++){
+				if(localClusterSize[i] != 0){
+					for(int j=0; j<numCoords; j++){
+						newClusters[i][j] += localClusters[i][j]/localClusterSize[i];
+						localClusters[i][j] = 0;
+					}
+					localClusterSize[i]=0;
+				}
+			}
+			numChanges +=changedObjs;
+			updateNewCluster.write_unlock();
+
+			/* sync all task-threads, wait local compute finish*/
+			intra_Barrier();
+			/* get total changes*/
+			changedObjs = numChanges;
+			/* update cluster with newClusters for next loop */
+			if(taskThreadId ==0){
+				numChanges =0;
+				for(int i=0; i<numClusters; i++)
+					for(int j=0; j<numCoords; j++){
+						clusters[i][j]=newClusters[i][j];
+						newClusters[i][j]=0;
+					}
+			}
+			intra_Barrier();
+		}while(changedObjs/numObjs > threshold && loopcounter < 500);
+
+		/* finish compute */
+		double loopruntime = timer.stop();
+		if(taskThreadId ==0)
+			std::cout<<"run() time: "<<loopruntime<<std::endl;
+		free(localClusters[0]);
+		free(localClusters);
+		free(localClusterSize);
+	}
+
+	~kmeans_algorithm(){
+		free(newClusters[0]);
+		free(newClusters);
 	}
 
 private:
+	float euclid_dist_2(int    numdims,  /* no. dimensions */
+	                    float *coord1,   /* [numdims] */
+	                    float *coord2)   /* [numdims] */
+	{
+	    int i;
+	    float ans=0.0;
+
+	    for (i=0; i<numdims; i++)
+	        ans += (coord1[i]-coord2[i]) * (coord1[i]-coord2[i]);
+	    //ans = sqrt(ans);
+	    return(ans);
+	}
+
+	int find_nearest_cluster(int     numClusters, /* no. clusters */
+	                         int     numCoords,   /* no. coordinates */
+	                         float  *object,      /* [numCoords] */
+	                         float **clusters)    /* [numClusters][numCoords] */
+	{
+	    int   index, i;
+	    float dist, min_dist;
+
+	    /* find the cluster id that has min distance to object */
+	    index    = 0;
+	    min_dist = euclid_dist_2(numCoords, object, clusters[0]);
+
+	    for (i=1; i<numClusters; i++) {
+	        dist = euclid_dist_2(numCoords, object, clusters[i]);
+	        /* no need square root */
+	        if (dist < min_dist) { /* find the min and its array index */
+	            min_dist = dist;
+	            index    = i;
+	        }
+	    }
+	    return(index);
+	}
+
 	float **objects;      /* in: [numObjs][numCoords] */
 	int     numCoords;    /* no. features */
 	int     numObjs;      /* no. objects */
 	int     numClusters;  /* no. clusters */
-	float   threshold;    /* % objects change membership */
+	float   threshold;    /* percent of objects change membership */
 	int    *membership;   /* out: [numObjs] */
 	float **clusters;     /* out: [numClusters][numCoords] */
+	int numChanges;
+	float **newClusters;
+	SharedDataLock updateNewCluster;
 };
 
 
 int main(int argc, char*argv[]){
 	int numClusters, numCoords, numObjs;
-	char* filename, *center_filename;
+	char* filename;
 	float **objects;
 	float **clusters;
 	int *membership;
@@ -77,7 +201,9 @@ int main(int argc, char*argv[]){
 	assert(clusters[0] != NULL);
 	for (int i=1; i<numClusters; i++)
 		clusters[i] = clusters[i-1] + numCoords;
-
+	/* allocate space for membership array for each object */
+	membership = (int*) malloc(numObjs * sizeof(int));
+	assert(membership != NULL);
 	/* initial cluster centers with first numClusters points*/
 	for (int i=0; i<numClusters; i++)
 		for (int j=0; j<numCoords; j++)
@@ -86,13 +212,19 @@ int main(int argc, char*argv[]){
 	/* begin clustering */
 	std::cout<<"Start clustering..."<<std::endl;
 
-
+	ProcList rlist(4, 0); // task with 4 threads on proc 0
+	Task<kmeans_algorithm> kmeansCompute("kmeans", rlist);
+	kmeansCompute.init(objects,  numCoords,  numObjs,  numClusters,
+			membership, clusters);
+	kmeansCompute.run();
+	kmeansCompute.waitTillDone();
+	//kmeansCompute.finish();
 
 
 	/* write cluster centers to output file*/
 	file_write(filename, numClusters, numObjs, numCoords, clusters,
 	               membership, 0);
-	free(membersip);
+	free(membership);
 	free(clusters[0]);
 	free(clusters);
 	free(objects[0]);

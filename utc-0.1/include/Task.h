@@ -38,7 +38,8 @@ public:
 
 	Task();
 	Task(ProcList rList);
-	Task( std::string name , ProcList rList=ProcList(0));
+	Task(std::string name);
+	Task( std::string name , ProcList rList);
 
 	~Task();
 
