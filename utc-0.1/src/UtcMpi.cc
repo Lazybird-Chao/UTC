@@ -66,9 +66,8 @@ namespace iUtc{
 
             //
             MPI_Barrier(MPI_COMM_WORLD);
+            MPI_Finalize();
 
-            //MPI_Finalize();
-            MPI::Finalize();
 #ifdef USE_DEBUG_LOG
             std::cout<<"[SYSTEM LOG]>>>>>>>>>:";
             std::cout<<"MPI Proc "<<m_rank<<" exit!"<<std::endl;

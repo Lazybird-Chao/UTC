@@ -40,238 +40,180 @@ extern int errno;
 int _debug =0;
 
 #define MAX_CHAR_PER_LINE 128
-
+#include "Utc.h"
+using namespace iUtc;
 
 /*---< file_read() >---------------------------------------------------------*/
-float** file_read(int   isBinaryFile,  /* flag: 0 or 1 */
-                  char *filename,      /* input file name */
+class FileRead{
+public:
+	void init(    char *filename,      /* input file name */
                   int  *numObjs,       /* no. data objects (local) */
-                  int  *numCoords)     /* no. coordinates */
-{
-    float **objects;
-    int     i, j, len;
-    ssize_t numBytesRead;
+                  int  *numCoords,     /* no. coordinates */
+				  float **&objects_out)
+	{
+		if(getLrank() == 0){
+			this->isBinaryFile = isBinaryFile;
+			this->filename = filename;
+			this->numObjs = numObjs;
+			this->numCoords = numCoords;
 
-    if (isBinaryFile) {  /* input file is in raw binary format -------------*/
-        int infile;
-        if ((infile = open(filename, O_RDONLY, "0600")) == -1) {
-            fprintf(stderr, "Error: no such file (%s)\n", filename);
-            return NULL;
-        }
-        numBytesRead = read(infile, numObjs,    sizeof(int));
-        assert(numBytesRead == sizeof(int));
-        numBytesRead = read(infile, numCoords, sizeof(int));
-        assert(numBytesRead == sizeof(int));
-        if (_debug) {
-            printf("File %s numObjs   = %d\n",filename,*numObjs);
-            printf("File %s numCoords = %d\n",filename,*numCoords);
-        }
+			int len;
+			if ((infile = fopen(filename, "r")) == NULL) {
+				fprintf(stderr, "Error: no such file (%s)\n", filename);
+				return;
+			}
+			/* first find the number of objects */
+			lineLen = MAX_CHAR_PER_LINE;
+			line = (char*) malloc(lineLen);
+			assert(line != NULL);
 
-        /* allocate space for objects[][] and read all objects */
-        len = (*numObjs) * (*numCoords);
-        objects    = (float**)malloc((*numObjs) * sizeof(float*));
-        assert(objects != NULL);
-        objects[0] = (float*) malloc(len * sizeof(float));
-        assert(objects[0] != NULL);
-        for (i=1; i<(*numObjs); i++)
-            objects[i] = objects[i-1] + (*numCoords);
+			(*numObjs) = 0;
+			while (fgets(line, lineLen, infile) != NULL) {
+				/* check each line to find the max line length */
+				while (strlen(line) == lineLen-1) {
+					/* this line read is not complete */
+					len = strlen(line);
+					fseek(infile, -len, SEEK_CUR);
 
-        numBytesRead = read(infile, objects[0], len*sizeof(float));
-        assert(numBytesRead == len*sizeof(float));
+					/* increase lineLen */
+					lineLen += MAX_CHAR_PER_LINE;
+					line = (char*) realloc(line, lineLen);
+					assert(line != NULL);
 
-        close(infile);
-    }
-    else {  /* input file is in ASCII format -------------------------------*/
-        FILE *infile;
-        char *line, *ret;
-        int   lineLen;
+					ret = fgets(line, lineLen, infile);
+					assert(ret != NULL);
+				}
 
-        if ((infile = fopen(filename, "r")) == NULL) {
-            fprintf(stderr, "Error: no such file (%s)\n", filename);
-            return NULL;
-        }
+				if (strtok(line, " \t\n") != 0)
+					(*numObjs)++;
+			}
+			rewind(infile);
+			if (_debug) printf("lineLen = %d\n",lineLen);
 
-        /* first find the number of objects */
-        lineLen = MAX_CHAR_PER_LINE;
-        line = (char*) malloc(lineLen);
-        assert(line != NULL);
+			/* find the no. coordinates of each object */
+			(*numCoords) = 0;
+			while (fgets(line, lineLen, infile) != NULL) {
+				if (strtok(line, " \t\n") != 0) {
+					/* ignore the id (first coordiinate): numCoords = 1; */
+					while (strtok(NULL, " ,\t\n") != NULL) (*numCoords)++;
+					break; /* this makes read from 1st object */
+				}
+			}
+			rewind(infile);
+			if (_debug) {
+				printf("File %s numObjs   = %d\n",filename,*numObjs);
+				printf("File %s numCoords = %d\n",filename,*numCoords);
+			}
 
-        (*numObjs) = 0;
-        while (fgets(line, lineLen, infile) != NULL) {
-            /* check each line to find the max line length */
-            while (strlen(line) == lineLen-1) {
-                /* this line read is not complete */
-                len = strlen(line);
-                fseek(infile, -len, SEEK_CUR);
+			/* allocate space for objects[][] and read all objects */
+			len = (*numObjs) * (*numCoords);
+			objects_out    = (float**)malloc((*numObjs) * sizeof(float*));
+			assert(objects != NULL);
+			objects_out[0] = (float*) malloc(len * sizeof(float));
+			assert(objects_out[0] != NULL);
+			for (int i=1; i<(*numObjs); i++)
+				objects_out[i] = objects_out[i-1] + (*numCoords);
+			this->objects = objects_out;
+		}
+	}
 
-                /* increase lineLen */
-                lineLen += MAX_CHAR_PER_LINE;
-                line = (char*) realloc(line, lineLen);
-                assert(line != NULL);
+	void run(){
+		int     i, j;
 
-                ret = fgets(line, lineLen, infile);
-                assert(ret != NULL);
-            }
+		if(getLrank() == 0){
 
-            if (strtok(line, " \t\n") != 0)
-                (*numObjs)++;
-        }
-        rewind(infile);
-        if (_debug) printf("lineLen = %d\n",lineLen);
+			i = 0;
+			/* read all objects */
+			while (fgets(line, lineLen, infile) != NULL) {
+				if (strtok(line, " \t\n") == NULL) continue;
+				for (j=0; j<(*numCoords); j++) {
+					objects[i][j] = atof(strtok(NULL, " ,\t\n"));
+					if (_debug && i == 0) /* print the first object */
+						printf("object[i=%d][j=%d]=%f\n",i,j,objects[i][j]);
+				}
+				i++;
+			}
+			assert(i == *numObjs);
 
-        /* find the no. coordinates of each object */
-        (*numCoords) = 0;
-        while (fgets(line, lineLen, infile) != NULL) {
-            if (strtok(line, " \t\n") != 0) {
-                /* ignore the id (first coordiinate): numCoords = 1; */
-                while (strtok(NULL, " ,\t\n") != NULL) (*numCoords)++;
-                break; /* this makes read from 1st object */
-            }
-        }
-        rewind(infile);
-        if (_debug) {
-            printf("File %s numObjs   = %d\n",filename,*numObjs);
-            printf("File %s numCoords = %d\n",filename,*numCoords);
-        }
+			fclose(infile);
+			free(line);
+		}
+	}
 
-        /* allocate space for objects[][] and read all objects */
-        len = (*numObjs) * (*numCoords);
-        objects    = (float**)malloc((*numObjs) * sizeof(float*));
-        assert(objects != NULL);
-        objects[0] = (float*) malloc(len * sizeof(float));
-        assert(objects[0] != NULL);
-        for (i=1; i<(*numObjs); i++)
-            objects[i] = objects[i-1] + (*numCoords);
+private:
+	int isBinaryFile;
+	char *filename;
+	int *numObjs;
+	int *numCoords;
+	float **objects;
 
-        i = 0;
-        /* read all objects */
-        while (fgets(line, lineLen, infile) != NULL) {
-            if (strtok(line, " \t\n") == NULL) continue;
-            for (j=0; j<(*numCoords); j++) {
-                objects[i][j] = atof(strtok(NULL, " ,\t\n"));
-                if (_debug && i == 0) /* print the first object */
-                    printf("object[i=%d][j=%d]=%f\n",i,j,objects[i][j]);
-            }
-            i++;
-        }
-        assert(i == *numObjs);
+	FILE *infile;
+	char *line, *ret;
+	int   lineLen;
+};
 
-        fclose(infile);
-        free(line);
-    }
-
-    return objects;
-}
-
-/*---< read_n_objects() >-----------------------------------------------------*/
-int read_n_objects(int     isBinaryFile,  /* flag: 0 or 1 */
-                   char   *filename,      /* input file name */
-                   int     numObjs,       /* no. objects */
-                   int     numCoords,     /* no. coordinates */
-                   float **objects)       /* [numObjs][numCoords] */
-{
-    int i, j, len;
-
-    if (isBinaryFile) {  /* using MPI-IO to read file concurrently */
-        int infile;
-        if ((infile = open(filename, O_RDONLY, "0600")) == -1) {
-            fprintf(stderr, "Error: open file %s (err=%s)\n",filename,strerror(errno));
-            return 0;
-        }
-        /* read and discard the first 2 integers, numObjs and numCoords */
-        read(infile, &i, sizeof(int));
-        read(infile, &i, sizeof(int));
-
-        /* read the objects */
-        read(infile, objects[0], numObjs * numCoords * sizeof(float));
-
-        close(infile);
-    }
-    else {  /* input file is in ASCII format -------------------------------*/
-        FILE *infile;
-        char *line, *ret;
-        int   lineLen;
-
-        if ((infile = fopen(filename, "r")) == NULL) {
-            fprintf(stderr, "Error: open file %s (err=%s)\n",filename,strerror(errno));
-            return 0;
-        }
-
-        /* first find the max length of each line */
-        lineLen = MAX_CHAR_PER_LINE;
-        line = (char*) malloc(lineLen);
-        assert(line != NULL);
-
-        while (fgets(line, lineLen, infile) != NULL) {
-            /* check each line to find the max line length */
-            while (strlen(line) == lineLen-1) {
-                /* this line read is not complete */
-                len = strlen(line);
-                fseek(infile, -len, SEEK_CUR);
-
-                /* increase lineLen */
-                lineLen += MAX_CHAR_PER_LINE;
-                line = (char*) realloc(line, lineLen);
-                assert(line != NULL);
-
-                ret = fgets(line, lineLen, infile);
-                assert(ret != NULL);
-            }
-        }
-        rewind(infile);
-
-        /* read numObjs objects */
-        for (i=0; i<numObjs; i++) {
-            fgets(line, lineLen, infile);
-            if (strtok(line, " \t\n") == NULL) continue;
-            for (j=0; j<numCoords; j++)
-                objects[i][j] = atof(strtok(NULL, " ,\t\n"));
-        }
-        fclose(infile);
-        free(line);
-    }
-    return 1;
-}
 
 /*---< file_write() >---------------------------------------------------------*/
-int file_write(char      *filename,     /* input file name */
-               int        numClusters,  /* no. clusters */
-               int        numObjs,      /* no. data objects */
-               int        numCoords,    /* no. coordinates (local) */
-               float    **clusters,     /* [numClusters][numCoords] centers */
-               int       *membership,   /* [numObjs] */
-               int        verbose)
-{
-    FILE *fptr;
-    int   i, j;
-    char  outFileName[1024];
+class FileWrite{
+public:
+	void init(char      *filename,     /* input file name */
+            int        numClusters,  /* no. clusters */
+            int        numObjs,      /* no. data objects */
+            int        numCoords,    /* no. coordinates (local) */
+            float    **clusters,     /* [numClusters][numCoords] centers */
+            int       *membership,   /* [numObjs] */
+            int        verbose)
+	{
+		if(getLrank() == 0){
+			this->filename = filename;
+			this->numClusters = numClusters;
+			this->numObjs = numObjs;
+			this->numCoords = numCoords;
+			this->clusters = clusters;
+			this->membership = membership;
+			this->verbose = verbose;
+		}
+	}
 
-    /* output: the coordinates of the cluster centres ----------------------*/
-    sprintf(outFileName, "%s.cluster_centres", filename);
-    if (verbose) printf("Writing coordinates of K=%d cluster centers to file \"%s\"\n",
-                        numClusters, outFileName);
-    fptr = fopen(outFileName, "w");
-    for (i=0; i<numClusters; i++) {
-        fprintf(fptr, "%d ", i);
-        for (j=0; j<numCoords; j++)
-            fprintf(fptr, "%f ", clusters[i][j]);
-        fprintf(fptr, "\n");
-    }
-    fclose(fptr);
+	void run(){
+		if(getLrank() == 0){
+			FILE *fptr;
+		    int   i, j;
+		    char  outFileName[1024];
 
-    /* output: the closest cluster centre to each of the data points --------*/
-    sprintf(outFileName, "%s.membership", filename);
-    if (verbose) printf("Writing membership of N=%d data objects to file \"%s\"\n",
-                        numObjs, outFileName);
-    fptr = fopen(outFileName, "w");
-    for (i=0; i<numObjs; i++)
-        fprintf(fptr, "%d %d\n", i, membership[i]);
-    fclose(fptr);
+		    /* output: the coordinates of the cluster centres ----------------------*/
+		    sprintf(outFileName, "%s.cluster_centres", filename);
+		    if (verbose) printf("Writing coordinates of K=%d cluster centers to file \"%s\"\n",
+		                        numClusters, outFileName);
+		    fptr = fopen(outFileName, "w");
+		    for (i=0; i<numClusters; i++) {
+		        fprintf(fptr, "%d ", i);
+		        for (j=0; j<numCoords; j++)
+		            fprintf(fptr, "%f ", clusters[i][j]);
+		        fprintf(fptr, "\n");
+		    }
+		    fclose(fptr);
 
-    return 1;
-}
+		    /* output: the closest cluster centre to each of the data points --------*/
+		    sprintf(outFileName, "%s.membership", filename);
+		    if (verbose) printf("Writing membership of N=%d data objects to file \"%s\"\n",
+		                        numObjs, outFileName);
+		    fptr = fopen(outFileName, "w");
+		    for (i=0; i<numObjs; i++)
+		        fprintf(fptr, "%d %d\n", i, membership[i]);
+		    fclose(fptr);
+		}
 
-
+	}
+private:
+	char *filename;
+	int numClusters;
+	int numObjs;
+	int numCoords;
+	float **clusters;
+	int *membership;
+	int verbose;
+};
 
 
 

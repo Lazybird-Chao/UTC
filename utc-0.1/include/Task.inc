@@ -76,12 +76,30 @@ Task<T>::~Task()
 			// will wait all thread calling thread exit
 			waitLocalThreadFinish();
 			callTaskFinish = true;
+#ifdef USE_MPI_BASE
+			MPI_Barrier(m_taskComm);
+#endif
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_procOstream)
 	(*m_procOstream)<<"["<<m_Name<<"] finish run!"<<std::endl;
 #endif
 		}
 	}
+
+	for(auto& th : m_taskThreads)
+	{
+		if(th.joinable())
+		{
+			ThreadId_t id = th.get_id();
+			th.join();
+#ifdef USE_DEBUG_LOG
+			PRINT_TIME_NOW(*m_procOstream)
+			(*m_procOstream)<<"thread "<<id<<" join on "<<getpid()
+					<<" for ["<<m_Name<<"]"<<std::endl;
+#endif
+		}
+	}
+	m_taskThreads.clear();
 
 	if(m_numLocalThreads!=0){
 		delete m_threadSync;
@@ -99,24 +117,9 @@ Task<T>::~Task()
 
 	if(m_userTaskObjPtr!=nullptr)
 	{   // will call user task class's destructor
-	    delete m_userTaskObjPtr;
-	    m_userTaskObjPtr = nullptr;
+		delete m_userTaskObjPtr;
+		m_userTaskObjPtr = nullptr;
 	}
-
-	for(auto& th : m_taskThreads)
-	{
-		if(th.joinable())
-		{
-			ThreadId_t id = th.get_id();
-			th.join();
-#ifdef USE_DEBUG_LOG
-			PRINT_TIME_NOW(*m_procOstream)
-			(*m_procOstream)<<"thread "<<id<<" join on "<<getpid()
-					<<" for ["<<m_Name<<"]"<<std::endl;
-#endif
-		}
-	}
-	m_taskThreads.clear();
 
 	TaskManager::unregisterTask(this, m_TaskId);
 
@@ -312,7 +315,7 @@ void Task<T>::run()
 }
 
 template<class T>
-void Task<T>::waitTillDone(){
+void Task<T>::wait(){
 	if(m_numLocalThreads ==0)
 	{
 		return;
@@ -330,6 +333,11 @@ void Task<T>::waitTillDone(){
 #endif
 
 	m_jobDoneWait->wait();
+
+    // do barrier across all processes that runing this task
+#ifdef USE_MPI_BASE
+	MPI_Barrier(m_taskComm);
+#endif
 
 #ifdef USE_DEBUG_LOG
     PRINT_TIME_NOW(*m_procOstream)
@@ -359,6 +367,12 @@ void Task<T>::finish()
 	// will wait all thread calling thread exit
     waitLocalThreadFinish();
     callTaskFinish = true;
+
+    // do barrier across all processes that runing this task
+#ifdef USE_MPI_BASE
+     MPI_Barrier(m_taskComm);
+#endif
+
 #ifdef USE_DEBUG_LOG
     PRINT_TIME_NOW(*m_procOstream)
 	(*m_procOstream)<<"["<<m_Name<<"] finish run!"<<std::endl;
@@ -529,14 +543,14 @@ void Task<T>::threadImpl(ThreadRank_t trank, ThreadRank_t lrank, std::ofstream *
 		switch(tmpJobHandle){
 		case threadJobType::job_init:
 			m_userTaskInitFunctionHandle();
-			threadSync();
+			threadSync(lrank);
 			break;
 		case threadJobType::job_run:
 			m_userTaskRunFunctionHandle();
 			//threadSync();
 			break;
 		case threadJobType::job_finish:
-			threadExit(trank);
+			//threadExit(trank);
 			break;
 		case threadJobType::job_wait:
 			threadWait();
@@ -544,7 +558,6 @@ void Task<T>::threadImpl(ThreadRank_t trank, ThreadRank_t lrank, std::ofstream *
 	PRINT_TIME_NOW(*m_threadOstream)
 	(*m_threadOstream)<<"thread("<<trank<<") "<<"called wait!"<<std::endl;
 #endif
-			//threadSync();
 			break;
 		case threadJobType::job_user_defined:
 			// run user specified function
@@ -560,7 +573,8 @@ void Task<T>::threadImpl(ThreadRank_t trank, ThreadRank_t lrank, std::ofstream *
 		if(tmpJobHandle == threadJobType::job_finish)
 			break;
 	}
-
+	// do thread exit clear work at this point
+	threadExit(trank);
 	return;
 }
 
@@ -573,8 +587,19 @@ void Task<T>::threadWait(){
 
 template<class T>
 void Task<T>::threadSync(){
-	// here is an synchronization point for task threads
+	// here is an synchronization point for task's local threads
 	m_threadSync->count_down_and_wait();
+}
+template<class T>
+void Task<T>::threadSync(ThreadRank_t lrank ){
+	// here is an synchronization point for task's all threads
+	m_threadSync->count_down_and_wait();
+	if(lrank ==0){
+#ifdef USE_MPI_BASE
+		MPI_Barrier(m_taskComm);
+#endif
+	}
+    m_threadSync->count_down_and_wait();
 }
 
 template<class T>

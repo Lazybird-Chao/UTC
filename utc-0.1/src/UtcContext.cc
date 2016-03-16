@@ -134,7 +134,6 @@ void UtcContext::finalize()
     		procOstream->close();
     	delete procOstream;
     }
-
 }
 
 }// namespace iUtc

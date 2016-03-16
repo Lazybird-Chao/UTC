@@ -14,11 +14,41 @@
 	#include <sys/syscall.h>
 #endif
 #ifdef _MAC_
-
+#include <sys/param.h>
+#include <sys/sysctl.h>
 #endif
 #include <vector>
+#include <thread>
 
 namespace iUtc{
+
+/*
+ * get the number of concurrent threads supported by the platform
+ */
+inline int getConcurrency(){
+
+	return std::thread::hardware_concurrency();
+	/*
+#ifdef _MAC_
+	int nm[2];
+	size_t len = 4;
+	uint32_t count;
+
+	nm[0] = CTL_HW; nm[1] = HW_AVAILCPU;
+	sysctl(nm, 2, &count, &len, NULL, 0);
+
+	if(count < 1) {
+	nm[1] = HW_NCPU;
+	sysctl(nm, 2, &count, &len, NULL, 0);
+	if(count < 1) { count = 1; }
+	}
+	return count;
+#elif defined(_LINUX_)
+	return sysconf(_SC_NPROCESSORS_ONLN);
+#endif
+*/
+
+}
 
 /*
  * get the cpu affinity configuration of calling thread

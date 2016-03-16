@@ -79,7 +79,7 @@ public:
 	//
 	void run();
 	//
-	void waitTillDone();
+	void wait();
 	//
 	void finish();
 	//
@@ -111,6 +111,7 @@ private:
 	void LaunchThreads(std::vector<ThreadRank_t> &tRankList);
 
 	void threadSync();
+	void threadSync(ThreadRank_t lrank);
 
 	void threadWait();
 

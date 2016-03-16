@@ -23,19 +23,28 @@ using namespace iUtc;
 class kmeans_algorithm{
 public:
 	void init(float** objects, int numCoords, int numObjs, int numClusters,
-			float *membership, float **clusters){
-		this->objects = objects;
-		this->numCoords = numCoords;
-		this->numObjs = numObjs;
-		this->numClusters = numClusters;
-		this->membership = membership;
-		this->clusters = clusters;
-		threshold = 0.01;
-		numChanges =0;
-		newClusters    = (float**) malloc(numClusters *            sizeof(float*));
-		assert(newClusters != NULL);
-		newClusters[0] = (float*)  calloc(numClusters * numCoords, sizeof(float));
-		assert(newClusters[0] != NULL);
+			int *membership, float **clusters){
+		if(getLrank()==0){
+			this->objects = objects;
+			this->numCoords = numCoords;
+			this->numObjs = numObjs;
+			this->numClusters = numClusters;
+			this->membership = membership;
+			this->clusters = clusters;
+			threshold = 0.01;
+			numChanges =0;
+			for (int i=0; i<numObjs; i++)
+				membership[i] = -1;
+			newClusters    = (float**) malloc(numClusters * sizeof(float*));
+			assert(newClusters != NULL);
+			newClusters[0] = (float*)  calloc(numClusters * numCoords, sizeof(float));
+			assert(newClusters[0] != NULL);
+			for (int i=1; i<numClusters; i++)
+				newClusters[i] = newClusters[i-1] + numCoords;
+			newClusterSize = (int*) calloc(numClusters, sizeof(int));
+			assert(newClusterSize != NULL);
+			std::cout<<"finish init()"<<std::endl;
+		}
 
 	}
 
@@ -44,7 +53,7 @@ public:
 		int numTotalThreads = getGsize();
 		/* local cluster centers used in each thread*/
 		float **localClusters;
-		localClusters    = (float**) malloc(numClusters *            sizeof(float*));
+		localClusters    = (float**) malloc(numClusters * sizeof(float*));
 		assert(localClusters != NULL);
 		localClusters[0] = (float*)  calloc(numClusters * numCoords, sizeof(float));
 		assert(localClusters[0] != NULL);
@@ -64,15 +73,14 @@ public:
 		/* the main compute procedure */
 		do{
 			changedObjs =0;
-			loopcounter++;
 			/* find each object's belonged cluster */
 			for(int i= startObjIdx; i<= endObjIdx; i++){
 				int idx = find_nearest_cluster(numClusters, numCoords, objects[i], clusters);
 				/* check if membership changed */
 				if(idx != membership[i]){
 					changedObjs++;
-					membership[i] = idx;
 				}
+				membership[i] = idx;
 				/* record this obj in cluster[idx] */
 				localClusterSize[idx]++;
 				for(int j=0; j<numCoords; j++)
@@ -83,9 +91,10 @@ public:
 			for(int i=0; i<numClusters; i++){
 				if(localClusterSize[i] != 0){
 					for(int j=0; j<numCoords; j++){
-						newClusters[i][j] += localClusters[i][j]/localClusterSize[i];
+						newClusters[i][j] += localClusters[i][j];
 						localClusters[i][j] = 0;
 					}
+					newClusterSize[i]+=localClusterSize[i];
 					localClusterSize[i]=0;
 				}
 			}
@@ -96,22 +105,29 @@ public:
 			intra_Barrier();
 			/* get total changes*/
 			changedObjs = numChanges;
+			intra_Barrier();
 			/* update cluster with newClusters for next loop */
 			if(taskThreadId ==0){
-				numChanges =0;
-				for(int i=0; i<numClusters; i++)
+				for(int i=0; i<numClusters; i++){
 					for(int j=0; j<numCoords; j++){
-						clusters[i][j]=newClusters[i][j];
+						if(newClusterSize[i] >0)
+							clusters[i][j]=newClusters[i][j]/newClusterSize[i];
 						newClusters[i][j]=0;
 					}
+					newClusterSize[i]=0;
+				}
+				numChanges =0;
 			}
 			intra_Barrier();
-		}while(changedObjs/numObjs > threshold && loopcounter < 500);
+		}while(((float)changedObjs)/numObjs > threshold && loopcounter++ < 500);
 
 		/* finish compute */
 		double loopruntime = timer.stop();
-		if(taskThreadId ==0)
+		if(taskThreadId ==0){
 			std::cout<<"run() time: "<<loopruntime<<std::endl;
+			std::cout<<"changed objs:"<<changedObjs<<std::endl;
+			std::cout<<"loops: "<<loopcounter<<std::endl;
+		}
 		free(localClusters[0]);
 		free(localClusters);
 		free(localClusterSize);
@@ -120,6 +136,7 @@ public:
 	~kmeans_algorithm(){
 		free(newClusters[0]);
 		free(newClusters);
+		free(newClusterSize);
 	}
 
 private:
@@ -168,6 +185,7 @@ private:
 	float **clusters;     /* out: [numClusters][numCoords] */
 	int numChanges;
 	float **newClusters;
+	int *newClusterSize;
 	SharedDataLock updateNewCluster;
 };
 
@@ -191,7 +209,10 @@ int main(int argc, char*argv[]){
 
 	/* read data points from file*/
 	std::cout<<"reading data points from file."<<std::endl;
-	objects = file_read(0, filename, &numObjs, &numCoords);
+	Task<FileRead> file_read("file-read");
+	file_read.init(filename, &numObjs, &numCoords, std::ref(objects));
+	file_read.run();
+	file_read.finish();
 
 	/* allocate a 2D space for clusters[] (coordinates of cluster centers)
 	       this array should be the same across all processes                  */
@@ -222,8 +243,12 @@ int main(int argc, char*argv[]){
 
 
 	/* write cluster centers to output file*/
-	file_write(filename, numClusters, numObjs, numCoords, clusters,
-	               membership, 0);
+	Task<FileWrite> file_write("file-write");
+	file_write.init(filename, numClusters, numObjs, numCoords, clusters,
+            membership, 0);
+	file_write.run();
+	file_write.finish();
+
 	free(membership);
 	free(clusters[0]);
 	free(clusters);
