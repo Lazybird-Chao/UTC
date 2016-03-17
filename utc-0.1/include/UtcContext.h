@@ -26,6 +26,8 @@ class UtcContext{
 
         void getProcessorName(std::string& name);
 
+        void Barrier();
+
         //
         static TaskManager* getTaskManager();
 

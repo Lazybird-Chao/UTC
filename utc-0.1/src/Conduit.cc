@@ -67,7 +67,7 @@ int Conduit::initConduit(TaskBase* srctask, TaskBase* dsttask, int capacity){
 	 	if(srctask->isActiveOnCurrentProcess()==true &&
 				dsttask->isActiveOnCurrentProcess()==true)
 		{
-			m_realConduitPtr = new InprocConduit(srctask, dsttask, m_conduitId);
+			m_realConduitPtr = new InprocConduit(srctask, dsttask, m_conduitId, m_Name);
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*procOstream)
 		*procOstream<<"InprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
@@ -77,7 +77,7 @@ int Conduit::initConduit(TaskBase* srctask, TaskBase* dsttask, int capacity){
 		else if((srctask->isActiveOnCurrentProcess()== false && dsttask->isActiveOnCurrentProcess()== true) ||
 				(srctask->isActiveOnCurrentProcess()== true && dsttask->isActiveOnCurrentProcess()==false))
 		{
-			m_realConduitPtr = new XprocConduit(srctask, dsttask, m_conduitId);
+			m_realConduitPtr = new XprocConduit(srctask, dsttask, m_conduitId, m_Name);
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*procOstream)
 		*procOstream<<"XprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
@@ -198,12 +198,11 @@ Conduit::~Conduit()
     PRINT_TIME_NOW(*procOstream)
     if(m_srcTask && m_dstTask)
     {
-        *procOstream<<"Conduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
-                <<"] destroyed on proc "<<m_srcTask->getCurrentProcRank()<<"!!!"<<std::endl;
+        *procOstream<<"Conduit: ["<<m_Name<<"] destroyed on proc "<<TaskManager::getRootTask()->getCurrentProcRank()<<"!!!"<<std::endl;
     }
     else
     {
-        *procOstream<<"Conduit: [dummy conduit] destroyed on proc "<<m_srcTask->getCurrentProcRank()<<"!!!"<<std::endl;
+        *procOstream<<"Conduit: [dummy conduit] destroyed on proc "<<TaskManager::getRootTask()->getCurrentProcRank()<<"!!!"<<std::endl;
     }
 #endif
 

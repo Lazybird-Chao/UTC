@@ -84,24 +84,24 @@ Task<T>::~Task()
 	(*m_procOstream)<<"["<<m_Name<<"] finish run!"<<std::endl;
 #endif
 		}
-	}
 
-	for(auto& th : m_taskThreads)
-	{
-		if(th.joinable())
+
+		for(auto& th : m_taskThreads)
 		{
-			ThreadId_t id = th.get_id();
-			th.join();
+			if(th.joinable())
+			{
+				ThreadId_t id = th.get_id();
+				th.join();
 #ifdef USE_DEBUG_LOG
 			PRINT_TIME_NOW(*m_procOstream)
 			(*m_procOstream)<<"thread "<<id<<" join on "<<getpid()
 					<<" for ["<<m_Name<<"]"<<std::endl;
 #endif
+			}
 		}
-	}
-	m_taskThreads.clear();
+		m_taskThreads.clear();
 
-	if(m_numLocalThreads!=0){
+
 		delete m_threadSync;
 		delete m_jobDoneWait;
 		delete m_threadJobIdx;
@@ -680,6 +680,7 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList)
 	}
 	//the first process is set to be the main reside process for a task
 	m_mainResideProcess = inc_rank[0];
+	//(*m_procOstream)<<m_mainResideProcess<<std::endl;
 #ifdef USE_MPI_BASE
 	MPI_Group_incl(*(root->getWorldGroup()), m_numProcesses, inc_rank, &m_taskmpiGroup);
 	MPI_Comm_create(*(root->getWorldComm()), m_taskmpiGroup, &m_taskComm);

@@ -17,6 +17,8 @@ namespace iUtc{
 
 		virtual void getProcessorName(std::string& name)=0;
 
+		virtual void Barrier()=0;
+
 		virtual ~UtcBase(){}
 
 

@@ -32,7 +32,7 @@ public:
 	};
 	typedef struct MsgInfo	MsgInfo_t;
 
-	InprocConduit(TaskBase* src, TaskBase* dst, int cdtId);
+	InprocConduit(TaskBase* src, TaskBase* dst, int cdtId, std::string name);
 
 	/*
 	 *
@@ -98,6 +98,7 @@ private:
 	 TaskId_t  m_srcId;
 	 TaskId_t  m_dstId;
 
+	 std::string m_Name;
 	 int m_conduitId;
 	 int m_numSrcLocalThreads;
 	 int m_numDstLocalThreads;

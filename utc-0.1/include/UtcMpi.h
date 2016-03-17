@@ -29,6 +29,9 @@ namespace iUtc{
 
             void getProcessorName(std::string& name);
 
+            void Barrier();
+
+            void Barrier(MPI_Comm &comm);
 
         private:
             Utc(const Utc&);

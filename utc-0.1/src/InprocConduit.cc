@@ -17,11 +17,12 @@ thread_local std::ofstream *InprocConduit::m_threadOstream = nullptr;
 /*
  *
  */
-InprocConduit::InprocConduit(TaskBase *srctask, TaskBase *dsttask, int cdtId)
+InprocConduit::InprocConduit(TaskBase *srctask, TaskBase *dsttask, int cdtId, std::string name)
 :ConduitBase(){
 	m_conduitId = cdtId;
     m_srcTask = srctask;
     m_dstTask = dsttask;
+    m_Name = name;
     m_srcId = m_srcTask->getTaskId();
     m_dstId = m_dstTask->getTaskId();
 
@@ -150,8 +151,7 @@ InprocConduit::~InprocConduit(){
     PRINT_TIME_NOW(*procOstream)
     *procOstream<<"InprocAsyncWokerCount: "<<m_asyncWorkerCount<<std::endl;
     PRINT_TIME_NOW(*procOstream)
-    *procOstream<<"InprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
-                <<"] destroyed on proc "<<m_srcTask->getCurrentProcRank()<<"!!!"<<std::endl;
+    *procOstream<<"InprocConduit: ["<<m_Name<<"] destroyed!!!"<<std::endl;
 #endif
 
 }

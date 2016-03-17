@@ -17,7 +17,7 @@ namespace iUtc{
 class XprocConduit: public ConduitBase
 {
 public:
-	XprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId);
+	XprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId, std::string name);
 
 
 	/*
@@ -60,6 +60,7 @@ private:
 	TaskBase* m_dstTask;
 	TaskId_t m_srcId;
 	TaskId_t m_dstId;
+	std::string m_Name;
 
 	int m_numSrcLocalThreads;
 	int m_numDstLocalThreads;

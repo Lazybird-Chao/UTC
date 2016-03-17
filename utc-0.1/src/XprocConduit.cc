@@ -13,13 +13,14 @@ namespace iUtc{
 
 thread_local std::ofstream *XprocConduit::m_threadOstream = nullptr;
 
-XprocConduit::XprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId)
+XprocConduit::XprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId, std::string name)
 :ConduitBase()
 {
 	//
 	m_conduitId = cdtId;
 	m_srcTask = srctask;
 	m_dstTask = dsttask;
+	m_Name = name;
 	m_srcId = m_srcTask->getTaskId();
 	m_dstId = m_dstTask->getTaskId();
 
@@ -74,26 +75,26 @@ int XprocConduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
         m_threadOstream = getThreadOstream();
 #endif
     //
-	static thread_local int mpiOtherEndProc = -1;
-	static thread_local int localNumthreads = -1;
+	int mpiOtherEndProc = -1;
+	int localNumthreads = -1;
 	static thread_local int myThreadRank = -1;
 	static thread_local int myTaskid=-1;
-	if(mpiOtherEndProc == -1)
+	if(myTaskid == -1)
 	{
 		myTaskid = TaskManager::getCurrentTaskId();
-		if(myTaskid == m_srcId)
-		{
-			mpiOtherEndProc = m_dstMainResideProc;
-			localNumthreads = m_numSrcLocalThreads;
-		}
-		else if(myTaskid == m_dstId)
-		{
-			mpiOtherEndProc = m_srcMainResideProc;
-			localNumthreads = m_numDstLocalThreads;
-		}
 		myThreadRank = TaskManager::getCurrentThreadRankinTask();
 	}
-	if(myTaskid != m_srcId && myTaskid!=m_dstId)
+	if(myTaskid == m_srcId)
+	{
+		mpiOtherEndProc = m_dstMainResideProc;
+		localNumthreads = m_numSrcLocalThreads;
+	}
+	else if(myTaskid == m_dstId)
+	{
+		mpiOtherEndProc = m_srcMainResideProc;
+		localNumthreads = m_numDstLocalThreads;
+	}
+	else
 	{
 		std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
 		exit(1);
@@ -134,6 +135,7 @@ int XprocConduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
 		}
 		MPI_Send(DataPtr, (int)DataSize, datatype, mpiOtherEndProc,
 					(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
+		//*m_threadOstream<<"here "<<mpiOtherEndProc<<" "<<(tag<<LOG_MAX_CONDUITS)+m_conduitId<<std::endl;
 #endif
 	}// end one thread
 	else
@@ -234,26 +236,26 @@ int XprocConduit::WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSiz
         m_threadOstream = getThreadOstream();
 #endif
     // current calling thread's belonging task id
-	static thread_local int mpiOtherEndProc = -1;
-	static thread_local int localNumthreads = -1;
+	int mpiOtherEndProc = -1;
+	int localNumthreads = -1;
 	static thread_local int myThreadRank = -1;
 	static thread_local int myTaskid=-1;
-	if(mpiOtherEndProc == -1)
+	if(myTaskid == -1)
 	{
 		myTaskid = TaskManager::getCurrentTaskId();
-		if(myTaskid == m_srcId)
-		{
-			mpiOtherEndProc = m_dstMainResideProc;
-			localNumthreads = m_numSrcLocalThreads;
-		}
-		else if(myTaskid == m_dstId)
-		{
-			mpiOtherEndProc = m_srcMainResideProc;
-			localNumthreads = m_numDstLocalThreads;
-		}
 		myThreadRank = TaskManager::getCurrentThreadRankinTask();
 	}
-	if(myTaskid != m_srcId && myTaskid!=m_dstId)
+	if(myTaskid == m_srcId)
+	{
+		mpiOtherEndProc = m_dstMainResideProc;
+		localNumthreads = m_numSrcLocalThreads;
+	}
+	else if(myTaskid == m_dstId)
+	{
+		mpiOtherEndProc = m_srcMainResideProc;
+		localNumthreads = m_numDstLocalThreads;
+	}
+	else
 	{
 		std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
 		exit(1);
@@ -418,26 +420,26 @@ int XprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
         m_threadOstream = getThreadOstream();
 #endif
     // current calling thread's belonging task id
-	static thread_local int mpiOtherEndProc = -1;
-	static thread_local int localNumthreads = -1;
+	int mpiOtherEndProc = -1;
+	int localNumthreads = -1;
 	static thread_local int myThreadRank = -1;
 	static thread_local int myTaskid=-1;
-	if(mpiOtherEndProc == -1)
+	if(myTaskid == -1)
 	{
 		myTaskid = TaskManager::getCurrentTaskId();
-		if(myTaskid == m_srcId)
-		{
-			mpiOtherEndProc = m_dstMainResideProc;
-			localNumthreads = m_numSrcLocalThreads;
-		}
-		else if(myTaskid == m_dstId)
-		{
-			mpiOtherEndProc = m_srcMainResideProc;
-			localNumthreads = m_numDstLocalThreads;
-		}
 		myThreadRank = TaskManager::getCurrentThreadRankinTask();
 	}
-	if(myTaskid != m_srcId && myTaskid!=m_dstId)
+	if(myTaskid == m_srcId)
+	{
+		mpiOtherEndProc = m_dstMainResideProc;
+		localNumthreads = m_numSrcLocalThreads;
+	}
+	else if(myTaskid == m_dstId)
+	{
+		mpiOtherEndProc = m_srcMainResideProc;
+		localNumthreads = m_numDstLocalThreads;
+	}
+	else
 	{
 		std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
 		exit(1);
@@ -574,26 +576,26 @@ int XprocConduit::PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSi
         m_threadOstream = getThreadOstream();
 #endif
     // current calling thread's belonging task id
-	static thread_local int mpiOtherEndProc = -1;
-	static thread_local int localNumthreads = -1;
+	int mpiOtherEndProc = -1;
+	int localNumthreads = -1;
 	static thread_local int myThreadRank = -1;
 	static thread_local int myTaskid=-1;
-	if(mpiOtherEndProc == -1)
+	if(myTaskid == -1)
 	{
 		myTaskid = TaskManager::getCurrentTaskId();
-		if(myTaskid == m_srcId)
-		{
-			mpiOtherEndProc = m_dstMainResideProc;
-			localNumthreads = m_numSrcLocalThreads;
-		}
-		else if(myTaskid == m_dstId)
-		{
-			mpiOtherEndProc = m_srcMainResideProc;
-			localNumthreads = m_numDstLocalThreads;
-		}
 		myThreadRank = TaskManager::getCurrentThreadRankinTask();
 	}
-	if(myTaskid != m_srcId && myTaskid!=m_dstId)
+	if(myTaskid == m_srcId)
+	{
+		mpiOtherEndProc = m_dstMainResideProc;
+		localNumthreads = m_numSrcLocalThreads;
+	}
+	else if(myTaskid == m_dstId)
+	{
+		mpiOtherEndProc = m_srcMainResideProc;
+		localNumthreads = m_numDstLocalThreads;
+	}
+	else
 	{
 		std::cerr<<"Error, conduit doesn't associate to calling task!"<<std::endl;
 		exit(1);
@@ -736,26 +738,26 @@ int XprocConduit::Read(void* DataPtr, DataSize_t DataSize, int tag)
         m_threadOstream = getThreadOstream();
 #endif
     // current calling thread's belonging task id
-	static thread_local int mpiOtherEndProc = -1;
-	static thread_local int localNumthreads = -1;
+	int mpiOtherEndProc = -1;
+	int localNumthreads = -1;
 	static thread_local int myThreadRank = -1;
 	static thread_local int myTaskid=-1;
-	if(mpiOtherEndProc == -1)
+	if(myTaskid == -1)
 	{
 		myTaskid = TaskManager::getCurrentTaskId();
-		if(myTaskid == m_srcId)
-		{
-			mpiOtherEndProc = m_dstMainResideProc;
-			localNumthreads = m_numSrcLocalThreads;
-		}
-		else if(myTaskid == m_dstId)
-		{
-			mpiOtherEndProc = m_srcMainResideProc;
-			localNumthreads = m_numDstLocalThreads;
-		}
 		myThreadRank = TaskManager::getCurrentThreadRankinTask();
 	}
-	if(myTaskid != m_srcId && myTaskid!=m_dstId)
+	if(myTaskid == m_srcId)
+	{
+		mpiOtherEndProc = m_dstMainResideProc;
+		localNumthreads = m_numSrcLocalThreads;
+	}
+	else if(myTaskid == m_dstId)
+	{
+		mpiOtherEndProc = m_srcMainResideProc;
+		localNumthreads = m_numDstLocalThreads;
+	}
+	else
 	{
 		std::cerr<<"Error, conduit doesn't associate to calling task!"<<std::endl;
 		exit(1);
@@ -890,26 +892,26 @@ int XprocConduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize
         m_threadOstream = getThreadOstream();
 #endif
     // current calling thread's belonging task id
-	static thread_local int mpiOtherEndProc = -1;
-	static thread_local int localNumthreads = -1;
+	int mpiOtherEndProc = -1;
+	int localNumthreads = -1;
 	static thread_local int myThreadRank = -1;
 	static thread_local int myTaskid=-1;
-	if(mpiOtherEndProc == -1)
+	if(myTaskid == -1)
 	{
 		myTaskid = TaskManager::getCurrentTaskId();
-		if(myTaskid == m_srcId)
-		{
-			mpiOtherEndProc = m_dstMainResideProc;
-			localNumthreads = m_numSrcLocalThreads;
-		}
-		else if(myTaskid == m_dstId)
-		{
-			mpiOtherEndProc = m_srcMainResideProc;
-			localNumthreads = m_numDstLocalThreads;
-		}
 		myThreadRank = TaskManager::getCurrentThreadRankinTask();
 	}
-	if(myTaskid != m_srcId && myTaskid!=m_dstId)
+	if(myTaskid == m_srcId)
+	{
+		mpiOtherEndProc = m_dstMainResideProc;
+		localNumthreads = m_numSrcLocalThreads;
+	}
+	else if(myTaskid == m_dstId)
+	{
+		mpiOtherEndProc = m_srcMainResideProc;
+		localNumthreads = m_numDstLocalThreads;
+	}
+	else
 	{
 		std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
 		exit(1);
@@ -957,10 +959,11 @@ int XprocConduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize
 		DataSize = (DataSize+3)/4;
 		datatype = MPI_INT;
 	}
+	//*m_threadOstream<<"here "<<mpiOtherEndProc<<" "<<(tag<<LOG_MAX_CONDUITS)+m_conduitId<<std::endl;
 	MPI_Recv(DataPtr, DataSize, datatype, mpiOtherEndProc,
 			(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 #endif
-
+	//*m_threadOstream<<"here "<<mpiOtherEndProc<<std::endl;
 	if(localNumthreads>1)
 	{
 		// record this op in finish set
@@ -1084,8 +1087,7 @@ XprocConduit::~XprocConduit()
 #ifdef USE_DEBUG_LOG
     std::ofstream* procOstream = getProcOstream();
     PRINT_TIME_NOW(*procOstream)
-    *procOstream<<"XprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
-                <<"] destroyed on proc "<<m_srcTask->getCurrentProcRank()<<"!!!"<<std::endl;
+    *procOstream<<"XprocConduit: ["<<m_Name<<"] destroyed !!!"<<std::endl;
 #endif
 
 }

@@ -47,6 +47,10 @@ void UtcContext::getProcessorName(std::string& name)
     UtcContext::Utcbase_provider->getProcessorName(name);
 }
 
+void UtcContext::Barrier()
+{
+	UtcContext::Utcbase_provider->Barrier();
+}
 
 ////
 TaskManager* UtcContext::getTaskManager()

@@ -23,8 +23,9 @@ using namespace iUtc;
 class kmeans_algorithm{
 public:
 	void init(float** objects, int numCoords, int numObjs, int numClusters,
-			int *membership, float **clusters){
+			int *membership, float **clusters, double *runtime){
 		if(getLrank()==0){
+			this->runtime = runtime;
 			this->objects = objects;
 			this->numCoords = numCoords;
 			this->numObjs = numObjs;
@@ -119,14 +120,16 @@ public:
 				numChanges =0;
 			}
 			intra_Barrier();
-		}while(((float)changedObjs)/numObjs > threshold && loopcounter++ < 500);
+			loopcounter++;
+		}while(((float)changedObjs)/numObjs > threshold && loopcounter < 500);
 
 		/* finish compute */
 		double loopruntime = timer.stop();
 		if(taskThreadId ==0){
-			std::cout<<"run() time: "<<loopruntime<<std::endl;
-			std::cout<<"changed objs:"<<changedObjs<<std::endl;
-			std::cout<<"loops: "<<loopcounter<<std::endl;
+			//std::cout<<"run() time: "<<loopruntime<<std::endl;
+			//std::cout<<"changed objs:"<<changedObjs<<std::endl;
+			//std::cout<<"loops: "<<loopcounter<<std::endl;
+			*runtime = loopruntime;
 		}
 		free(localClusters[0]);
 		free(localClusters);
@@ -187,6 +190,8 @@ private:
 	float **newClusters;
 	int *newClusterSize;
 	SharedDataLock updateNewCluster;
+
+	double *runtime;
 };
 
 
@@ -196,20 +201,21 @@ int main(int argc, char*argv[]){
 	float **objects;
 	float **clusters;
 	int *membership;
-
-	if(argc<3){
-		std::cout<<"run like: ./a.out 'num-cluster' 'inputfile'"<<std::endl;
+	int nthreads;
+	if(argc<4){
+		std::cout<<"run like: ./a.out 'nthread' 'num-cluster' 'inputfile'"<<std::endl;
 	}
 	else{
-		numClusters = atoi(argv[1]);
-		filename = argv[2];
+		nthreads = atoi(argv[1]);
+		numClusters = atoi(argv[2]);
+		filename = argv[3];
 	}
 	/* startup utc contex*/
 	UtcContext ctx(argc, argv);
 
 	/* read data points from file*/
 	std::cout<<"reading data points from file."<<std::endl;
-	Task<FileRead> file_read("file-read");
+	Task<FileRead> file_read("file-read", ProcList(0));
 	file_read.init(filename, &numObjs, &numCoords, std::ref(objects));
 	file_read.run();
 	file_read.finish();
@@ -232,18 +238,18 @@ int main(int argc, char*argv[]){
 
 	/* begin clustering */
 	std::cout<<"Start clustering..."<<std::endl;
-
-	ProcList rlist(4, 0); // task with 4 threads on proc 0
+	double kmeans_runtime;
+	ProcList rlist(nthreads, 0); // task with  nthreads on proc 0
 	Task<kmeans_algorithm> kmeansCompute("kmeans", rlist);
 	kmeansCompute.init(objects,  numCoords,  numObjs,  numClusters,
-			membership, clusters);
+			membership, clusters, &kmeans_runtime);
 	kmeansCompute.run();
-	kmeansCompute.waitTillDone();
+	kmeansCompute.wait();
 	//kmeansCompute.finish();
 
 
 	/* write cluster centers to output file*/
-	Task<FileWrite> file_write("file-write");
+	Task<FileWrite> file_write("file-write", ProcList(0));
 	file_write.init(filename, numClusters, numObjs, numCoords, clusters,
             membership, 0);
 	file_write.run();
@@ -260,6 +266,7 @@ int main(int argc, char*argv[]){
 	printf("numObjs       = %d\n", numObjs);
 	printf("numCoords     = %d\n", numCoords);
 	printf("numClusters   = %d\n", numClusters);
+	std::cout<<"task run() time: "<<kmeans_runtime<<std::endl;
 
 	return 0;
 }

@@ -108,6 +108,16 @@ namespace iUtc{
             name.append(m_name);
         }
 
+        void Utc::Barrier()
+        {
+        	MPI_Barrier(MPI_COMM_WORLD);
+        }
+
+        void Utc::Barrier(MPI_Comm &comm)
+        {
+        	MPI_Barrier(comm);
+        }
+
 
     }//namespace utcmpi
 }//namespace iUtc

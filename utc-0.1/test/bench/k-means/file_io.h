@@ -108,7 +108,7 @@ public:
 			/* allocate space for objects[][] and read all objects */
 			len = (*numObjs) * (*numCoords);
 			objects_out    = (float**)malloc((*numObjs) * sizeof(float*));
-			assert(objects != NULL);
+			assert(objects_out != NULL);
 			objects_out[0] = (float*) malloc(len * sizeof(float));
 			assert(objects_out[0] != NULL);
 			for (int i=1; i<(*numObjs); i++)
