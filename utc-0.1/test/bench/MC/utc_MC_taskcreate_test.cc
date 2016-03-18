@@ -34,8 +34,11 @@ double f(double x)
 class IntegralCaculator
 {
 public:
-	void init(long loopN, unsigned seed, double range_lower, double range_upper, double *time)
+	void init(int coreid, long loopN, unsigned seed, double range_lower, double range_upper, double *time)
 	{
+		/*std::vector<int> cpus;
+		cpus.push_back(coreid);
+		setAffinity(cpus);*/
 		if(getLrank()==0)
 		{
 			m_seed = seed;
@@ -60,6 +63,8 @@ public:
 
 		Timer timer;
 		timer.start();
+		/*for(long i=1; i<m_loopN; i++)
+			f(i);*/
 		double tmp_lower = m_range_lower;
 		double tmp_upper=m_range_upper;
 		unsigned int tmp_seed = m_seed;
@@ -70,6 +75,7 @@ public:
 		}
 		m_res[my_thread]=tmp_sum*(m_range_upper-m_range_lower)/m_loopN;
 		intra_Barrier();
+		//sleep(1);
 		if(my_thread==0)
 		{
 			for(int i=1; i<local_nthreads;i++)
@@ -77,7 +83,8 @@ public:
 				m_res[0]+=m_res[i];
 			}
 			m_res[0]/=local_nthreads;
-			*time_run_cost = timer.stop();
+			*time_run_cost=timer.stop();
+			//*time_run_cost = timer.getThreadCpuTime();
 		}
 
 	}
@@ -105,6 +112,7 @@ int main(int argc, char*argv[])
 	long loopN = std::atol(argv[2]);
 
 	Timer Timer;
+	ctx.Barrier();
 	Timer.start();
 	std::vector<Task<IntegralCaculator>*> taskArray;
 	int numproc = ctx.numProcs();
@@ -117,9 +125,11 @@ int main(int argc, char*argv[])
 			taskArray.push_back(new Task<IntegralCaculator>(rlist));
 		}
 	}
+	ctx.Barrier();
+	Timer.start();
 	for(int i=0; i<numproc; i++){
 		for(int j=0; j<nthreads; j++){
-			taskArray[j+i*nthreads]->init(loopN, 1, 1.0, 10.0, &runtime[j]);
+			taskArray[j+i*nthreads]->init(j, loopN, 1, 1.0, 10.0, &runtime[j]);
 			taskArray[j+i*nthreads]->run();
 		}
 	}
@@ -128,6 +138,7 @@ int main(int argc, char*argv[])
 				taskArray[j+i*nthreads]->wait();
 			}
 	}
+	ctx.Barrier();
 	double totaltime = Timer.stop();
 
 	for(auto &i: taskArray){

@@ -130,13 +130,15 @@ int main(int argc, char*argv[])
 	ProcList rlist(rank);	//create nthreads runing on each proc
 #endif
 	Timer Timer;
+	ctx.Barrier();
 	Timer.start();
 	Task<IntegralCaculator> integral_f(rlist);
 	double runtime=0;
 	double ret=0;
-	integral_f.init(loopN, 8, 1.0, 10.0, &runtime, &ret);
+	integral_f.init(loopN, 1, 1.0, 10.0, &runtime, &ret);
 	integral_f.run();
 	integral_f.wait();
+	ctx.Barrier();
 	double totaltime = Timer.stop();
 
 	double gret;
@@ -149,7 +151,7 @@ int main(int argc, char*argv[])
 			std::cout<<"\trun() time: "<<runtime<<std::endl;
 			std::cout<<"\tresult: "<<ret<<std::endl;
 		}
-		MPI_Barrier(MPI_COMM_WORLD);
+		ctx.Barrier();
 	}
 	if(!ctx.getProcRank())
 		std::cout<<"final result: "<<gret<<std::endl;

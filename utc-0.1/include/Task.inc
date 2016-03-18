@@ -646,14 +646,13 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList)
 	// but current program still running in main thread(or root task thread)
 	m_Name = name;
 	m_TaskId = TaskManager::getNewTaskId();
-	m_ParentTaskId = TaskManager::getCurrentTaskId();  // here we will get root task's id
+	m_ParentTaskId = TaskManager::getCurrentTaskId();  // in main program, it will get root task's id
 	rList.getProcListVector(m_TaskRankList);
 	m_numTotalThreads = m_TaskRankList.size();
 	int currentProcRank = root->getCurrentProcRank();
 	m_processRank = currentProcRank;
 	int nProcWorld = root->getNumProcesses();
 	std::vector<std::vector<ThreadRank_t>> plist(nProcWorld);
-	//std::vector<ThreadRank> plist[nProcWorld];
 	for(int i=0; i<m_numTotalThreads; i++)
 	{
 		if(m_TaskRankList[i]>nProcWorld-1)
@@ -680,7 +679,6 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList)
 	}
 	//the first process is set to be the main reside process for a task
 	m_mainResideProcess = inc_rank[0];
-	//(*m_procOstream)<<m_mainResideProcess<<std::endl;
 #ifdef USE_MPI_BASE
 	MPI_Group_incl(*(root->getWorldGroup()), m_numProcesses, inc_rank, &m_taskmpiGroup);
 	MPI_Comm_create(*(root->getWorldComm()), m_taskmpiGroup, &m_taskComm);

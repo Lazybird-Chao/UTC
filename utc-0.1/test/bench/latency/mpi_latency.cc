@@ -12,7 +12,7 @@
 #include <stdlib.h>
 
 #define MESSAGE_ALIGNMENT 64
-#define MAX_MSG_SIZE (1<<27)
+//#define MAX_MSG_SIZE (1<<27)
 #define MYBUFSIZE (MAX_MSG_SIZE + MESSAGE_ALIGNMENT)
 #define SKIP_LARGE  10
 #define SKIP_LLARGE 1
@@ -51,7 +51,8 @@ int main(int argc, char* argv[])
     MPI_Get_processor_name(name,&len);
     printf("%s\n",name);*/
 
-
+    int MAX_MSG_SIZE = atoi(argv[1]);
+    MAX_MSG_SIZE = 1<<MAX_MSG_SIZE;
     if(myid == 0)
     {
     	char* s_buf_tmp = (char*)malloc(MYBUFSIZE);

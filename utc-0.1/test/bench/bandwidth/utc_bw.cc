@@ -17,7 +17,7 @@
 using namespace iUtc;
 
 #define MAX_ALIGNMENT 65536
-#define MAX_MSG_SIZE (1<<27)
+#define MAX_MSG_SIZE (1<<22)
 #define MYBUFSIZE (MAX_MSG_SIZE + MAX_ALIGNMENT)
 
 #define LOOP_LARGE 20
@@ -200,8 +200,8 @@ int main(int argc, char* argv[])
 	receiver.init(1, &sr_cdt);
 	sender.run();
 	receiver.run();
-	sender.waitTillDone();
-	receiver.waitTillDone();
+	sender.wait();
+	receiver.wait();
 
 	return 0;
 }

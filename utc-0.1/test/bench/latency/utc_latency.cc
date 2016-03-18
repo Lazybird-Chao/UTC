@@ -18,7 +18,7 @@
 using namespace iUtc;
 
 #define MESSAGE_ALIGNMENT 64
-#define MAX_MSG_SIZE (1<<27)
+#define MAX_MSG_SIZE (1<<25)
 #define MYBUFSIZE (MAX_MSG_SIZE + MESSAGE_ALIGNMENT)
 #define SKIP_LARGE  10
 #define LOOP_LARGE  100
@@ -169,9 +169,9 @@ int main(int argc, char* argv[])
 	int myProc = ctx.getProcRank();
 
 	/* define sender and receiver task obj */
-	RankList rl1(1, 0);
+	ProcList rl1(1, 0);
 	Task<SendRecvWorker> sender(rl1);
-	RankList rl2(1, 0);
+	ProcList rl2(1, 1);
 	Task<SendRecvWorker> receiver(rl2);
 
 	/* define conduit obj */
@@ -181,8 +181,8 @@ int main(int argc, char* argv[])
 	receiver.init(1, &sr_cdt);
 	sender.run();
 	receiver.run();
-	sender.waitTillDone();
-	receiver.waitTillDone();
+	sender.wait();
+	receiver.wait();
 
 	return 0;
 }
