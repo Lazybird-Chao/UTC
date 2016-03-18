@@ -23,7 +23,7 @@ using namespace iUtc;
 class kmeans_algorithm{
 public:
 	void init(float** objects, int numCoords, int numObjs, int numClusters,
-			int *membership, float **clusters, double *runtime){
+			int *membership, float **clusters, double *runtime, int *loops){
 		if(getLrank()==0){
 			this->runtime = runtime;
 			this->objects = objects;
@@ -32,7 +32,8 @@ public:
 			this->numClusters = numClusters;
 			this->membership = membership;
 			this->clusters = clusters;
-			threshold = 0.01;
+			this->loops = loops;
+			threshold = 0.0001;
 			numChanges =0;
 			for (int i=0; i<numObjs; i++)
 				membership[i] = -1;
@@ -65,8 +66,17 @@ public:
 	    assert(localClusterSize != NULL);
 
 		int localComputeSize = numObjs / numTotalThreads;
-		int startObjIdx = localComputeSize*taskThreadId;
-		int endObjIdx = startObjIdx + localComputeSize -1;
+		int residue = numObjs%numTotalThreads;
+		int startObjIdx;
+		int endObjIdx;
+		if(taskThreadId < residue){
+			startObjIdx = (localComputeSize+1)*taskThreadId;
+			endObjIdx = startObjIdx + localComputeSize;
+		}
+		else{
+			startObjIdx = (localComputeSize+1)*residue + localComputeSize*(taskThreadId-residue);
+			endObjIdx = startObjIdx + localComputeSize -1;
+		}
 		int loopcounter =0;
 		int changedObjs;
 		Timer timer;
@@ -130,6 +140,7 @@ public:
 			//std::cout<<"changed objs:"<<changedObjs<<std::endl;
 			//std::cout<<"loops: "<<loopcounter<<std::endl;
 			*runtime = loopruntime;
+			*loops = loopcounter;
 		}
 		free(localClusters[0]);
 		free(localClusters);
@@ -192,6 +203,7 @@ private:
 	SharedDataLock updateNewCluster;
 
 	double *runtime;
+	int *loops;
 };
 
 
@@ -239,10 +251,11 @@ int main(int argc, char*argv[]){
 	/* begin clustering */
 	std::cout<<"Start clustering..."<<std::endl;
 	double kmeans_runtime;
+	int loops=0;
 	ProcList rlist(nthreads, 0); // task with  nthreads on proc 0
 	Task<kmeans_algorithm> kmeansCompute("kmeans", rlist);
 	kmeansCompute.init(objects,  numCoords,  numObjs,  numClusters,
-			membership, clusters, &kmeans_runtime);
+			membership, clusters, &kmeans_runtime, &loops);
 	kmeansCompute.run();
 	kmeansCompute.wait();
 	//kmeansCompute.finish();
@@ -266,6 +279,7 @@ int main(int argc, char*argv[]){
 	printf("numObjs       = %d\n", numObjs);
 	printf("numCoords     = %d\n", numCoords);
 	printf("numClusters   = %d\n", numClusters);
+	std::cout<<"loops: "<<loops<<std::endl;
 	std::cout<<"task run() time: "<<kmeans_runtime<<std::endl;
 
 	return 0;

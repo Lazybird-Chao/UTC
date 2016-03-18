@@ -235,16 +235,17 @@ class kmeans_master{
 public:
 	void init(float** objects, int numCoords, int numObjs, int numClusters,
 			int *membership, float **clusters, std::vector<Conduit*> cdt2slaves,
-			double *runtime){
+			double *runtime, int *loops){
 		if(getLrank()==0){
 			this->runtime = runtime;
+			this->loops = loops;
 			this->objects = objects;
 			this->numCoords = numCoords;
 			this->numObjs = numObjs;
 			this->numClusters = numClusters;
 			this->membership = membership;
 			this->clusters = clusters;
-			threshold = 0.01;
+			threshold = 0.0001;
 			numChanges =0;
 			this->cdt2slaves = cdt2slaves;
 			newClusters    = (float**) malloc(numClusters * sizeof(float*));
@@ -359,6 +360,7 @@ public:
 			//std::cout<<"master run() time: "<<loopruntime<<std::endl;
 			//std::cout<<"loops: "<<loopcounter<<std::endl;
 			*runtime = loopruntime;
+			*loops = loopcounter;
 		}
 
 		/* get membership info */
@@ -397,6 +399,7 @@ private:
 	bool goonloop;
 
 	double *runtime;
+	int *loops;
 };
 
 
@@ -447,6 +450,7 @@ int main(int argc, char*argv[]){
 	/* begin clustering */
 	//std::cout<<"Start clustering..."<<std::endl;
 	double master_runtime;
+	int loops=0;
 	double slaves_runtime[32];
 	Task<kmeans_master> kmeansComputeMaster("master", ProcList(0));
 	std::vector<Task<kmeans_slave>*> kmeansComputeSlaves;
@@ -458,7 +462,7 @@ int main(int argc, char*argv[]){
     }
 
 	kmeansComputeMaster.init(objects,  numCoords,  numObjs,  numClusters,
-			membership, clusters, cdtMasterSlave, &master_runtime);
+			membership, clusters, cdtMasterSlave, &master_runtime, &loops);
 	for(int i=0; i< nslaves; i++)
 		kmeansComputeSlaves[i]->init(cdtMasterSlave[i], &slaves_runtime[i]);
 
@@ -497,6 +501,7 @@ int main(int argc, char*argv[]){
 		printf("numObjs       = %d\n", numObjs);
 		printf("numCoords     = %d\n", numCoords);
 		printf("numClusters   = %d\n", numClusters);
+		std::cout<<"loops: "<<loops<<std::endl;
 		std::cout<<"Master task run() time: "<<master_runtime<<std::endl;
 		std::cout<<"Slave tasks run() time: "<<std::endl;
 	}
