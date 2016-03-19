@@ -32,6 +32,7 @@ Barrier::Barrier(int numLocalThreads, int taskid)
 	m_countIdx = (int*)malloc(sizeof(int)*numLocalThreads);
 	for(int i=0; i<numLocalThreads; i++)
 		m_countIdx[i] = 0;
+	m_threadSyncBarrier = new boost::barrier(numLocalThreads);
 }
 
 
@@ -47,7 +48,7 @@ Barrier::Barrier(int numLocalThreads, int taskid, MPI_Comm* comm)
 	m_countIdx = (int*)malloc(sizeof(int)*numLocalThreads);
 	for(int i=0; i<numLocalThreads; i++)
 		m_countIdx[i] = 0;
-
+	m_threadSyncBarrier = new boost::barrier(numLocalThreads);
 }
 
 
@@ -57,11 +58,13 @@ Barrier::~Barrier()
 	m_intraThreadSyncCounterLeaving[0] = m_intraThreadSyncCounterLeaving[1] = 0;
 	if(m_countIdx)
 		free(m_countIdx);
+	if(m_threadSyncBarrier)
+		delete m_threadSyncBarrier;
 }
 
 void Barrier::synch_intra(int local_rank)
 {
-	std::unique_lock<std::mutex> LCK1(m_intraThreadSyncMutex);
+	/*std::unique_lock<std::mutex> LCK1(m_intraThreadSyncMutex);
 
 	// wait for all thread coming here
 	m_intraThreadSyncCounterComing[m_countIdx[local_rank]]++;
@@ -91,7 +94,9 @@ void Barrier::synch_intra(int local_rank)
 	}
 	// rotate idx value to use another counter for next barrier op
 	m_countIdx[local_rank] = (m_countIdx[local_rank]+1)%2;
-	LCK1.unlock();
+	LCK1.unlock();*/
+
+	m_threadSyncBarrier->count_down_and_wait();
 
 }
 

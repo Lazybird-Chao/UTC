@@ -1,11 +1,13 @@
 #ifndef UTC_BARRIER_H_
 #define UTC_BARRIER_H_
 
+#include "UtcBasics.h"
+
 #include <condition_variable>
 #include <mutex>
 #include <fstream>
+#include "boost/thread/barrier.hpp"
 
-#include "UtcBasics.h"
 #ifdef USE_MPI_BASE
 	#include <mpi.h>
 #endif
@@ -47,6 +49,7 @@ private:
 	int m_intraThreadSyncCounterLeaving[2];
 	// local thread i use m_countIdx[i] to specify which counter to use
 	int *m_countIdx;
+	boost::barrier *m_threadSyncBarrier;
 
 };
 

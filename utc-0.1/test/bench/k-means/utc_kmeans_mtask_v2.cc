@@ -87,14 +87,26 @@ public:
 		assert(localClusterSize != NULL);
 
 		int localComputeSize = numObjs / numTotalThreads;
-		int startObjIdx = localComputeSize*taskThreadId;
-		int endObjIdx = startObjIdx + localComputeSize -1;
+		int residue = numObjs%numTotalThreads;
+		int startObjIdx;
+		int endObjIdx;
+		if(taskThreadId < residue){
+			startObjIdx = (localComputeSize+1)*taskThreadId;
+			endObjIdx = startObjIdx + localComputeSize;
+		}
+		else{
+			startObjIdx = (localComputeSize+1)*residue + localComputeSize*(taskThreadId-residue);
+			endObjIdx = startObjIdx + localComputeSize -1;
+		}
 		int changedObjs;
 		int loopcounter = 0;
 		Timer timer;
-		timer.start();
+		double t1, t2, t3;
+		t1 = t2 = t3=0;
+
 		/* the main compute procedure */
 		do{
+			timer.start();
 			changedObjs =0;
 			/* find each object's belonged cluster */
 			for(int i= startObjIdx; i<= endObjIdx; i++){
@@ -127,32 +139,51 @@ public:
 
 			/* sync all task-threads, wait local compute finish*/
 			intra_Barrier();
-
+			t1 += timer.stop();
 			/* send slave task's cluster info to master */
-			cdt2master->Write(&numChanges, sizeof(int), loopcounter*3);
-			cdt2master->Write(newClusterSize, numClusters*sizeof(int), loopcounter*3+1);
-			cdt2master->Write(newClusters[0], numClusters * numCoords*sizeof(float), loopcounter*3+2);
+			cdt2master->WriteBy(0,&numChanges, sizeof(int), loopcounter*3);
+			if(numTotalThreads>1)
+				cdt2master->WriteBy(1,newClusterSize, numClusters*sizeof(int), loopcounter*3+1);
+			else
+				cdt2master->WriteBy(0,newClusterSize, numClusters*sizeof(int), loopcounter*3+1);
+			if(numTotalThreads>2)
+				cdt2master->WriteBy(2,newClusters[0], numClusters * numCoords*sizeof(float), loopcounter*3+2);
+			else
+				cdt2master->WriteBy(0,newClusters[0], numClusters * numCoords*sizeof(float), loopcounter*3+2);
 			/* update local cluster from master */
-			cdt2master->Read(&continueloop, sizeof(bool), loopcounter*2);
+			cdt2master->ReadBy(0,&continueloop, sizeof(bool), loopcounter*2);
+			cdt2master->WriteBy_Finish(loopcounter*3);
+			cdt2master->WriteBy_Finish(loopcounter*3+1);
+			cdt2master->WriteBy_Finish(loopcounter*3+2);
+			cdt2master->ReadBy_Finish(loopcounter*2);
 			if(continueloop){
-				cdt2master->Read(clusters[0], numClusters*numCoords*sizeof(float), loopcounter*2+1);
+				cdt2master->ReadBy(0,clusters[0], numClusters*numCoords*sizeof(float), loopcounter*2+1);
 				/* reset newClusters for next loop */
-				if(taskThreadId ==0){
+				if(numTotalThreads>1 && taskThreadId ==1){
 					memset(newClusterSize, 0, numClusters*sizeof(int));
 					memset(newClusters[0], 0, numClusters * numCoords*sizeof(float));
 					numChanges = 0;
 				}
+				else{
+					memset(newClusterSize, 0, numClusters*sizeof(int));
+					memset(newClusters[0], 0, numClusters * numCoords*sizeof(float));
+					numChanges = 0;
+				}
+				cdt2master->ReadBy_Finish(loopcounter*2+1);
 				intra_Barrier();
 			}
+			t2 += timer.stop();
 			loopcounter++;
 		}while(continueloop);
 
 		/* finish compute */
-		double loopruntime = timer.stop();
+		//double loopruntime = timer.stop();
 		if(taskThreadId ==0){
 			//std::cout<<"slave run() time: "<<loopruntime<<std::endl;
 			//std::cout<<"loops: "<<loopcounter<<std::endl;
-			*runtime = loopruntime;
+			runtime[0] = t1;
+			runtime[1] = t2-t1;
+			runtime[2] = t2;
 		}
 
 		/* send membership info to master */
@@ -257,24 +288,35 @@ public:
 			newClusterSize = (int*) calloc(numClusters, sizeof(int));
 			assert(newClusterSize != NULL);
 			clusterSize = (int*) calloc(numClusters, sizeof(int));
-
-
-			/* get how many slave task instances */
-			int numSlaves = cdt2slaves.size();
-			/* averge dataset to slaves */
-			datainfo2slave.numObjs = numObjs / numSlaves;
-			datainfo2slave.numClusters = numClusters;
-			datainfo2slave.numCoords = numCoords;
 			goonloop = true;
+			numObjsSlave = new int[cdt2slaves.size()];
 		}
 		intra_Barrier();
+		/* get how many slave task instances */
+		int numSlaves = cdt2slaves.size();
+		/* averge dataset to slaves */
+		datasetInfo datainfo2slave;
+		int avgnumObjs = numObjs / numSlaves;
+		int residue = numObjs % cdt2slaves.size();
+		datainfo2slave.numClusters = numClusters;
+		datainfo2slave.numCoords = numCoords;
+
 		/* send initial dataset info to slaves */
+		float* objptr = objects[0];
 		for(int i=0; i< cdt2slaves.size(); i++){
 			Conduit *cdt = cdt2slaves[i];
+			if(i < residue){
+				datainfo2slave.numObjs=avgnumObjs+1;
+				numObjsSlave[i]=avgnumObjs+1;
+			}
+			else{
+				datainfo2slave.numObjs = avgnumObjs;
+				numObjsSlave[i]=avgnumObjs;
+			}
 			cdt->Write(&datainfo2slave, sizeof(datasetInfo), 0);
-			float* objptr = objects[0 + i*datainfo2slave.numObjs];
 			int objsize = sizeof(float)*datainfo2slave.numObjs*numCoords;
 			cdt->Write(objptr, objsize, 1);
+			objptr= objptr + datainfo2slave.numObjs*numCoords;
 			cdt->Write(clusters[0], sizeof(float)*numClusters*numCoords, 2);
 		}
 		if(getLrank()==0)
@@ -364,10 +406,11 @@ public:
 		}
 
 		/* get membership info */
+		int *memberptr= &membership[0];
 		for(int i=0; i< cdt2slaves.size(); i++){
 			Conduit *cdt = cdt2slaves[i];
-			int *memberptr = &membership[i*datainfo2slave.numObjs];
-			cdt->Read(memberptr, sizeof(int)*datainfo2slave.numObjs, 0);
+			cdt->Read(memberptr, sizeof(int)*numObjsSlave[i], 0);
+			memberptr += numObjsSlave[i];
 		}
 
 	}
@@ -395,7 +438,7 @@ private:
 	int *clusterSize;
 
 	std::vector<Conduit*> cdt2slaves;
-	datasetInfo datainfo2slave;
+	int *numObjsSlave;
 	bool goonloop;
 
 	double *runtime;
@@ -451,7 +494,7 @@ int main(int argc, char*argv[]){
 	//std::cout<<"Start clustering..."<<std::endl;
 	double master_runtime;
 	int loops=0;
-	double slaves_runtime[32];
+	double slaves_runtime[4][3];
 	Task<kmeans_master> kmeansComputeMaster("master", ProcList(0));
 	std::vector<Task<kmeans_slave>*> kmeansComputeSlaves;
 	std::vector<Conduit*> cdtMasterSlave;
@@ -464,7 +507,7 @@ int main(int argc, char*argv[]){
 	kmeansComputeMaster.init(objects,  numCoords,  numObjs,  numClusters,
 			membership, clusters, cdtMasterSlave, &master_runtime, &loops);
 	for(int i=0; i< nslaves; i++)
-		kmeansComputeSlaves[i]->init(cdtMasterSlave[i], &slaves_runtime[i]);
+		kmeansComputeSlaves[i]->init(cdtMasterSlave[i], slaves_runtime[i]);
 
 	kmeansComputeMaster.run();
 	for(int i=0; i< nslaves; i++)
@@ -507,7 +550,8 @@ int main(int argc, char*argv[]){
 	}
 	for(int i=0; i< nslaves; i++){
 		if(ctx.getProcRank()==i)
-			std::cout<<"\t"<<slaves_runtime[i]<<std::endl;
+			std::cout<<"\t"<<slaves_runtime[i][0]<<" "<<slaves_runtime[i][1]<<" "
+				<<slaves_runtime[i][2]<<std::endl;
 		ctx.Barrier();
 	}
 	return 0;
