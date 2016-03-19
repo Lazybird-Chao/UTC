@@ -76,6 +76,7 @@ int mpi_kmeans(float    **objects,     /* in: [numObjs][numCoords] */
                int       *membership,  /* out: [numObjs] */
                float    **clusters,    /* out: [numClusters][numCoords] */
                 int       *loops,
+				double     *runtime,
                MPI_Comm   comm)        /* MPI communicator */
 {
     int      i, j, rank, index, loop=0, total_numObjs;
@@ -107,7 +108,8 @@ int mpi_kmeans(float    **objects,     /* in: [numObjs][numCoords] */
 
     MPI_Allreduce(&numObjs, &total_numObjs, 1, MPI_INT, MPI_SUM, comm);
     if (_debug) printf("%2d: numObjs=%d total_numObjs=%d numClusters=%d numCoords=%d\n",rank,numObjs,total_numObjs,numClusters,numCoords);
-
+    double t1, t2;
+    t1= t2=0;
     do {
         double curT = MPI_Wtime();
         delta = 0.0;
@@ -127,7 +129,7 @@ int mpi_kmeans(float    **objects,     /* in: [numObjs][numCoords] */
             for (j=0; j<numCoords; j++)
                 newClusters[index][j] += objects[i][j];
         }
-
+        t1+=MPI_Wtime()-curT;
         /* sum all data objects in newClusters */
         MPI_Allreduce(newClusters[0], clusters[0], numClusters*numCoords,
                       MPI_FLOAT, MPI_SUM, comm);
@@ -146,7 +148,7 @@ int mpi_kmeans(float    **objects,     /* in: [numObjs][numCoords] */
             
         MPI_Allreduce(&delta, &delta_tmp, 1, MPI_FLOAT, MPI_SUM, comm);
         delta = delta_tmp / total_numObjs;
-
+        t2+=MPI_Wtime()-curT;
         if (_debug) {
             double maxTime;
             curT = MPI_Wtime() - curT;
@@ -154,8 +156,11 @@ int mpi_kmeans(float    **objects,     /* in: [numObjs][numCoords] */
             if (rank == 0)
                 printf("%2d: loop=%d time=%f sec\n",rank,loop,curT);
         }
-    } while (delta > threshold && loop++ < 500);
+    } while (delta > threshold && loop++ < 100);
     *loops = loop;
+    runtime[0]=t1;
+    runtime[1]=t2-t1;
+    runtime[2]=t2;
     if (_debug && rank == 0)
         printf("%2d: delta=%f threshold=%f loop=%d\n",rank,delta,threshold,loop);
 

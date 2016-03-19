@@ -45,7 +45,7 @@ public:
 				newClusters[i] = newClusters[i-1] + numCoords;
 			newClusterSize = (int*) calloc(numClusters, sizeof(int));
 			assert(newClusterSize != NULL);
-			std::cout<<"finish init()"<<std::endl;
+			//std::cout<<"finish init()"<<std::endl;
 		}
 
 	}
@@ -80,10 +80,11 @@ public:
 		int loopcounter =0;
 		int changedObjs;
 		Timer timer;
-		timer.start();
+		double loopruntime =0;
 		/* the main compute procedure */
 		do{
 			changedObjs =0;
+			timer.start();
 			/* find each object's belonged cluster */
 			for(int i= startObjIdx; i<= endObjIdx; i++){
 				int idx = find_nearest_cluster(numClusters, numCoords, objects[i], clusters);
@@ -130,11 +131,11 @@ public:
 				numChanges =0;
 			}
 			intra_Barrier();
-			loopcounter++;
-		}while(((float)changedObjs)/numObjs > threshold && loopcounter < 500);
+			loopruntime+= timer.stop();
+
+		}while(((float)changedObjs)/numObjs > threshold && loopcounter++ < 100);
 
 		/* finish compute */
-		double loopruntime = timer.stop();
 		if(taskThreadId ==0){
 			//std::cout<<"run() time: "<<loopruntime<<std::endl;
 			//std::cout<<"changed objs:"<<changedObjs<<std::endl;
@@ -214,13 +215,15 @@ int main(int argc, char*argv[]){
 	float **clusters;
 	int *membership;
 	int nthreads;
-	if(argc<4){
-		std::cout<<"run like: ./a.out 'nthread' 'num-cluster' 'inputfile'"<<std::endl;
+	int N;
+	if(argc<5){
+		std::cout<<"run like: ./a.out 'nthread' 'num-cluster' 'inputfile'  'loop'"<<std::endl;
 	}
 	else{
 		nthreads = atoi(argv[1]);
 		numClusters = atoi(argv[2]);
 		filename = argv[3];
+		N = atoi(argv[4]);
 	}
 	/* startup utc contex*/
 	UtcContext ctx(argc, argv);
@@ -250,15 +253,23 @@ int main(int argc, char*argv[]){
 
 	/* begin clustering */
 	std::cout<<"Start clustering..."<<std::endl;
-	double kmeans_runtime;
+	double kmeans_runtime=0;
+	double kmeans_runtimeTotal=0;
 	int loops=0;
 	ProcList rlist(nthreads, 0); // task with  nthreads on proc 0
 	Task<kmeans_algorithm> kmeansCompute("kmeans", rlist);
+	for(int k =0; k<N; k++){
+		for (int i=0; i<numClusters; i++)
+					for (int j=0; j<numCoords; j++)
+						clusters[i][j] = objects[i][j];
+		ctx.Barrier();
 	kmeansCompute.init(objects,  numCoords,  numObjs,  numClusters,
 			membership, clusters, &kmeans_runtime, &loops);
 	kmeansCompute.run();
 	kmeansCompute.wait();
-	//kmeansCompute.finish();
+	kmeans_runtimeTotal+=kmeans_runtime;
+	ctx.Barrier();
+	}
 
 
 	/* write cluster centers to output file*/
@@ -280,7 +291,7 @@ int main(int argc, char*argv[]){
 	printf("numCoords     = %d\n", numCoords);
 	printf("numClusters   = %d\n", numClusters);
 	std::cout<<"loops: "<<loops<<std::endl;
-	std::cout<<"task run() time: "<<kmeans_runtime<<std::endl;
+	std::cout<<"task run() time: "<<kmeans_runtimeTotal/N<<std::endl;
 
 	return 0;
 }

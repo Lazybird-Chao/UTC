@@ -95,8 +95,8 @@ int main(int argc, char **argv) {
     do_pnetcdf        = 0;
     var_name          = NULL;
     center_filename   = NULL;
-
-    while ( (opt=getopt(argc,argv,"p:i:n:t:c:v:abdohq"))!= EOF) {
+    int N=1;
+    while ( (opt=getopt(argc,argv,"p:i:n:t:c:v:l:abdohq"))!= EOF) {
         switch (opt) {
             case 'i': filename=optarg;
                       break;
@@ -121,6 +121,8 @@ int main(int argc, char **argv) {
             case 'v': do_pnetcdf = 1;
                       var_name = optarg;
                       break;
+            case 'l': N = atoi(optarg);
+                       break;
             case 'h':
             default: usage(argv[0], threshold);
                       break;
@@ -218,8 +220,17 @@ int main(int argc, char **argv) {
     membership = (int*) malloc(numObjs * sizeof(int));
     assert(membership != NULL);
 
+    double runtime=0;
+    double runtimeTotal=0;
+    int loop;
+    for(int k=0; k<N;k++){
+	for (i=0; i<numClusters; i++)
+		for (j=0; j<numCoords; j++)
+			clusters[i][j] = objects[i][j];
     omp_kmeans(is_perform_atomic, objects, numCoords, numObjs,
-               numClusters, threshold, membership, clusters);
+               numClusters, threshold, membership, clusters, &loop, &runtime);
+    runtimeTotal +=runtime;
+    }
 
     free(objects[0]);
     free(objects);
@@ -243,6 +254,7 @@ int main(int argc, char **argv) {
     free(clusters[0]);
     free(clusters);
 
+
     /*---- output performance numbers ---------------------------------------*/
     if (is_output_timing) {
         io_timing += omp_get_wtime() - timing;
@@ -259,6 +271,8 @@ int main(int argc, char **argv) {
         printf("numCoords     = %d\n", numCoords);
         printf("numClusters   = %d\n", numClusters);
         printf("threshold     = %.4f\n", threshold);
+        printf("loop: %d\n", loop);
+        printf("average time: %10.4f \n", runtimeTotal/N);
 
         printf("I/O time           = %10.4f sec\n", io_timing);
         printf("Computation timing = %10.4f sec\n", clustering_timing);

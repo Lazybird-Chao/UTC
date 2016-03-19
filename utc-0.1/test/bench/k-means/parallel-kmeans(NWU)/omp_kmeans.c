@@ -77,7 +77,9 @@ int omp_kmeans(int     is_perform_atomic, /* in: */
                int     numClusters,       /* no. clusters */
                float   threshold,         /* % objects change membership */
                int    *membership,        /* out: [numObjs] */
-               float **clusters)          /* out: [numClusters][numCoords] */
+               float **clusters,
+			   int *loops,
+			   double  *runtime)          /* out: [numClusters][numCoords] */
 {
     int      i, j, k, index, loop=0;
     int     *newClusterSize; /* [numClusters]: no. objects assigned in each
@@ -136,9 +138,10 @@ int omp_kmeans(int     is_perform_atomic, /* in: */
     }
 
     if (_debug) timing = omp_get_wtime();
+    double t1=0;
     do {
         delta = 0.0;
-
+        double curt= omp_get_wtime();
         if (is_perform_atomic) {
             #pragma omp parallel for \
                     private(i,j,index) \
@@ -216,10 +219,11 @@ int omp_kmeans(int     is_perform_atomic, /* in: */
             }
             newClusterSize[i] = 0;   /* set back to 0 */
         }
-            
+        t1 +=omp_get_wtime()-curt;
         delta /= numObjs;
-    } while (delta > threshold && loop++ < 500);
-
+    } while (delta > threshold && loop++ < 100);
+    *loops = loop;
+    *runtime = t1;
     if (_debug) {
         timing = omp_get_wtime() - timing;
         printf("nloops = %2d (T = %7.4f)",loop,timing);

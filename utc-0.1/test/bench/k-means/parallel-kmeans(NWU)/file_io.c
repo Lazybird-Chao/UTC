@@ -250,13 +250,13 @@ int file_write(char      *filename,     /* input file name */
     fclose(fptr);
 
     /* output: the closest cluster centre to each of the data points --------*/
-    sprintf(outFileName, "%s.membership", filename);
+    /*sprintf(outFileName, "%s.membership", filename);
     if (verbose) printf("Writing membership of N=%d data objects to file \"%s\"\n",
                         numObjs, outFileName);
     fptr = fopen(outFileName, "w");
     for (i=0; i<numObjs; i++)
         fprintf(fptr, "%d %d\n", i, membership[i]);
-    fclose(fptr);
+    fclose(fptr);*/
 
     return 1;
 }

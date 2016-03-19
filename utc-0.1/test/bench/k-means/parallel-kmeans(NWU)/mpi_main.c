@@ -38,7 +38,7 @@ int     pnetcdf_write(char*, int, int, int, int, float**, int*, int, MPI_Comm,
 int     pnetcdf_read_centers(char*, char*, int, int, float**, MPI_Comm);
 #endif
 
-int     mpi_kmeans(float**, int, int, int, float, int*, float**, int*, MPI_Comm);
+int     mpi_kmeans(float**, int, int, int, float, int*, float**, int*, double*, MPI_Comm);
 float** mpi_read(int, char*, int*, int*, MPI_Comm);
 int     mpi_write(int, char*, int, int, int, float**, int*, int, MPI_Comm,
                   int verbose);
@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
 
            int     rank, nproc, mpi_namelen;
            char    mpi_name[MPI_MAX_PROCESSOR_NAME];
-
+           int N=1;
     MPI_Init(&argc, &argv);
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
     centers_filename = NULL;
     centers_name     = NULL;
 
-    while ( (opt=getopt(argc,argv,"i:n:t:v:c:abdorhq"))!= EOF) {
+    while ( (opt=getopt(argc,argv,"i:n:t:v:c:l:abdorhq"))!= EOF) {
         switch (opt) {
             case 'i': filename=optarg;
                       break;
@@ -133,6 +133,8 @@ int main(int argc, char **argv) {
                       break;
             case 'd': _debug = 1;
                       break;
+            case 'l': N = atoi(optarg);
+            		break;
             case 'h':
             default: is_print_usage = 1;
                       break;
@@ -209,6 +211,13 @@ int main(int argc, char **argv) {
     for (i=1; i<numClusters; i++)
         clusters[i] = clusters[i-1] + numCoords;
 
+    float **clusters_ori    = (float**) malloc(numClusters *             sizeof(float*));
+	assert(clusters_ori != NULL);
+	clusters_ori[0] = (float*)  malloc(numClusters * numCoords * sizeof(float));
+	assert(clusters_ori[0] != NULL);
+	for (i=1; i<numClusters; i++)
+		clusters_ori[i] = clusters_ori[i-1] + numCoords;
+
     /* checking if numObjs < nproc is done in the I/O routine */
 
     /* read the first numClusters elements from file centers_filename as the
@@ -240,10 +249,13 @@ int main(int argc, char **argv) {
                 /* copy the first numClusters elements in feature[] */
                 for (i=0; i<numClusters; i++)
                     for (j=0; j<numCoords; j++)
-                        clusters[i][j] = objects[i][j];
+                    	clusters[i][j] = objects[i][j];
             }
         }
         MPI_Bcast(clusters[0], numClusters*numCoords, MPI_FLOAT, 0, MPI_COMM_WORLD);
+        for (i=0; i<numClusters; i++)
+			for (j=0; j<numCoords; j++)
+				clusters_ori[i][j] = clusters[i][j];
 #ifdef _PNETCDF_BUILT
     }
 #endif
@@ -275,9 +287,20 @@ int main(int argc, char **argv) {
 
     /* start the core computation -------------------------------------------*/
     int loops=0;
+    double runtime[3];
+    double runtimeTotal[3];
+    for(int i=0;i<3;i++)
+    	runtimeTotal[i]=0;
+	for(int k=0; k<N; k++){
+	for (i=0; i<numClusters; i++)
+		for (j=0; j<numCoords; j++)
+			clusters[i][j] = clusters_ori[i][j];
     mpi_kmeans(objects, numCoords, numObjs, numClusters, threshold, membership,
-               clusters, &loops, MPI_COMM_WORLD);
-
+               clusters, &loops, runtime, MPI_COMM_WORLD);
+    for(int j=0; j<3; j++)
+    	runtimeTotal[j]+=runtime[j];
+    MPI_Barrier(MPI_COMM_WORLD);
+	}
     free(objects[0]);
     free(objects);
 
@@ -291,17 +314,21 @@ int main(int argc, char **argv) {
                       membership, totalNumObjs, MPI_COMM_WORLD, verbose);
     else
 #endif
-        mpi_write(isOutFileBinary, filename, numClusters, numObjs, numCoords,
-                  clusters, membership, totalNumObjs, MPI_COMM_WORLD, verbose);
-
+        //mpi_write(isOutFileBinary, filename, numClusters, numObjs, numCoords,
+        //          clusters, membership, totalNumObjs, MPI_COMM_WORLD, verbose);
+		if(rank==0){
+			file_write(filename, numClusters, numObjs, numCoords, clusters, membership,
+					   verbose);
+		}
     free(membership);
     free(clusters[0]);
     free(clusters);
-
+    free(clusters_ori[0]);
+    free(clusters_ori);
     /*---- output performance numbers ---------------------------------------*/
     if (is_output_timing) {
         double max_io_timing, max_clustering_timing;
-
+        double maxtotaltime[3];
         io_timing += MPI_Wtime() - timing;
 
         /* get the max timing measured among all processes */
@@ -310,6 +337,8 @@ int main(int argc, char **argv) {
         MPI_Reduce(&clustering_timing, &max_clustering_timing, 1, MPI_DOUBLE,
                    MPI_MAX, 0, MPI_COMM_WORLD);
 
+        MPI_Reduce(runtimeTotal, maxtotaltime, 3, MPI_DOUBLE,
+                           MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank == 0) {
             printf("\nPerforming **** Simple Kmeans  (MPI) ****\n");
             printf("Num of processes = %d\n", nproc);
@@ -320,6 +349,7 @@ int main(int argc, char **argv) {
             printf("threshold        = %.4f\n", threshold);
 
             printf("loops        = %d\n", loops);
+            printf("average time: %10.4f   %10.4f   %10.4f \n", maxtotaltime[0]/N, maxtotaltime[1]/N, maxtotaltime[2]/N);
             printf("I/O time           = %10.4f sec\n", max_io_timing);
             printf("Computation timing = %10.4f sec\n", max_clustering_timing);
         }

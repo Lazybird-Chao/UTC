@@ -68,8 +68,8 @@ public:
 		/* get computation data from master task */
 		cdt2master->Read(objects[0], numObjs * numCoords*sizeof(float), 1);
 		cdt2master->Read(clusters[0], numClusters * numCoords * sizeof(float), 2);
-		if(getLrank()==0)
-			std::cout<<"slave finish init()"<<std::endl;
+		//if(getLrank()==0)
+			//std::cout<<"slave finish init()"<<std::endl;
 	}
 
 	void run(){
@@ -303,8 +303,8 @@ public:
 			objptr= objptr + datainfo2slave.numObjs*numCoords;
 			cdt->Write(clusters[0], sizeof(float)*numClusters*numCoords, 2);
 		}
-		if(getLrank()==0)
-			std::cout<<"master finish init()"<<std::endl;
+		//if(getLrank()==0)
+			//std::cout<<"master finish init()"<<std::endl;
 
 	}
 
@@ -336,7 +336,7 @@ public:
 				memset(clusterSize, 0, sizeof(int)*numClusters);
 			}
 			/* read new cluster info from slaves */
-			for(int i=0; i< cdt2slaves.size(); i++){
+			for(int i=cdt2slaves.size()-1; i>=0; i--){
 				Conduit *cdt = cdt2slaves[i];
 				cdt->Read(&changedObjs, sizeof(int), loopcounter*3);
 				cdt->Read(newClusterSize, sizeof(int)*numClusters, loopcounter*3+1);
@@ -355,7 +355,7 @@ public:
 			}
 			/* check if need do next loop */
 			if(getLrank()==0){
-				if(((float)numChanges)/numObjs > threshold && loopcounter < 500)
+				if(((float)numChanges)/numObjs > threshold && loopcounter < 100)
 					goonloop = true;
 				else
 					goonloop = false;
@@ -438,14 +438,16 @@ int main(int argc, char*argv[]){
 	int *membership;
 	int nthreads;
 	int nslaves;
-	if(argc<5){
-		std::cout<<"run like: ./a.out 'nthread' 'nslaves'  'num-cluster' 'inputfile'"<<std::endl;
+	int N;
+	if(argc<6){
+		std::cout<<"run like: ./a.out 'nthread' 'nslaves'  'num-cluster' 'inputfile' 'N' "<<std::endl;
 	}
 	else{
 		nthreads = atoi(argv[1]);
 		nslaves = atoi(argv[2]);
 		numClusters = atoi(argv[3]);
 		filename = argv[4];
+		N = atoi(argv[5]);
 	}
 	/* startup utc contex*/
 	UtcContext ctx(argc, argv);
@@ -475,10 +477,16 @@ int main(int argc, char*argv[]){
 				clusters[i][j] = objects[i][j];
 	}
 	/* begin clustering */
-	//std::cout<<"Start clustering..."<<std::endl;
+	if(ctx.getProcRank()==0)
+		std::cout<<"Start clustering..."<<std::endl;
 	double master_runtime;
+	double master_runtimeTotal=0;
 	int loops=0;
 	double slaves_runtime[4][3];
+	double slaves_runtimeTotal[4][3];
+	for(int i=0; i<4;i++)
+		for(int j=0; j<3;j++)
+			slaves_runtimeTotal[i][j]=0;
 	Task<kmeans_master> kmeansComputeMaster("master", ProcList(0));
 	std::vector<Task<kmeans_slave>*> kmeansComputeSlaves;
 	std::vector<Conduit*> cdtMasterSlave;
@@ -487,7 +495,13 @@ int main(int argc, char*argv[]){
     	kmeansComputeSlaves.push_back(new Task<kmeans_slave>("slave",rlist));
     	cdtMasterSlave.push_back(new Conduit(&kmeansComputeMaster, kmeansComputeSlaves[i]));
     }
-
+    for(int k=0; k<N; k++){
+    	if(ctx.getProcRank()==0){
+    			for (int i=0; i<numClusters; i++)
+    				for (int j=0; j<numCoords; j++)
+    					clusters[i][j] = objects[i][j];
+    		}
+    	ctx.Barrier();
 	kmeansComputeMaster.init(objects,  numCoords,  numObjs,  numClusters,
 			membership, clusters, cdtMasterSlave, &master_runtime, &loops);
 	for(int i=0; i< nslaves; i++)
@@ -498,9 +512,14 @@ int main(int argc, char*argv[]){
 		kmeansComputeSlaves[i]->run();
 
 	kmeansComputeMaster.wait();
-	for(int i=0; i< nslaves; i++)
-			kmeansComputeSlaves[i]->wait();
-
+	master_runtimeTotal+= master_runtime;
+	for(int i=0; i< nslaves; i++){
+		kmeansComputeSlaves[i]->wait();
+		for(int j=0; j<3; j++)
+			slaves_runtimeTotal[i][j]+=slaves_runtime[i][j];
+	}
+	ctx.Barrier();
+    }
 
 
 	/* write cluster centers to output file*/
@@ -529,13 +548,13 @@ int main(int argc, char*argv[]){
 		printf("numCoords     = %d\n", numCoords);
 		printf("numClusters   = %d\n", numClusters);
 		std::cout<<"loops: "<<loops<<std::endl;
-		std::cout<<"Master task run() time: "<<master_runtime<<std::endl;
+		std::cout<<"Master task run() time: "<<master_runtimeTotal/N<<std::endl;
 		std::cout<<"Slave tasks run() time: "<<std::endl;
 	}
 	for(int i=0; i< nslaves; i++){
 		if(ctx.getProcRank()==i)
-			std::cout<<"\t"<<slaves_runtime[i][0]<<" "<<slaves_runtime[i][1]<<" "
-				<<slaves_runtime[i][2]<<std::endl;
+			std::cout<<"\t"<<slaves_runtimeTotal[i][0]/N<<" "<<slaves_runtimeTotal[i][1]/N<<" "
+				<<slaves_runtimeTotal[i][2]/N<<std::endl;
 		ctx.Barrier();
 	}
 	return 0;

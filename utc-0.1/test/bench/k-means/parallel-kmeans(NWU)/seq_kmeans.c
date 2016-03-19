@@ -129,7 +129,7 @@ int seq_kmeans(float **objects,      /* in: [numObjs][numCoords] */
             
         //delta /= numObjs;
         loop++;
-    } while ((float)delta/numObjs > threshold && loop < 500);
+    } while ((float)delta/numObjs > threshold && loop < 1000);
     *loops = loop;
     free(newClusters[0]);
     free(newClusters);

@@ -766,6 +766,7 @@ void Task<T>::LaunchThreads(std::vector<ThreadRank_t> &tRankList)
 		m_ThreadRank2Local.insert(std::pair<ThreadRank_t, int>(trank, i));
 		// crteate a thread
 		m_taskThreads.push_back(std::thread(&Task<T>::threadImpl, this, trank, i, output));
+		//m_taskThreads[i].detach();
 		// record some info
 		id = m_taskThreads.back().get_id();
 		m_LocalThreadList.push_back(id);
