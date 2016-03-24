@@ -25,20 +25,20 @@ public:
 	 */
 	int BWrite(void* DataPtr, DataSize_t DataSize, int tag);
 	int BWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
-	void BWriteBy_Finish(int tag);
+	void BWriteBy_Finish(int tag){};
 
 	int Write(void* DataPtr, DataSize_t DataSize, int tag);
 	int WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
-	void WriteBy_Finish(int tag);
+	void WriteBy_Finish(int tag){};
 
 	int PWrite(void* DataPtr, DataSize_t DataSize, int tag);
 	int PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
-	void PWriteBy_Finish(int tag);
+	void PWriteBy_Finish(int tag){};
 
 
 	int Read(void* DataPtr, DataSize_t DataSize, int tag);
 	int ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
-	void ReadBy_Finish(int tag);
+	void ReadBy_Finish(int tag){};
 
 
 	/*
@@ -78,7 +78,7 @@ private:
 	int *m_OpTokenFlag;
 
 
-
+#ifdef ENALBE_OPBY_FINISH
 	///// for OpByFinish
 	std::map<int, int> m_readbyFinishSet;
 	std::mutex m_readbyFinishMutex;
@@ -86,6 +86,7 @@ private:
 	std::map<int, int> m_writebyFinishSet;
 	std::mutex m_writebyFinishMutex;
 	std::condition_variable m_writebyFinishCond;
+#endif
 
 
 	///// for Async op
@@ -99,6 +100,18 @@ private:
 
 	////
 	static thread_local std::ofstream *m_threadOstream;
+
+	// some data used for thread pause
+	int USE_PAUSE=100;
+	int USE_SHORT_SLEEP=1000;
+	int USE_LONG_SLEEP =2000;
+	struct timespec SHORT_PERIOD;
+	SHORT_PERIOD.tv_sec=0;
+	SHORT_PERIOD.tv_nsec=100;
+	struct timespec LONG_PERIOD;
+	LONG_PERIOD.tv_sec=0;
+	LONG_PERIOD.tv_nsec=1000;
+
 
 };
 

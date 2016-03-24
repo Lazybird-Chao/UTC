@@ -237,6 +237,7 @@ int Conduit::WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, in
 	return 0;
 }
 
+#ifdef ENABLE_OPBY_FINISH
 void Conduit::WriteBy_Finish(int tag)
 {
 	if(m_realConduitPtr)
@@ -246,6 +247,7 @@ void Conduit::WriteBy_Finish(int tag)
 
 	return;
 }
+#endif
 
 int Conduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag)
 {
@@ -275,6 +277,7 @@ int Conduit::BWriteBy(ThreadRank_t thread, void *DataPtr, DataSize_t DataSize, i
 	return 0;
 }
 
+#ifdef ENABLE_OPBY_FINISH
 void Conduit::BWriteBy_Finish(int tag)
 {
 	if(m_realConduitPtr)
@@ -284,6 +287,7 @@ void Conduit::BWriteBy_Finish(int tag)
 
 	return;
 }
+#endif
 
 
 int Conduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
@@ -300,6 +304,7 @@ int Conduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
 	return 0;
 }
 
+
 int Conduit::PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag)
 {
 	if(m_realConduitPtr)
@@ -314,6 +319,7 @@ int Conduit::PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, i
 	return 0;
 }
 
+#ifdef ENABLE_OPBY_FINISH
 void Conduit::PWriteBy_Finish(int tag)
 {
 	if(m_realConduitPtr)
@@ -323,7 +329,7 @@ void Conduit::PWriteBy_Finish(int tag)
 
 	return;
 }
-
+#endif
 
 
 int Conduit::Read(void* DataPtr, DataSize_t DataSize, int tag)
@@ -354,6 +360,7 @@ int Conduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int
 	return 0;
 }
 
+#ifdef ENABLE_OPBY_FINISH
 void Conduit::ReadBy_Finish(int tag)
 {
 	if(m_realConduitPtr)
@@ -363,6 +370,7 @@ void Conduit::ReadBy_Finish(int tag)
 
 	return;
 }
+#endif
 
 
 int Conduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)

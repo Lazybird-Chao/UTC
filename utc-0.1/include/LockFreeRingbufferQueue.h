@@ -16,6 +16,7 @@
 #define ____cacheline_aligned	__attribute__((aligned(DCACHE1_LINESIZE)))
 
 #include <sys/time.h>
+#include <time.h>
 #include <limits.h>
 #include <malloc.h>
 #include <string.h>
@@ -31,7 +32,8 @@
 #include <thread>
 
 #define QUEUE_SIZE	(32 * 1024)
-//#define TIMEOUT_COUNT  1000
+
+
 /*
  * ------------------------------------------------------------------------
  * Naive serialized ring buffer queue
@@ -157,6 +159,16 @@ private:
 	struct ThreadLocalPos {
 		unsigned long head, tail;
 	};
+	int USE_PAUSE=100;
+	int USE_SHORT_SLEEP=1000;
+	int USE_LONG_SLEEP =2000;
+	struct timespec SHORT_PERIOD;
+	SHORT_PERIOD.tv_sec=0;
+	SHORT_PERIOD.tv_nsec=100;
+	struct timespec LONG_PERIOD;
+	LONG_PERIOD.tv_sec=0;
+	LONG_PERIOD.tv_nsec=1000;
+
 
 public:
 	LockFreeQueue(size_t n_producers, size_t n_consumers)
@@ -241,7 +253,7 @@ public:
 		 * We do not know when a consumer uses the pop()'ed pointer,
 		 * se we can not overwrite it and have to wait the lowest tail.
 		 */
-		//int timeout_count=0;
+		long _counter =0;
 		while (__builtin_expect(thr_p_[thread_id].head >= last_tail_ + Q_SIZE, 0))
 		{
 			auto min = tail_;
@@ -260,10 +272,17 @@ public:
 
 			if (thr_p_[thread_id].head < last_tail_ + Q_SIZE)
 				break;
-			/*timeout_count++;
-			if(timeout_count>TIMEOUT_COUNT)
-				return 1;*/
-			_mm_pause();
+			_counter++;
+			if(_counter<USE_PAUSE)
+				_mm_pause();
+			else if(_counter<USE_SHORT_SLEEP){
+				__asm__ __volatile__ ("pause" ::: "memory");
+				std::this_thread::yield();
+			}
+			else if(_counter<USE_LONG_SLEEP)
+				nanosleep(&SHORT_PERIOD, nullptr);
+			else
+				nanosleep(&LONG_PERIOD, nullptr);
 		}
 
 		ptr_array_[thr_p_[thread_id].head & Q_MASK] = ptr;
@@ -283,7 +302,7 @@ public:
 			 * We do not know when a consumer uses the pop()'ed pointer,
 			 * se we can not overwrite it and have to wait the lowest tail.
 			 */
-			//int timeout_count=0;
+			long _counter=0;
 			while (__builtin_expect(thr_p_[my_id].head >= last_tail_ + Q_SIZE, 0))
 			{
 				auto min = tail_;
@@ -302,10 +321,15 @@ public:
 
 				if (thr_p_[my_id].head < last_tail_ + Q_SIZE)
 					break;
-				/*timeout_count++;
-				if(timeout_count>TIMEOUT_COUNT)
-					return 1;*/
-				_mm_pause();
+				_counter++;
+				if(_counter<USE_PAUSE)
+					_mm_pause();
+				else if(_counter<USE_SHORT_SLEEP)
+					__asm__ __volatile__ ("pause" ::: "memory");
+				else if(_counter<USE_LONG_SLEEP)
+					nanosleep(&SHORT_PERIOD, nullptr);
+				else
+					nanosleep(&LONG_PERIOD, nullptr);
 			}
 
 			ptr_array_[thr_p_[my_id].head & Q_MASK] = ptr;
@@ -323,7 +347,8 @@ public:
 		thr_p_[thread_id].head = __sync_fetch_and_add(&head_, 1);
 
 		
-		//int timeout_count=0;
+		long _counter=0;
+		struct timepsec rem;
 		while (__builtin_expect(thr_p_[thread_id].head >= last_tail_ + Q_SIZE, 0))
 		{
 			auto min = tail_;
@@ -342,10 +367,17 @@ public:
 
 			if (thr_p_[thread_id].head < last_tail_ + Q_SIZE)
 				break;
-			/*timeout_count++;
-			if(timeout_count>TIMEOUT_COUNT)
-				return 1;*/
-			_mm_pause();
+			_counter++;
+			if(_counter<USE_PAUSE)
+				_mm_pause();
+			else if(_counter<USE_SHORT_SLEEP){
+				__asm__ __volatile__ ("pause" ::: "memory");
+				std::this_thread::yield();
+			}
+			else if(_counter<USE_LONG_SLEEP)
+				nanosleep(&SHORT_PERIOD, nullptr);
+			else
+				nanosleep(&LONG_PERIOD, nullptr);
 		}
 
 		// Allow consumers eat the item.
@@ -372,7 +404,7 @@ T *pop()
 		 * last_head_ guaraties that no any consumer eats the item
 		 * before producer reserved the position writes to it.
 		 */
-		//int timeout_count =0;
+		long _counter=0;
 		while (__builtin_expect(thr_p_[thread_id].tail >= last_head_, 0))
 		{
 			auto min = head_;
@@ -391,10 +423,17 @@ T *pop()
 
 			if (thr_p_[thread_id].tail < last_head_)
 				break;
-			/*timeout_count++;
-			if(timeout_count>TIMEOUT_COUNT)
-				return nullptr;*/
-			_mm_pause();
+			_counter++;
+			if(_counter<USE_PAUSE)
+				_mm_pause();
+			else if(_counter<USE_SHORT_SLEEP){
+				__asm__ __volatile__ ("pause" ::: "memory");
+				std::this_thread::yield();
+			}
+			else if(_counter<USE_LONG_SLEEP)
+				nanosleep(&SHORT_PERIOD, nullptr);
+			else
+				nanosleep(&LONG_PERIOD, nullptr);
 		}
 
 		T *ret = ptr_array_[thr_p_[thread_id].tail & Q_MASK];
@@ -409,7 +448,7 @@ T *pop(unsigned int my_id)
 		thr_p_[my_id].tail = tail_;
 		thr_p_[my_id].tail = __sync_fetch_and_add(&tail_, 1);
 
-		//int timeout_count =0;
+		long _counter=0;
 		while (__builtin_expect(thr_p_[my_id].tail >= last_head_, 0))
 		{
 			auto min = head_;
@@ -428,10 +467,17 @@ T *pop(unsigned int my_id)
 
 			if (thr_p_[my_id].tail < last_head_)
 				break;
-			/*timeout_count++;
-			if(timeout_count>TIMEOUT_COUNT)
-				return nullptr;*/
-			_mm_pause();
+			_counter++;
+			if(_counter<USE_PAUSE)
+				_mm_pause();
+			else if(_counter<USE_SHORT_SLEEP){
+				__asm__ __volatile__ ("pause" ::: "memory");
+				std::this_thread::yield();
+			}
+			else if(_counter<USE_LONG_SLEEP)
+				nanosleep(&SHORT_PERIOD, nullptr);
+			else
+				nanosleep(&LONG_PERIOD, nullptr);
 		}
 
 		T *ret = ptr_array_[thr_p_[my_id].tail & Q_MASK];
@@ -441,37 +487,6 @@ T *pop(unsigned int my_id)
 	}
 // do not block if there's nothing to pop
 T* try_pop(unsigned int my_id){
-	/*thr_p_[my_id].tail = tail_;
-	thr_p_[my_id].tail = __sync_fetch_and_add(&tail_, 1);
-
-	T* ret = nullptr;
-	// change while to if, so just check for one time
-	if(__builtin_expect(thr_p_[my_id].tail >= last_head_, 0))
-	{
-		_mm_pause();
-		auto min = head_;
-
-		// Update the last_head_.
-		for (size_t i = 0; i < n_producers_; ++i) {
-			auto tmp_h = thr_p_[i].head;
-
-			// Force compiler to use tmp_h exactly once.
-			asm volatile("" ::: "memory");
-
-			if (tmp_h < min)
-				min = tmp_h;
-		}
-		last_head_ = min;
-
-		if (thr_p_[my_id].tail < last_head_)
-			ret = ptr_array_[thr_p_[my_id].tail & Q_MASK];
-	}
-	else{
-		ret = ptr_array_[thr_p_[my_id].tail & Q_MASK];
-	}
-
-	thr_p_[my_id].tail = ULONG_MAX;
-	return ret;*/
 	T* ret = nullptr;
 	do{
 		thr_p_[my_id].tail = tail_;

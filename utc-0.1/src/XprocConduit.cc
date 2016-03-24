@@ -149,8 +149,19 @@ int XprocConduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
 				}
 			}
 			else{
+				long _counter=0;
 				while(m_OpThreadAtomic[do_thread] !=0){
-					_mm_pause();
+					_counter++;
+					if(_counter<USE_PAUSE)
+						_mm_pause();
+					else if(_counter<USE_SHORT_SLEEP){
+						__asm__ __volatile__ ("pause" ::: "memory");
+						std::this_thread::yield();
+					}
+					else if(_counter<USE_LONG_SLEEP)
+						nanosleep(&SHORT_PERIOD, nullptr);
+					else
+						nanosleep(&LONG_PERIOD, nullptr);
 				}
 			}
 			//
@@ -308,6 +319,7 @@ int XprocConduit::WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSiz
 				(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
 #endif
 
+#ifdef ENABLE_OPBY_FINISH
 	// record this op to readby finish set
 	if(localNumthreads>1)
 	{
@@ -315,6 +327,7 @@ int XprocConduit::WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSiz
 		m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = localNumthreads;
 		m_writebyFinishCond.notify_all();
 	}
+#endif
 
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
@@ -332,6 +345,7 @@ int XprocConduit::WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSiz
 	return 0;
 }
 
+#ifdef ENABLE_OPBY_FINISH
 void XprocConduit::WriteBy_Finish(int tag)
 {
 
@@ -390,6 +404,7 @@ void XprocConduit::WriteBy_Finish(int tag)
 
 	return;
 }
+#endif
 
 
 
@@ -494,8 +509,19 @@ int XprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
 				}
 			}
 			else{
+				long _counter=0;
 				while(m_OpThreadAtomic[do_thread].load() !=0){
-					_mm_pause();
+					_counter++;
+					if(_counter<USE_PAUSE)
+						_mm_pause();
+					else if(_counter<USE_SHORT_SLEEP){
+						__asm__ __volatile__ ("pause" ::: "memory");
+						std::this_thread::yield();
+					}
+					else if(_counter<USE_LONG_SLEEP)
+						nanosleep(&SHORT_PERIOD, nullptr);
+					else
+						nanosleep(&LONG_PERIOD, nullptr);
 				}
 			}
 			//
@@ -648,6 +674,7 @@ int XprocConduit::PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSi
 				(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
 #endif
 
+#ifdef ENABLE_OPBY_FINISH
 	if(localNumthreads >1)
 	{
 		// record this op to readby finish set
@@ -655,6 +682,7 @@ int XprocConduit::PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSi
 		m_writebyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = localNumthreads;
 		m_writebyFinishCond.notify_all();
 	}
+#endif
 
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
@@ -672,6 +700,7 @@ int XprocConduit::PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSi
 	return 0;
 }
 
+#ifdef ENABLE_OPBY_FINISH
 void XprocConduit::PWriteBy_Finish(int tag)
 {
 #ifdef USE_DEBUG_LOG
@@ -729,6 +758,7 @@ void XprocConduit::PWriteBy_Finish(int tag)
 
 	return;
 }
+#endif
 
 
 int XprocConduit::Read(void* DataPtr, DataSize_t DataSize, int tag)
@@ -814,8 +844,19 @@ int XprocConduit::Read(void* DataPtr, DataSize_t DataSize, int tag)
 				}
 			}
 			else{
+				long _counter=0;
 				while(m_OpThreadAtomic[do_thread].load() !=0){
-					_mm_pause();
+					_counter++;
+					if(_counter<USE_PAUSE)
+						_mm_pause();
+					else if(_counter<USE_SHORT_SLEEP){
+						__asm__ __volatile__ ("pause" ::: "memory");
+						std::this_thread::yield();
+					}
+					else if(_counter<USE_LONG_SLEEP)
+						nanosleep(&SHORT_PERIOD, nullptr);
+					else
+						nanosleep(&LONG_PERIOD, nullptr);
 				}
 			}
 			//
@@ -964,6 +1005,7 @@ int XprocConduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize
 			(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 #endif
 	//*m_threadOstream<<"here "<<mpiOtherEndProc<<std::endl;
+#ifdef ENABLE_OPBY_FINISH
 	if(localNumthreads>1)
 	{
 		// record this op in finish set
@@ -971,6 +1013,7 @@ int XprocConduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize
 		m_readbyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = localNumthreads;
 		m_readbyFinishCond.notify_all();
 	}
+#endif
 
 #ifdef USE_DEBUG_LOG
 	if(myTaskid == m_srcId)
@@ -988,6 +1031,7 @@ int XprocConduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize
 	return 0;
 }
 
+#ifdef ENABLE_OPBY_FINISH
 void XprocConduit::ReadBy_Finish(int tag)
 {
 #ifdef USE_DEBUG_LOG
@@ -1053,6 +1097,7 @@ void XprocConduit::ReadBy_Finish(int tag)
 
 	return;
 }
+#endif
 
 XprocConduit::~XprocConduit()
 {
@@ -1064,8 +1109,10 @@ XprocConduit::~XprocConduit()
 	m_OpThreadLatch.clear();
 	delete m_OpThreadAtomic;
 	//
+#ifdef ENABLE_OPBY_FINISH
 	m_readbyFinishSet.clear();
 	m_writebyFinishSet.clear();
+#endif
 
 	//
 #ifdef USE_MPI_BASE

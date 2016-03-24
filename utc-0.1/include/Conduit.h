@@ -4,6 +4,8 @@
 #include "TaskBase.h"
 #include "ConduitBase.h"
 
+//#define ENABLE_OPBY_FINISH
+#define DISABLE_OPBY_FINISH
 
 
 namespace iUtc{
@@ -43,19 +45,27 @@ public:
 
 	int Write(void* DataPtr, DataSize_t DataSize, int tag);
 	int WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
+#ifdef ENABLE_OPBY_FINISH
 	void WriteBy_Finish(int tag);
+#endif
 
 	int BWrite(void* DataPtr, DataSize_t DataSize, int tag);
 	int BWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
+#ifdef ENABLE_OPBY_FINISH
 	void BWriteBy_Finish(int tag);
+#endif
 
 	int PWrite(void* DataPtr, DataSize_t DataSize, int tag);
 	int PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
+#ifdef ENABLE_OPBY_FINISH
 	void PWriteBy_Finish(int tag);
+#endif
 
 	int Read(void* DataPtr, DataSize_t DataSize, int tag);
 	int ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
+#ifdef ENABLE_OPBY_FINISH
 	void ReadBy_Finish(int tag);
+#endif
 
 	int AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag);
 	void AsyncWrite_Finish(int tag);

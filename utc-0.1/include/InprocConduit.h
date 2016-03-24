@@ -39,25 +39,25 @@ public:
 	 */
 	int Write(void* DataPtr, DataSize_t DataSize, int tag);
     int WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
-    void WriteBy_Finish(int tag);
+    void WriteBy_Finish(int tag){};
 	
 	/*
 	 *
 	 */
 	int BWrite(void* DataPtr, DataSize_t DataSize, int tag);
 	int BWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
-	void BWriteBy_Finish(int tag);
+	void BWriteBy_Finish(int tag){};
 
 	/*
 	 *
 	 */
 	int PWrite(void* DataPtr, DataSize_t DataSize, int tag);
     int PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
-    void PWriteBy_Finish(int tag);
+    void PWriteBy_Finish(int tag){};
 
     int Read(void* DataPtr, DataSize_t DataSize, int tag);
 	int ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
-	void ReadBy_Finish(int tag);
+	void ReadBy_Finish(int tag){};
 
 	/*
 	 *
@@ -152,6 +152,7 @@ private:
 	std::atomic<int> 	*m_dstUsingPtrFinishFlag;
 
 
+#ifdef ENABLE_OPBY_FINISH
 	/*used by writeby and readby to set a flag for check and waiting
     as only asigned thread do the op, other threads will go one their process,
     use this to make sure all threads know the data transfer is complete,
@@ -164,7 +165,7 @@ private:
     std::map<int, int> m_writebyFinishSet;
 	std::mutex m_writebyFinishMutex;
 	std::condition_variable m_writebyFinishCond;
-
+#endif
 
 	/*
 	 * For async op
@@ -198,6 +199,17 @@ private:
 
     // output debug log to specific file
     static thread_local std::ofstream *m_threadOstream;
+
+    // some data used for thread pause
+    int USE_PAUSE=100;
+	int USE_SHORT_SLEEP=1000;
+	int USE_LONG_SLEEP =2000;
+	struct timespec SHORT_PERIOD;
+	SHORT_PERIOD.tv_sec=0;
+	SHORT_PERIOD.tv_nsec=100;
+	struct timespec LONG_PERIOD;
+	LONG_PERIOD.tv_sec=0;
+	LONG_PERIOD.tv_nsec=1000;
 
 
 	//

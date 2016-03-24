@@ -76,6 +76,7 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 				}
 				// find wanted msg
 			}*/
+			long _counter=0;
 			while(1){
 				tmp_buffptr = m_dstBuffQueue->try_pop(myLocalRank);
 				if(tmp_buffptr!=nullptr && tmp_buffptr->msgTag == tag)
@@ -91,7 +92,18 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 					}
 
 				}
-				_mm_pause();
+				_counter++;
+				if(_counter<USE_PAUSE)
+					_mm_pause();
+				else if(_counter<USE_SHORT_SLEEP){
+					__asm__ __volatile__ ("pause" ::: "memory");
+					std::this_thread::yield();
+				}
+				else if(_counter<USE_LONG_SLEEP)
+					nanosleep(&SHORT_PERIOD, nullptr);
+				else
+					nanosleep(&LONG_PERIOD, nullptr);
+
 			}
 #ifdef USE_DEBUG_LOG
     PRINT_TIME_NOW(*m_threadOstream)
@@ -152,10 +164,10 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 		}// end one thread
 		else{
 			// multiple threads in task
-			if(myThreadRank == m_srcOpTokenFlag[myThreadRank])
+			if(myLocalRank == m_srcOpTokenFlag[myLocalRank])
 			{
 				// the right thread's turn do r/w
-				int next_thread = (m_srcOpTokenFlag[myThreadRank]+1) % m_numSrcLocalThreads;
+				int next_thread = (m_srcOpTokenFlag[myLocalRank]+1) % m_numSrcLocalThreads;
 				m_srcOpThreadLatch[next_thread]->reset(1);
 				m_srcOpThreadAtomic[next_thread].store(1);
 				//
@@ -190,6 +202,7 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 					}
 					// find wanted msg
 				}*/
+				long _counter=0;
 				while(1){
 					tmp_buffptr = m_dstBuffQueue->try_pop(myLocalRank);
 					if(tmp_buffptr!=nullptr && tmp_buffptr->msgTag == tag)
@@ -205,7 +218,17 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 						}
 
 					}
-					_mm_pause();
+					_counter++;
+					if(_counter<USE_PAUSE)
+						_mm_pause();
+					else if(_counter<USE_SHORT_SLEEP){
+						__asm__ __volatile__ ("pause" ::: "memory");
+						std::this_thread::yield();
+					}
+					else if(_counter<USE_LONG_SLEEP)
+						nanosleep(&SHORT_PERIOD, nullptr);
+					else
+						nanosleep(&LONG_PERIOD, nullptr);
 				}
 #ifdef USE_DEBUG_LOG
     PRINT_TIME_NOW(*m_threadOstream)
@@ -260,10 +283,10 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 				}
 				// wake up other threads
 				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD)
-					m_srcOpThreadLatch[m_srcOpTokenFlag[myThreadRank]]->count_down();
+					m_srcOpThreadLatch[m_srcOpTokenFlag[myLocalRank]]->count_down();
 				else
-					m_srcOpThreadAtomic[m_srcOpTokenFlag[myThreadRank]].store(0);
-                m_srcOpTokenFlag[myThreadRank] = next_thread;
+					m_srcOpThreadAtomic[m_srcOpTokenFlag[myLocalRank]].store(0);
+                m_srcOpTokenFlag[myLocalRank] = next_thread;
 
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
@@ -279,12 +302,23 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 					}
 				}
 				else{
+					long _counter=0;
 					while(m_srcOpThreadAtomic[do_thread].load() !=0){
-						_mm_pause();
+						_counter++;
+						if(_counter<USE_PAUSE)
+							_mm_pause();
+						else if(_counter<USE_SHORT_SLEEP){
+							__asm__ __volatile__ ("pause" ::: "memory");
+							std::this_thread::yield();
+						}
+						else if(_counter<USE_LONG_SLEEP)
+							nanosleep(&SHORT_PERIOD, nullptr);
+						else
+							nanosleep(&LONG_PERIOD, nullptr);
 					}
 				}
 				//
-				m_srcOpTokenFlag[myThreadRank] = (m_srcOpTokenFlag[myThreadRank]+1)%m_numSrcLocalThreads;
+				m_srcOpTokenFlag[myLocalRank] = (m_srcOpTokenFlag[myLocalRank]+1)%m_numSrcLocalThreads;
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"src-thread "<<myThreadRank<<" exit read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
@@ -332,6 +366,7 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 				}
 				// find wanted msg
 			}*/
+			long _counter=0;
 			while(1){
 				tmp_buffptr = m_srcBuffQueue->try_pop(myLocalRank);
 				if(tmp_buffptr!=nullptr && tmp_buffptr->msgTag == tag)
@@ -347,7 +382,17 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 					}
 
 				}
-				_mm_pause();
+				_counter++;
+				if(_counter<USE_PAUSE)
+					_mm_pause();
+				else if(_counter<USE_SHORT_SLEEP){
+					__asm__ __volatile__ ("pause" ::: "memory");
+					std::this_thread::yield();
+				}
+				else if(_counter<USE_LONG_SLEEP)
+					nanosleep(&SHORT_PERIOD, nullptr);
+				else
+					nanosleep(&LONG_PERIOD, nullptr);
 			}
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -408,10 +453,10 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 		}// end one thread
 		else{
 			// multiple threads in task
-			if(myThreadRank == m_dstOpTokenFlag[myThreadRank])
+			if(myLocalRank == m_dstOpTokenFlag[myLocalRank])
 			{
 				// the right thread's turn do r/w
-				int next_thread = (m_dstOpTokenFlag[myThreadRank]+1) % m_numDstLocalThreads;
+				int next_thread = (m_dstOpTokenFlag[myLocalRank]+1) % m_numDstLocalThreads;
 				m_dstOpThreadLatch[next_thread]->reset(1);
 				m_dstOpThreadAtomic[next_thread].store(1);
 				//
@@ -447,6 +492,7 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 					}
 					// find wanted msg
 				}*/
+				long _counter=0;
 				while(1){
 					tmp_buffptr = m_srcBuffQueue->try_pop(myLocalRank);
 					if(tmp_buffptr!=nullptr && tmp_buffptr->msgTag == tag)
@@ -462,7 +508,17 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 						}
 
 					}
-					_mm_pause();
+					_counter++;
+					if(_counter<USE_PAUSE)
+						_mm_pause();
+					else if(_counter<USE_SHORT_SLEEP){
+						__asm__ __volatile__ ("pause" ::: "memory");
+						std::this_thread::yield();
+					}
+					else if(_counter<USE_LONG_SLEEP)
+						nanosleep(&SHORT_PERIOD, nullptr);
+					else
+						nanosleep(&LONG_PERIOD, nullptr);
 				}
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -517,10 +573,10 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 				}
 				//
 				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD)
-					m_dstOpThreadLatch[m_dstOpTokenFlag[myThreadRank]]->count_down();
+					m_dstOpThreadLatch[m_dstOpTokenFlag[myLocalRank]]->count_down();
 				else
-					m_dstOpThreadAtomic[m_dstOpTokenFlag[myThreadRank]].store(0);
-                m_dstOpTokenFlag[myThreadRank] = next_thread;
+					m_dstOpThreadAtomic[m_dstOpTokenFlag[myLocalRank]].store(0);
+                m_dstOpTokenFlag[myLocalRank] = next_thread;
 
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
@@ -530,19 +586,30 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 			}
 			else{
 				// not the op thread
-				int do_thread =  m_dstOpTokenFlag[myThreadRank];
+				int do_thread =  m_dstOpTokenFlag[myLocalRank];
 				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
 					if(!m_dstOpThreadLatch[do_thread]->try_wait()){
 						m_dstOpThreadLatch[do_thread]->wait();
 					}
 				}
 				else{
+					long _counter=0;
 					while(m_dstOpThreadAtomic[do_thread].load() !=0){
-						_mm_pause();
+						_counter++;
+						if(_counter<USE_PAUSE)
+							_mm_pause();
+						else if(_counter<USE_SHORT_SLEEP){
+							__asm__ __volatile__ ("pause" ::: "memory");
+							std::this_thread::yield();
+						}
+						else if(_counter<USE_LONG_SLEEP)
+							nanosleep(&SHORT_PERIOD, nullptr);
+						else
+							nanosleep(&LONG_PERIOD, nullptr);
 					}
 				}
 				 //
-				 m_dstOpTokenFlag[myThreadRank] = (m_dstOpTokenFlag[myThreadRank]+1)%m_numDstLocalThreads;
+				 m_dstOpTokenFlag[myLocalRank] = (m_dstOpTokenFlag[myLocalRank]+1)%m_numDstLocalThreads;
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"dst-thread "<<myThreadRank<<" exit read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
@@ -598,6 +665,7 @@ int InprocConduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSiz
 
 	if(myTaskid == m_srcId){
 		MsgInfo_t *tmp_buffptr;
+		long _counter=0;
 		while(1){
 			tmp_buffptr = m_dstBuffQueue->try_pop(myLocalRank);
 			if(tmp_buffptr!=nullptr && tmp_buffptr->msgTag == tag)
@@ -613,7 +681,17 @@ int InprocConduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSiz
 				}
 
 			}
-			_mm_pause();
+			_counter++;
+			if(_counter<USE_PAUSE)
+				_mm_pause();
+			else if(_counter<USE_SHORT_SLEEP){
+				__asm__ __volatile__ ("pause" ::: "memory");
+				std::this_thread::yield();
+			}
+			else if(_counter<USE_LONG_SLEEP)
+				nanosleep(&SHORT_PERIOD, nullptr);
+			else
+				nanosleep(&LONG_PERIOD, nullptr);
 		}
 #ifdef USE_DEBUG_LOG
 PRINT_TIME_NOW(*m_threadOstream)
@@ -667,7 +745,7 @@ PRINT_TIME_NOW(*m_threadOstream)
 			std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
 			exit(1);
 		}
-
+#ifdef ENABLE_OPBY_FINISH
 		if(m_numSrcLocalThreads>1)
 		{
 			// record this op in finish set
@@ -675,6 +753,7 @@ PRINT_TIME_NOW(*m_threadOstream)
 			m_readbyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = m_numSrcLocalThreads;
 			m_readbyFinishCond.notify_all();
 		}
+#endif
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
 	*m_threadOstream<<"src-thread "<<myThreadRank<<" finish ReadBy:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
@@ -682,6 +761,7 @@ PRINT_TIME_NOW(*m_threadOstream)
 	}
 	else if(myTaskid == m_dstId){
 		MsgInfo_t *tmp_buffptr;
+		long _counter=0;
 		while(1){
 			tmp_buffptr = m_srcBuffQueue->try_pop(myLocalRank);
 			if(tmp_buffptr!=nullptr && tmp_buffptr->msgTag == tag)
@@ -697,7 +777,17 @@ PRINT_TIME_NOW(*m_threadOstream)
 				}
 
 			}
-			_mm_pause();
+			_counter++;
+			if(_counter<USE_PAUSE)
+				_mm_pause();
+			else if(_counter<USE_SHORT_SLEEP){
+				__asm__ __volatile__ ("pause" ::: "memory");
+				std::this_thread::yield();
+			}
+			else if(_counter<USE_LONG_SLEEP)
+				nanosleep(&SHORT_PERIOD, nullptr);
+			else
+				nanosleep(&LONG_PERIOD, nullptr);
 		}
 #ifdef USE_DEBUG_LOG
 PRINT_TIME_NOW(*m_threadOstream)
@@ -750,7 +840,7 @@ PRINT_TIME_NOW(*m_threadOstream)
 			std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
 			exit(1);
 		}
-
+#ifdef ENABLE_OPBY_FINISH
 		if(m_numDstLocalThreads>1)
 		{
 			// record this op in finish set
@@ -758,6 +848,7 @@ PRINT_TIME_NOW(*m_threadOstream)
 			m_readbyFinishSet[(tag<<LOG_MAX_TASKS)+myTaskid] = m_numDstLocalThreads;
 			m_readbyFinishCond.notify_all();
 		}
+#endif
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
 	*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish ReadBy:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
@@ -773,7 +864,7 @@ PRINT_TIME_NOW(*m_threadOstream)
 }// end writeby()
 
 
-
+#ifdef ENABLE_OPBY_FINISH
 void InprocConduit::ReadBy_Finish(int tag)
 {
 #ifdef USE_DEBUG_LOG
@@ -841,7 +932,7 @@ void InprocConduit::ReadBy_Finish(int tag)
     return;
 
 }// end ReadBy_Finish()
-
+#endif
 
 
 

@@ -98,8 +98,19 @@ int XprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)
 		else
 		{	// not this thread's turn to do
 			int do_thread = m_asyncOpTokenFlag[myThreadRank];
+			long _counter=0;
 			while(m_asyncOpThreadAtomic[do_thread].load() != 0){
-				_mm_pause();
+				_counter++;
+				if(_counter<USE_PAUSE)
+					_mm_pause();
+				else if(_counter<USE_SHORT_SLEEP){
+					__asm__ __volatile__ ("pause" ::: "memory");
+					std::this_thread::yield();
+				}
+				else if(_counter<USE_LONG_SLEEP)
+					nanosleep(&SHORT_PERIOD, nullptr);
+				else
+					nanosleep(&LONG_PERIOD, nullptr);
 			}
 			//
 			m_asyncOpTokenFlag[myThreadRank] = (m_asyncOpTokenFlag[myThreadRank]+1)%localNumthreads;
@@ -171,8 +182,19 @@ void XprocConduit::AsyncRead_Finish(int tag)
 		// there are several threads
 		if(myThreadRank!= m_asyncOpTokenFlag[myThreadRank]){
 			int do_thread = m_asyncOpTokenFlag[myThreadRank];
+			long _counter=0;
 			while(m_asyncOpThreadAtomic[do_thread].load() == 0){
-				_mm_pause();
+				_counter++;
+				if(_counter<USE_PAUSE)
+					_mm_pause();
+				else if(_counter<USE_SHORT_SLEEP){
+					__asm__ __volatile__ ("pause" ::: "memory");
+					std::this_thread::yield();
+				}
+				else if(_counter<USE_LONG_SLEEP)
+					nanosleep(&SHORT_PERIOD, nullptr);
+				else
+					nanosleep(&LONG_PERIOD, nullptr);
 			}
 			//
 			m_asyncOpTokenFlag[myThreadRank] = (m_asyncOpTokenFlag[myThreadRank]+1)%localNumthreads;

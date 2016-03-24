@@ -100,10 +100,11 @@ void InprocConduit::initInprocConduit(){
 
 
 
-
+#ifdef ENABLE_OPBY_FINISH
     // init readby, writeby related
     m_readbyFinishSet.clear();
     m_writebyFinishSet.clear();
+#endif
 
 
     // init Async op related
@@ -194,8 +195,10 @@ void InprocConduit::clear(){
     m_dstOpThreadLatch.clear();
 
     //
+#ifdef ENABLE_OPBY_FINISH
     m_readbyFinishSet.clear();
     m_writebyFinishSet.clear();
+#endif
 
     //
     m_srcAsyncReadFinishSet.clear();

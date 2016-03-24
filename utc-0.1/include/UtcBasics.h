@@ -98,8 +98,8 @@ const int LOG_MAX_CONDUITS = 10;
 const int INPROC_CONDUIT_CAPACITY_DEFAULT = 8;
 const int INPROC_CONDUIT_CAPACITY_MAX = 32;
 const int CONDUIT_BUFFER_SIZE = 4096; // 4k bytes
-const long INPROC_COPY_THRESHHOLD = 512*1024;  //no actually improvement
-const int CONDUIT_LATCH_ATOMI_THRESHHOLD = 32*1024;
+const long INPROC_COPY_THRESHHOLD = (512*1024);  //no actually improvement
+const int CONDUIT_LATCH_ATOMI_THRESHHOLD = (32*1024);
 
 
 
