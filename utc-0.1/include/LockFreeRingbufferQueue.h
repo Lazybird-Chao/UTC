@@ -159,15 +159,9 @@ private:
 	struct ThreadLocalPos {
 		unsigned long head, tail;
 	};
-	int USE_PAUSE=100;
-	int USE_SHORT_SLEEP=1000;
-	int USE_LONG_SLEEP =2000;
-	struct timespec SHORT_PERIOD;
-	SHORT_PERIOD.tv_sec=0;
-	SHORT_PERIOD.tv_nsec=100;
-	struct timespec LONG_PERIOD;
-	LONG_PERIOD.tv_sec=0;
-	LONG_PERIOD.tv_nsec=1000;
+	int USE_PAUSE=1000;
+	int USE_SHORT_SLEEP=2000;
+	int USE_LONG_SLEEP =3000;
 
 
 public:

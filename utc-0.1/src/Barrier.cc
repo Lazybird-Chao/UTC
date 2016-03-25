@@ -12,10 +12,14 @@ namespace iUtc{
 
 Barrier::Barrier()
 {
-	/*m_numLocalThreads = TaskManager::getCurrentTask()->getNumLocalThreads();
-	m_intraThreadSyncCounterComing = 0;
-	m_intraThreadSyncCounterLeaving = 0;
-	m_taskId = TaskManager::getCurrentTaskId();*/
+	m_numLocalThreads = 0;
+	m_intraThreadSyncCounterComing[0] = m_intraThreadSyncCounterComing[1]=0;
+	m_intraThreadSyncCounterLeaving[0] = m_intraThreadSyncCounterLeaving[1] = 0;
+	m_taskId = -1;
+	m_countIdx = nullptr;
+	m_taskCommPtr =nullptr;
+	m_threadSyncBarrier = nullptr;
+	m_generation = m_counter =0;
 
 
 }
@@ -33,6 +37,7 @@ Barrier::Barrier(int numLocalThreads, int taskid)
 	for(int i=0; i<numLocalThreads; i++)
 		m_countIdx[i] = 0;
 	m_threadSyncBarrier = new boost::barrier(numLocalThreads);
+	m_generation = m_counter =0;
 }
 
 
@@ -49,6 +54,7 @@ Barrier::Barrier(int numLocalThreads, int taskid, MPI_Comm* comm)
 	for(int i=0; i<numLocalThreads; i++)
 		m_countIdx[i] = 0;
 	m_threadSyncBarrier = new boost::barrier(numLocalThreads);
+	m_generation = m_counter =0;
 }
 
 
@@ -103,6 +109,27 @@ void Barrier::synch_intra(int local_rank)
 void Barrier::synch_inter(int local_rank)
 {
 	std::unique_lock<std::mutex> LCK1(m_intraThreadSyncMutex);
+	int generation = m_generation;
+	m_counter++;
+	if(m_counter==m_numLocalThreads){
+		// last coming thread
+		// before notify, wait for other processes coming to this point
+#ifdef USE_MPI_BASE
+		// do barrier across the processes that this task mapped to
+		MPI_Barrier(*m_taskCommPtr);
+
+#endif
+		m_counter=0;
+		m_generation++;
+		//do notify
+		m_intraThreadSyncCond.notify_all();
+		return;
+	}
+	while(generation == m_generation){
+		m_intraThreadSyncCond.wait(LCK1);
+	}
+	return;
+	/*std::unique_lock<std::mutex> LCK1(m_intraThreadSyncMutex);
 	// wait for all local thread coming here
 	m_intraThreadSyncCounterComing[m_countIdx[local_rank]]++;
 	if(m_intraThreadSyncCounterComing[m_countIdx[local_rank]] == m_numLocalThreads)
@@ -137,7 +164,7 @@ void Barrier::synch_inter(int local_rank)
 		m_intraThreadSyncCounterLeaving[m_countIdx[local_rank]] = 0;
 	}
 	m_countIdx[local_rank] = (m_countIdx[local_rank]+1)%2;
-	LCK1.unlock();
+	LCK1.unlock();*/
 
 
 }
@@ -197,6 +224,48 @@ void inter_Barrier()
 #endif
 
 }
+
+
+SpinBarrier::SpinBarrier(){
+	m_numThreadsForSync =0;
+	m_barrierCounter=0;
+	m_generation=0;
+}
+
+SpinBarrier::SpinBarrier(int nthreads){
+	m_numThreadsForSync = nthreads;
+	m_barrierCounter=0;
+	m_generation=0;
+	m_barrierReady=nthreads;
+}
+
+void SpinBarrier::set(int nthreads){
+	if(m_numThreadsForSync!=nthreads){
+		m_barrierReady.store(nthreads);
+		m_numThreadsForSync = m_barrierReady;
+	}
+}
+
+void SpinBarrier::wait(){
+	// wait set() finish
+	while(m_barrierReady.load() != m_numThreadsForSync){
+		_mm_pause();
+	}
+
+	int generation = m_generation.load();
+	int threadsForSync = m_numThreadsForSync;
+	//
+	m_barrierCounter.fetch_add(1);
+	if(m_barrierCounter.compare_exchange_weak(threadsForSync, 0, std::memory_order_release)){
+		m_generation.fetch_add(1);
+		return;
+	}
+	while(m_generation.load()==generation){
+		_mm_pause();
+	}
+	return;
+}
+
 
 
 }// namepsce iUtc

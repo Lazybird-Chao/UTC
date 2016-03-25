@@ -126,11 +126,11 @@ void SendRecvWorker::run()
 					timer.start();
 
 				for(j=0; j<window_size; j++)
-					//m_cdt->AsyncWrite(s_buf,size,i*window_size+j);
-					m_cdt->Write(s_buf,size,i*window_size+j);
+					m_cdt->AsyncWrite(s_buf,size,i*window_size+j);
+					//m_cdt->Write(s_buf,size,i*window_size+j);
 				/*for(j=0; j<window_size; j++)
 					m_cdt->AsyncWrite_Finish(i*window_size+j);*/
-				//m_cdt->AsyncWrite_Finish(i*window_size+j-1);
+				m_cdt->AsyncWrite_Finish(i*window_size+j-1);
 
 				m_cdt->Read(&r_buf_for_sender,4,i*window_size+j);
 
@@ -162,11 +162,11 @@ void SendRecvWorker::run()
 			for(i=0; i<loop+skip; i++)
 			{
 				for(j=0; j<window_size; j++)
-					//m_cdt->AsyncRead(r_buf,size,i*window_size+j);
-					m_cdt->Read(r_buf,size,i*window_size+j);
+					m_cdt->AsyncRead(r_buf,size,i*window_size+j);
+					//m_cdt->Read(r_buf,size,i*window_size+j);
 				/*for(j=0; j<window_size; j++)
 					m_cdt->AsyncRead_Finish(i*window_size+j);*/
-				//m_cdt->AsyncRead_Finish(i*window_size+j-1);
+				m_cdt->AsyncRead_Finish(i*window_size+j-1);
 				m_cdt->Write(&s_buf_for_receiver,4,i*window_size+j);
 			}
 		}

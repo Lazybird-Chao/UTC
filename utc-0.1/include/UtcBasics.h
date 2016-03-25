@@ -12,8 +12,8 @@
 /*
  *
  */
-#define USE_DEBUG_LOG
-#define USE_DEBUG_ASSERT
+//#define USE_DEBUG_LOG
+//#define USE_DEBUG_ASSERT
 
 
 
@@ -101,6 +101,13 @@ const int CONDUIT_BUFFER_SIZE = 4096; // 4k bytes
 const long INPROC_COPY_THRESHHOLD = (512*1024);  //no actually improvement
 const int CONDUIT_LATCH_ATOMI_THRESHHOLD = (32*1024);
 
+
+/*
+ *
+ */
+#include <time.h>
+extern struct timespec SHORT_PERIOD;
+extern struct timespec LONG_PERIOD;
 
 
 #endif

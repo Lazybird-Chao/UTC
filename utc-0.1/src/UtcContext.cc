@@ -124,9 +124,9 @@ void UtcContext::finalize()
     std::ofstream *procOstream = root->getProcOstream();
     delete root;
     root = nullptr;
-
     if(Utcbase_provider)
     	delete Utcbase_provider;
+
     Utcbase_provider = nullptr;
 #ifdef USE_DEBUG_LOG
     PRINT_TIME_NOW(*procOstream)

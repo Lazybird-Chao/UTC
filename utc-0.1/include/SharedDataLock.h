@@ -3,6 +3,10 @@
 
 #include <boost/thread/locks.hpp>
 #include <boost/thread/shared_mutex.hpp>
+#include <atomic>
+
+struct timespec SHORT_PERIOD{0, 100};
+struct timespec LONG_PERIOD{0,1000};
 
 namespace iUtc{
 
@@ -53,8 +57,19 @@ private:
 #define UNIQUE_EXE_END
 
 
-}
 
 
+class SpinLock{
+public:
+	SpinLock();
+
+	void lock();
+	void unlock();
+private:
+	typedef enum{Locked, Unlocked} LockState;
+	std::atomic<LockState> m_state;
+};
+
+}// end namespace iUtc
 
 #endif

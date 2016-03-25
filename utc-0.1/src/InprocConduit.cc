@@ -8,7 +8,6 @@
 #include <chrono>
 
 
-
 namespace iUtc{
 
 thread_local std::ofstream *InprocConduit::m_threadOstream = nullptr;
@@ -201,6 +200,10 @@ void InprocConduit::clear(){
 #endif
 
     //
+    // check if there's async worker thread running
+    while(m_srcAsyncWorkerOn.load()==true || m_dstAsyncWorkerOn.load()==true){
+    	usleep(1);
+    }
     m_srcAsyncReadFinishSet.clear();
     m_srcAsyncWriteFinishSet.clear();
     delete m_srcAsyncWorkQueue;

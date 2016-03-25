@@ -43,8 +43,10 @@ XprocConduit::XprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId, std:
 	}
 
 	//
+#ifdef ENABLE_OPBY_FINISH
 	m_readbyFinishSet.clear();
 	m_writebyFinishSet.clear();
+#endif
 
 
 	//
@@ -419,11 +421,13 @@ int XprocConduit::BWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSi
 	std::cerr<<"Error, crossing process conduit doen't has 'BWriteBy' method."<<std::endl;
 	return 0;
 }
+#ifdef ENABLE_OPBY_FINISH
 void XprocConduit::BWriteBy_Finish(int tag)
 {
 	std::cerr<<"Error, crossing process conduit doen't has 'BWriteBy_Finish' method."<<std::endl;
 	return;
 }
+#endif
 
 
 

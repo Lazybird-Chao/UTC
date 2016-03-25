@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <fstream>
+#include <atomic>
 #include "boost/thread/barrier.hpp"
 
 #ifdef USE_MPI_BASE
@@ -49,7 +50,12 @@ private:
 	int m_intraThreadSyncCounterLeaving[2];
 	// local thread i use m_countIdx[i] to specify which counter to use
 	int *m_countIdx;
+
+	// try use boost barrier
 	boost::barrier *m_threadSyncBarrier;
+
+	int m_generation;
+	int m_counter;
 
 };
 
@@ -60,8 +66,28 @@ void intra_Barrier();
 void inter_Barrier();
 
 
-}// namespace iUtc
 
+
+
+class SpinBarrier{
+public:
+	SpinBarrier();
+
+	SpinBarrier(int nthreads);
+
+	void set(int nthreads);
+
+	void wait();
+
+private:
+	std::atomic<int> m_barrierCounter;
+	std::atomic<int> m_generation;
+	int m_numThreadsForSync;
+	std::atomic<int> m_barrierReady;
+};
+
+
+}// namespace iUtc
 
 #endif
 

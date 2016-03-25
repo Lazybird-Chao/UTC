@@ -52,6 +52,21 @@ void SharedDataLock::read_unlock()
 }
 
 
+
+SpinLock::SpinLock(){
+	m_state = Unlocked;
+}
+
+void SpinLock::lock(){
+	while(m_state.exchange(Locked, std::memory_order_acquire) == Locked){
+		_mm_pause();
+	}
+}
+
+void SpinLock::unlock(){
+	m_state.store(Unlocked, std::memory_order_release);
+}
+
 }// end namespace iUtc
 
 
