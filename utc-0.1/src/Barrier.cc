@@ -230,6 +230,7 @@ SpinBarrier::SpinBarrier(){
 	m_numThreadsForSync =0;
 	m_barrierCounter=0;
 	m_generation=0;
+	m_barrierReady=0;
 }
 
 SpinBarrier::SpinBarrier(int nthreads){

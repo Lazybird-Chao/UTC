@@ -86,14 +86,19 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
         }
         else{
         	// multi local threads in task
-        	if(myLocalRank == m_srcOpTokenFlag[myLocalRank])
-            {
-                // check if it's current thread rank's turn to do r/w
+        	int idx = m_srcOpTokenFlag[myLocalRank];
+			int isavailable = 0;
+#ifdef USE_DEBUG_ASSERT
+			assert(idx<m_srcOpThreadAvailable.size());
+			assert(m_srcOpThreadFinish[idx]->load() != nullptr);
+#endif
+			if(m_srcOpThreadAvailable[idx]->compare_exchange_weak(isavailable,1))
+			{
+				// push next item to vector
+				m_srcOpThreadAvailable.push_back(new std::atomic<int>(0));
+				boost::latch* tmp_latch= new boost::latch(1);
+				m_srcOpThreadFinish.push_back(new std::atomic<intptr_t>(tmp_latch));
 
-                // reset next token's latch here
-                int next_thread = (m_srcOpTokenFlag[myLocalRank]+1) % m_numSrcLocalThreads;
-                m_srcOpThreadLatch[next_thread]->reset(1);
-                m_srcOpThreadAtomic[next_thread].store(1);
                 // do msg r/w
                 MsgInfo_t *tmp_buffptr = m_srcInnerMsgQueue->pop(myLocalRank);
                 if(tmp_buffptr == nullptr){
@@ -131,29 +136,32 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 						nanosleep(&LONG_PERIOD, nullptr);
 	        	}
 
-                // wake up other waiting thread
-                if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD)
-                	m_srcOpThreadLatch[m_srcOpTokenFlag[myLocalRank]]->count_down();
-                else
-                	m_srcOpThreadAtomic[m_srcOpTokenFlag[myLocalRank]].store(0);
-                m_srcOpTokenFlag[myLocalRank] = next_thread;
+	        	// wake up other waiting thread
+				tmp_latch = m_srcOpThreadFinish[idx]->load();
+				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
+					tmp_latch->count_down();
+				}
+				else{
+					delete tmp_latch;
+					m_srcOpThreadFinish[idx]->store(0);
+				}
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"src-thread "<<myThreadRank<<" finish Pwrite!:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
             }
             else{
-                // not the op thread, just wait the op thread finish
-                int do_thread =  m_srcOpTokenFlag[myLocalRank];  //the op thread's rank
-                if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
-					if(!m_srcOpThreadLatch[do_thread]->try_wait()){
-						m_srcOpThreadLatch[do_thread]->wait();         // wait on associated latch
+            	// not the op thread, just wait the op thread finish
+				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
+					boost::latch* tmp_latch = m_srcOpThreadFinish[idx]->load();
+					if(!tmp_latch->try_wait()){
+						tmp_latch->wait();         // wait on associated latch
 					}
-                }
-                else{
-                	long _counter=0;
-                	while(m_srcOpThreadAtomic[do_thread].load() !=0){
-                		_counter++;
+				}
+				else{
+					long _counter=0;
+					while(m_srcOpThreadFinish[idx]->load() != 0){
+						_counter++;
 						if(_counter<USE_PAUSE)
 							_mm_pause();
 						else if(_counter<USE_SHORT_SLEEP){
@@ -164,16 +172,30 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 							nanosleep(&SHORT_PERIOD, nullptr);
 						else
 							nanosleep(&LONG_PERIOD, nullptr);
-                	}
-                }
-                // wake up when do_thread finish, and update token flag to next value
-                m_srcOpTokenFlag[myLocalRank] = (m_srcOpTokenFlag[myLocalRank]+1)%m_numSrcLocalThreads;
+					}
+				}
+
+				int nthreads = m_numSrcLocalThreads-1;
+				// last leaving thread do some cleaning
+				if(m_srcOpThreadAvailable[idx]->compare_exchange_weak(nthreads, 0)){
+					delete m_srcOpThreadAvailable[idx];
+					m_srcOpThreadAvailable[idx] = nullptr;
+					boost::latch *temp_latch = m_srcOpThreadFinish[idx]->load();
+					if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD)
+						delete temp_latch;
+					delete m_srcOpThreadFinish[idx];
+					m_srcOpThreadFinish[idx]=nullptr;
+				}
+				else{
+					m_srcOpThreadAvailable[idx]->fetch_add(1);
+				}
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"src-thread "<<myThreadRank<<" exit Pwrite...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
 
             }
+			m_srcOpTokenFlag[myLocalRank]++;
         }
     }// end src
     else if(myTaskid == m_dstId){
@@ -222,11 +244,15 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 #endif                
         }
         else{
-            if(myLocalRank == m_dstOpTokenFlag[myLocalRank])
-            {
-                int next_thread = (m_dstOpTokenFlag[myLocalRank]+1) % m_numDstLocalThreads;
-                m_dstOpThreadLatch[next_thread]->reset(1);
-                m_dstOpThreadAtomic[next_thread].store(1);
+        	// multiple threads
+			int idx = m_dstOpTokenFlag[myLocalRank];
+			int isavailable = 0;
+			if(m_dstOpThreadAvailable[idx]->compare_exchange_weak(isavailable, 1))
+			{
+				m_dstOpThreadAvailable.push_back(new std::atomic<int>(0));
+				boost::latch* tmp_latch= new boost::latch(1);
+				m_dstOpThreadFinish.push_back(new std::atomic<intptr_t>(tmp_latch));
+
                 MsgInfo_t *tmp_buffptr = m_dstInnerMsgQueue->pop(myLocalRank);
                 if(tmp_buffptr == nullptr){
                     std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
@@ -262,27 +288,30 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 						nanosleep(&LONG_PERIOD, nullptr);
 	        	}
 
-                if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD)
-                	m_dstOpThreadLatch[m_dstOpTokenFlag[myLocalRank]]->count_down();
-                else
-                	m_dstOpThreadAtomic[m_dstOpTokenFlag[myLocalRank]].store(0);
-                m_dstOpTokenFlag[myLocalRank] = next_thread;
+	        	tmp_latch = m_srcOpThreadFinish[idx]->load();
+				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
+					tmp_latch->count_down();
+				}
+				else{
+					delete tmp_latch;
+					m_srcOpThreadFinish[idx]->store(0);
+				}
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"dst-thread "<<myThreadRank<<" finish Pwrite!:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
             }
             else{
-                int do_thread =  m_dstOpTokenFlag[myLocalRank];  //the op thread's rank
-                if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
-					if(!m_dstOpThreadLatch[do_thread]->try_wait()){
-						m_dstOpThreadLatch[do_thread]->wait();         // wait on associated latch
+            	boost::latch* temp_latch = m_dstOpThreadFinish[idx];
+				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
+					if(!temp_latch->try_wait()){
+						temp_latch->wait();
 					}
-                }
-                else{
-                	long _counter=0;
-                	while(m_dstOpThreadAtomic[do_thread].load() !=0){
-                		_counter++;
+				}
+				else{
+					long _counter=0;
+					while(m_dstOpThreadFinish[idx]->load() !=0){
+						_counter++;
 						if(_counter<USE_PAUSE)
 							_mm_pause();
 						else if(_counter<USE_SHORT_SLEEP){
@@ -293,16 +322,29 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 							nanosleep(&SHORT_PERIOD, nullptr);
 						else
 							nanosleep(&LONG_PERIOD, nullptr);
-                	}
-                }
-                // wake up when do_thread finish, and update token flag to next value
-                m_dstOpTokenFlag[myLocalRank] = (m_dstOpTokenFlag[myLocalRank]+1)%m_numDstLocalThreads;
+					}
+				}
+
+				int nthreads = m_numDstLocalThreads-1;
+				if(m_dstOpThreadAvailable[idx]->compare_exchange_weak(nthreads,0)){
+					delete m_dstOpThreadAvailable[idx];
+					m_dstOpThreadAvailable[idx]=nullptr;
+					if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
+						boost::latch* tmp_latch = m_dstOpThreadFinish[idx];
+						delete tmp_latch;
+					}
+					delete m_dstOpThreadFinish[idx];
+					m_dstOpThreadFinish[idx]=nullptr;
+				}
+				else{
+					m_dstOpThreadAvailable[idx]->fetch_add(1);
+				}
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"dst-thread "<<myThreadRank<<" exit Pwrite...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif            
             }
-
+			m_dstOpTokenFlag[myLocalRank]++;
         }
     } //end dst
     else{

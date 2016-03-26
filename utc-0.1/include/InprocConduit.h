@@ -14,6 +14,7 @@
 #include <future>
 #include <fstream>
 #include <atomic>
+#include <cstdint>
 #include "boost/thread/latch.hpp"
 
 namespace iUtc{
@@ -126,10 +127,10 @@ private:
 	 * to do this synchization.
 	 * each thread has a tokenflag to indicate whoes turn to do w/r. 
 	 */
-	std::vector<boost::latch*>	m_srcOpThreadLatch;
+	/*std::vector<boost::latch*>	m_srcOpThreadLatch;*/
 	int 	*m_srcOpTokenFlag;
 	// for small msg, do not use latch, use atomic as fake latch
-	std::atomic<int> *m_srcOpThreadAtomic;
+	/*std::atomic<int> *m_srcOpThreadAtomic;*/
 	/*
 	 * when transfer msg using address, writer need wait reader finish
 	 * copy data and then return. So using this atomic flag for reader 
@@ -137,6 +138,13 @@ private:
 	 */
 	std::atomic<int> 	*m_srcUsingPtrFinishFlag;
 
+	/*
+	 * new method for multi threads do op and let one do, others wait
+	 */
+	std::vector<std::atomic<int>*> m_srcOpThreadAvailable;
+	std::vector<std::atomic<intptr_t>*> m_srcOpThreadFinish;
+	std::vector<std::atomic<int>*> m_dstOpThreadAvailable;
+	std::vector<std::atomic<intptr_t>*> m_dstOpThreadFinish;
 
 	/*
 	 * dst side buffer pool
@@ -145,9 +153,9 @@ private:
 	LockFreeQueue<MsgInfo_t, INPROC_CONDUIT_CAPACITY_DEFAULT> 	*m_dstInnerMsgQueue;
 	std::map<int, MsgInfo_t*>	m_dstBuffMap; 
 	//
-	std::vector<boost::latch*>	m_dstOpThreadLatch;
+	/*std::vector<boost::latch*>	m_dstOpThreadLatch;*/
 	int 	*m_dstOpTokenFlag;
-	std::atomic<int> 	*m_dstOpThreadAtomic;
+	/*std::atomic<int> 	*m_dstOpThreadAtomic;*/
 	//
 	std::atomic<int> 	*m_dstUsingPtrFinishFlag;
 
@@ -181,9 +189,14 @@ private:
 	std::map<int, std::promise<void>> m_srcAsyncReadFinishSet;
 	std::map<int, std::promise<void>> m_srcAsyncWriteFinishSet;
 	int		*m_srcAsyncOpTokenFlag;
-	std::atomic<int>	*m_srcAsyncOpThreadAtomic;
+	/*std::atomic<int>	*m_srcAsyncOpThreadAtomic;*/
 	int		*m_dstAsyncOpTokenFlag;
-	std::atomic<int>	*m_dstAsyncOpThreadAtomic;
+	/*std::atomic<int>	*m_dstAsyncOpThreadAtomic;*/
+	std::vector<std::atomic<int>*> m_srcAsyncOpThreadAvailable;
+	std::vector<std::atomic<int>*> m_srcAsyncOpThreadFinish;
+	std::vector<std::atomic<int>*> m_dstAsyncOpThreadAvailable;
+	std::vector<std::atomic<int>*> m_dstAsyncOpThreadFinish;
+
 	LockFreeQueue<AsyncWorkArgs_t, INPROC_CONDUIT_CAPACITY_DEFAULT> *m_srcAsyncWorkQueue;
 	LockFreeQueue<AsyncWorkArgs_t, INPROC_CONDUIT_CAPACITY_DEFAULT> *m_dstAsyncWorkQueue;
 	std::map<int, std::promise<void>> m_dstAsyncReadFinishSet;
