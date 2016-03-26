@@ -101,11 +101,6 @@ private:
 	////
 	static thread_local std::ofstream *m_threadOstream;
 
-	// some data used for thread pause
-	int USE_PAUSE=1000;
-	int USE_SHORT_SLEEP=2000;
-	int USE_LONG_SLEEP =3000;
-
 
 };
 
