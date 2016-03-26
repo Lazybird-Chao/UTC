@@ -7,6 +7,8 @@
 #include <cstring>
 #include <chrono>
 
+struct timespec SHORT_PERIOD{0, 1000}; // 1us
+struct timespec LONG_PERIOD{0,100000}; // 100us
 
 namespace iUtc{
 

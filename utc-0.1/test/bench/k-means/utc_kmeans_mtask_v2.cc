@@ -29,7 +29,6 @@ public:
 	void init(Conduit *cdt2master, double *runtime){
 		struct datasetInfo datainfo;
 		cdt2master->ReadBy(0, &datainfo, sizeof(datasetInfo), 0);
-		cdt2master->ReadBy_Finish(0);
 		if(getLrank()==0){
 			numChanges =0;
 			this->cdt2master = cdt2master;

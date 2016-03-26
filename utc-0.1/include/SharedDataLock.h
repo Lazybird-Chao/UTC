@@ -5,9 +5,6 @@
 #include <boost/thread/shared_mutex.hpp>
 #include <atomic>
 
-struct timespec SHORT_PERIOD{0, 100};
-struct timespec LONG_PERIOD{0,1000};
-
 namespace iUtc{
 
 /*
