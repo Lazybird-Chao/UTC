@@ -103,11 +103,14 @@ const int CONDUIT_LATCH_ATOMI_THRESHHOLD = (32*1024);
 
 
 /*
- *
+ * some data used for thread pause
  */
 #include <time.h>
-extern struct timespec SHORT_PERIOD;
-extern struct timespec LONG_PERIOD;
+const int USE_PAUSE=1000; // about 5~10us for 1000 mm_pause
+const int USE_SHORT_SLEEP=2000; //about 500us for 1000 thread_yield
+const int USE_LONG_SLEEP =3000; //about 50ms  for 1000 nano_sleep(1us)
+extern struct timespec SHORT_PERIOD; // use 1000ns
+extern struct timespec LONG_PERIOD;  // use 100us
 
 
 #endif
