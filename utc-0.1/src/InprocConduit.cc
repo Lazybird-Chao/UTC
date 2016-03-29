@@ -65,7 +65,7 @@ void InprocConduit::initInprocConduit(){
     for(int i=0; i<m_numSrcLocalThreads; i++)
     	m_srcOpTokenFlag[i]=0;
     m_srcOpThreadAvailable.push_back(new std::atomic<int>(0));
-    m_srcOpThreadFinish.push_back(new std::atomic<intptr_t>(new boost::latch(1)));
+    m_srcOpThreadFinish.push_back(new std::atomic<intptr_t>((intptr_t)new boost::latch(1)));
 
     // extra one for async op
     m_srcUsingPtrFinishFlag = new std::atomic<int>[m_numSrcLocalThreads+1];
@@ -101,7 +101,7 @@ void InprocConduit::initInprocConduit(){
     for(int i=0; i<m_numDstLocalThreads; i++)
 		m_dstOpTokenFlag[i]=0;
 	m_dstOpThreadAvailable.push_back(new std::atomic<int>(0));
-	m_dstOpThreadFinish.push_back(new std::atomic<intptr_t>(new boost::latch(1)));
+	m_dstOpThreadFinish.push_back(new std::atomic<intptr_t>((intptr_t)new boost::latch(1)));
 
     // extra one for async op
     m_dstUsingPtrFinishFlag = new std::atomic<int>[m_numDstLocalThreads+1];

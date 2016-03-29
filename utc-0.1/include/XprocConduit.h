@@ -73,9 +73,15 @@ private:
 	 * using token-ring-net mechanism. Start from thread local rank 0,
 	 * each thread responds for doing the r/w one by one
 	 */
-	std::vector<boost::latch*> m_OpThreadLatch;
-	std::atomic<int> *m_OpThreadAtomic;
+	/*std::vector<boost::latch*> m_OpThreadLatch;
+	std::atomic<int> *m_OpThreadAtomic;*/
 	int *m_OpTokenFlag;
+
+	/*
+	 * new mechanism for multi-threads op
+	 */
+	std::vector<std::atomic<int>*> m_OpThreadAvailable;
+	std::vector<std::atomic<intptr_t>*> m_OpThreadFinish;
 
 
 #ifdef ENALBE_OPBY_FINISH
@@ -94,8 +100,11 @@ private:
 	std::map<int, MPI_Request*> m_asyncReadFinishSet;
 	std::map<int, MPI_Request*> m_asyncWriteFinishSet;
 #endif
-	std::atomic<int> *m_asyncOpThreadAtomic;
+	/*std::atomic<int> *m_asyncOpThreadAtomic;*/
 	int *m_asyncOpTokenFlag;
+
+	std::vector<std::atomic<int>*> m_asyncOpThreadAvailable;
+	std::vector<std::atomic<int>*> m_asyncOpThreadFinish;
 
 
 	////

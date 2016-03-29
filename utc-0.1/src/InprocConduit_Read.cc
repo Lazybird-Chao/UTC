@@ -168,17 +168,17 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 			int isavailable = 0;
 #ifdef USE_DEBUG_ASSERT
 			assert(idx<m_srcOpThreadAvailable.size());
-			assert(m_srcOpThreadFinish[idx]->load() != nullptr);
+			//assert(m_srcOpThreadFinish[idx]->load() != 0);
 #endif
 			// first coming thread
-			if(m_srcOpThreadAvailable[idx]->compare_exchange_weak(isavailable, 1)){
+			if(m_srcOpThreadAvailable[idx]->compare_exchange_strong(isavailable, 1)){
 #ifdef USE_DEBUG_ASSERT
 			assert(idx = m_srcOpThreadAvailable.size()-1);
 #endif
 				// push next item to vector
 				m_srcOpThreadAvailable.push_back(new std::atomic<int>(0));
 				boost::latch* tmp_latch= new boost::latch(1);
-				m_srcOpThreadFinish.push_back(new std::atomic<intptr_t>(tmp_latch));
+				m_srcOpThreadFinish.push_back(new std::atomic<intptr_t>((intptr_t)tmp_latch));
 
 				// doing read op
 				MsgInfo_t	*tmp_buffptr;
@@ -261,8 +261,9 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 					std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
 					exit(1);
 				}
+
 				// wake up other threads
-				tmp_latch = m_srcOpThreadFinish[idx]->load();
+				tmp_latch = (boost::latch*)m_srcOpThreadFinish[idx]->load();
 				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
 					tmp_latch->count_down();
 				}
@@ -270,6 +271,7 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 					delete tmp_latch;
 					m_srcOpThreadFinish[idx]->store(0);
 				}
+
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"src-thread "<<myThreadRank<<" finish read:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
@@ -278,7 +280,7 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 			else{
 				// late coming threads
 				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
-					boost::latch *temp_latch = m_srcOpThreadFinish[idx]->load();
+					boost::latch *temp_latch = (boost::latch*)m_srcOpThreadFinish[idx]->load();
 					if(!temp_latch->try_wait()){
 						temp_latch->wait();
 					}
@@ -299,21 +301,24 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 							nanosleep(&LONG_PERIOD, nullptr);
 					}
 				}
-
 				int nthreads = m_numSrcLocalThreads-1;
-				// last leaving thread do some cleaning
-				if(m_srcOpThreadAvailable[idx]->compare_exchange_weak(nthreads, 0)){
-					delete m_srcOpThreadAvailable[idx];
-					m_srcOpThreadAvailable[idx] = nullptr;
-					boost::latch *temp_latch = m_srcOpThreadFinish[idx]->load();
-					if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD)
-						delete temp_latch;
-					delete m_srcOpThreadFinish[idx];
-					m_srcOpThreadFinish[idx]=nullptr;
+				while(1){
+					int oldvalue = m_srcOpThreadAvailable[idx]->load();
+					if(oldvalue == nthreads){
+						delete m_srcOpThreadAvailable[idx];
+						m_srcOpThreadAvailable[idx]=nullptr;
+						if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
+							boost::latch* tmp_latch = (boost::latch*)m_srcOpThreadFinish[idx]->load();
+							delete tmp_latch;
+						}
+						delete m_srcOpThreadFinish[idx];
+						m_srcOpThreadFinish[idx]=nullptr;
+						break;
+					}
+					if(m_srcOpThreadAvailable[idx]->compare_exchange_strong(oldvalue,oldvalue+1))
+						break;
 				}
-				else{
-					m_srcOpThreadAvailable[idx]->fetch_add(1);
-				}
+
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"src-thread "<<myThreadRank<<" exit read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
@@ -554,14 +559,14 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 			int idx = m_dstOpTokenFlag[myLocalRank];
 			int isavailable = 0;
 #ifdef USE_DEBUG_ASSERT
-			assert(idx<m_srcOpThreadAvailable.size());
-			assert(m_srcOpThreadFinish[idx]->load() != nullptr);
+			assert(idx<m_dstOpThreadAvailable.size());
+			//assert(m_dstOpThreadFinish[idx]->load() != 0);
 #endif
-			if(m_dstOpThreadAvailable[idx]->compare_exchange_weak(isavailable, 1))
+			if(m_dstOpThreadAvailable[idx]->compare_exchange_strong(isavailable, 1))
 			{
 				m_dstOpThreadAvailable.push_back(new std::atomic<int>(0));
 				boost::latch* tmp_latch= new boost::latch(1);
-				m_dstOpThreadFinish.push_back(new std::atomic<intptr_t>(tmp_latch));
+				m_dstOpThreadFinish.push_back(new std::atomic<intptr_t>((intptr_t)tmp_latch));
 				MsgInfo_t	*tmp_buffptr;
 				long _counter=0;
 				while(1){
@@ -643,13 +648,13 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 					exit(1);
 				}
 
-				tmp_latch = m_srcOpThreadFinish[idx]->load();
+				tmp_latch = (boost::latch*)m_dstOpThreadFinish[idx]->load();
 				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
 					tmp_latch->count_down();
 				}
 				else{
 					delete tmp_latch;
-					m_srcOpThreadFinish[idx]->store(0);
+					m_dstOpThreadFinish[idx]->store(0);
 				}
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
@@ -657,7 +662,7 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 #endif
 			}
 			else{
-				boost::latch* temp_latch = m_dstOpThreadFinish[idx];
+				boost::latch* temp_latch = (boost::latch*)m_dstOpThreadFinish[idx]->load();
 				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
 					if(!temp_latch->try_wait()){
 						temp_latch->wait();
@@ -679,21 +684,24 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 							nanosleep(&LONG_PERIOD, nullptr);
 					}
 				}
-
 				int nthreads = m_numDstLocalThreads-1;
-				if(m_dstOpThreadAvailable[idx]->compare_exchange_weak(nthreads,0)){
-					delete m_dstOpThreadAvailable[idx];
-					m_dstOpThreadAvailable[idx]=nullptr;
-					if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
-						boost::latch* tmp_latch = m_dstOpThreadFinish[idx];
-						delete tmp_latch;
+				while(1){
+					int oldvalue = m_dstOpThreadAvailable[idx]->load();
+					if(oldvalue == nthreads){
+						delete m_dstOpThreadAvailable[idx];
+						m_dstOpThreadAvailable[idx]=nullptr;
+						if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
+							boost::latch* tmp_latch = (boost::latch*)m_dstOpThreadFinish[idx]->load();
+							delete tmp_latch;
+						}
+						delete m_dstOpThreadFinish[idx];
+						m_dstOpThreadFinish[idx]=nullptr;
+						break;
 					}
-					delete m_dstOpThreadFinish[idx];
-					m_dstOpThreadFinish[idx]=nullptr;
+					if(m_dstOpThreadAvailable[idx]->compare_exchange_strong(oldvalue,oldvalue+1))
+						break;
 				}
-				else{
-					m_dstOpThreadAvailable[idx]->fetch_add(1);
-				}
+
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"dst-thread "<<myThreadRank<<" exit read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;

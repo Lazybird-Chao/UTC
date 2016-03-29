@@ -65,12 +65,12 @@ int InprocConduit::AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag){
 			int isavailable = 0;
 #ifdef USE_DEBUG_ASSERT
 			assert(idx<m_srcAsyncOpThreadAvailable.size());
-			assert(m_srcAsyncOpThreadFinish[idx]->load() != 0);
+			//assert(m_srcAsyncOpThreadFinish[idx]->load() != 0);
 #endif
 			// first coming thread
-			if(m_srcAsyncOpThreadAvailable[idx]->compare_exchange_weak(isavailable, 1)){
+			if(m_srcAsyncOpThreadAvailable[idx]->compare_exchange_strong(isavailable, 1)){
 #ifdef USE_DEBUG_ASSERT
-			assert(idx = m_srcAsyncOpThreadAvailable.size()-1);
+			assert(idx == m_srcAsyncOpThreadAvailable.size()-1);
 #endif
 				// push next item to vector
 				m_srcAsyncOpThreadAvailable.push_back(new std::atomic<int>(0));
@@ -119,16 +119,19 @@ int InprocConduit::AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag){
 				}
 
 				int nthreads = m_numSrcLocalThreads-1;
-				// last leaving thread do some cleaning
-				if(m_srcAsyncOpThreadAvailable[idx]->compare_exchange_weak(nthreads, 0)){
-					delete m_srcAsyncOpThreadAvailable[idx];
-					m_srcAsyncOpThreadAvailable[idx] = nullptr;
-					delete m_srcAsyncOpThreadFinish[idx];
-					m_srcAsyncOpThreadFinish[idx]=nullptr;
+				while(1){
+					int oldvalue = m_srcAsyncOpThreadAvailable[idx]->load();
+					if(oldvalue==nthreads){
+						delete m_srcAsyncOpThreadAvailable[idx];
+						m_srcAsyncOpThreadAvailable[idx] = nullptr;
+						delete m_srcAsyncOpThreadFinish[idx];
+						m_srcAsyncOpThreadFinish[idx]=nullptr;
+						break;
+					}
+					if(m_srcAsyncOpThreadAvailable[idx]->compare_exchange_strong(oldvalue, oldvalue+1))
+						break;
 				}
-				else{
-					m_srcAsyncOpThreadAvailable[idx]->fetch_add(1);
-				}
+
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"src-thread "<<myThreadRank<<" exit AsyncWrite...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
@@ -170,9 +173,9 @@ int InprocConduit::AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag){
 			// multi threads in task
 			int idx = m_dstAsyncOpTokenFlag[myLocalRank];
 			int isavailable = 0;
-			if(m_dstAsyncOpThreadAvailable[idx]->compare_exchange_weak(isavailable, 1)){
+			if(m_dstAsyncOpThreadAvailable[idx]->compare_exchange_strong(isavailable, 1)){
 				m_dstAsyncOpThreadAvailable.push_back(new std::atomic<int>(0));
-				m_dstAsyncOpThreadFinish.push_back(new std::atomic<int>(0));
+				m_dstAsyncOpThreadFinish.push_back(new std::atomic<int>(1));
 
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -216,15 +219,19 @@ int InprocConduit::AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag){
 						nanosleep(&LONG_PERIOD, nullptr);
 				}
 				int nthreads = m_numDstLocalThreads-1;
-				if(m_dstAsyncOpThreadAvailable[idx]->compare_exchange_weak(nthreads,0)){
-					delete m_dstAsyncOpThreadAvailable[idx];
-					m_dstAsyncOpThreadAvailable[idx]=nullptr;
-					delete m_dstAsyncOpThreadFinish[idx];
-					m_dstAsyncOpThreadFinish[idx]=nullptr;
+				while(1){
+					int oldvalue = m_dstAsyncOpThreadAvailable[idx]->load();
+					if(oldvalue ==nthreads){
+						delete m_dstAsyncOpThreadAvailable[idx];
+						m_dstAsyncOpThreadAvailable[idx]=nullptr;
+						delete m_dstAsyncOpThreadFinish[idx];
+						m_dstAsyncOpThreadFinish[idx]=nullptr;
+						break;
+					}
+					if(m_dstAsyncOpThreadAvailable[idx]->compare_exchange_weak(oldvalue,oldvalue+1))
+						break;
 				}
-				else{
-					m_dstAsyncOpThreadAvailable[idx]->fetch_add(1);
-				}
+
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"dst-thread "<<myThreadRank<<" exit AsyncWrite...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
@@ -445,22 +452,23 @@ void InprocConduit::AsyncWrite_Finish(int tag){
 			m_srcAsyncWriteFinishSet.erase(tag);
 		}
 		else{
-			if(myLocalRank == m_srcAsyncOpTokenFlag[myLocalRank]){
-				int next_thread = (myLocalRank+1)%m_numSrcLocalThreads;
-				m_srcAsyncOpThreadAtomic[next_thread].store(1);
+			int idx = m_srcAsyncOpTokenFlag[myLocalRank];
+			int isavailable =0;
+			if(m_srcAsyncOpThreadAvailable[idx]->compare_exchange_strong(isavailable, 1)){
+				// push next item to vector
+				m_srcAsyncOpThreadAvailable.push_back(new std::atomic<int>(0));
+				m_srcAsyncOpThreadFinish.push_back(new std::atomic<int>(1));
 
 				std::future<void> fut = m_srcAsyncWriteFinishSet[tag].get_future();
 				//*m_threadOstream<<"here"<<std::endl;
 				fut.wait();
 				m_srcAsyncWriteFinishSet.erase(tag);
 
-				m_srcAsyncOpThreadAtomic[myLocalRank].store(0);
-				m_srcAsyncOpTokenFlag[myLocalRank]=next_thread;
+				m_srcAsyncOpThreadFinish[idx]->store(0);
 			}
 			else{
-				int do_thread = m_srcAsyncOpTokenFlag[myLocalRank];
 				long _counter=0;
-				while(m_srcAsyncOpThreadAtomic[do_thread].load() != 0){
+				while(m_srcAsyncOpThreadFinish[idx]->load() != 0){
 					_counter++;
 					if(_counter<USE_PAUSE)
 						_mm_pause();
@@ -473,8 +481,21 @@ void InprocConduit::AsyncWrite_Finish(int tag){
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
 				}
-				m_srcAsyncOpTokenFlag[myLocalRank]= (m_srcAsyncOpTokenFlag[myLocalRank]+1)%m_numSrcLocalThreads;
+				int nthreads = m_numSrcLocalThreads-1;
+				while(1){
+					int oldvalue = m_srcAsyncOpThreadAvailable[idx]->load();
+					if(oldvalue==nthreads){
+						delete m_srcAsyncOpThreadAvailable[idx];
+						m_srcAsyncOpThreadAvailable[idx] = nullptr;
+						delete m_srcAsyncOpThreadFinish[idx];
+						m_srcAsyncOpThreadFinish[idx]=nullptr;
+						break;
+					}
+					if(m_srcAsyncOpThreadAvailable[idx]->compare_exchange_strong(oldvalue, oldvalue+1))
+						break;
+				}
 			}
+			m_srcAsyncOpTokenFlag[myLocalRank]++;
 		}
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -494,21 +515,23 @@ void InprocConduit::AsyncWrite_Finish(int tag){
 			m_dstAsyncWriteFinishSet.erase(tag);
         }
         else{
-        	if(myLocalRank == m_dstAsyncOpTokenFlag[myLocalRank]){
-        		int next_thread = (myLocalRank+1)%m_numDstLocalThreads;
-				m_dstAsyncOpThreadAtomic[next_thread].store(1);
+        	int idx = m_dstAsyncOpTokenFlag[myLocalRank];
+			int isavailable =0;
+			if(m_dstAsyncOpThreadAvailable[idx]->compare_exchange_strong(isavailable, 1)){
+				// push next item to vector
+				m_dstAsyncOpThreadAvailable.push_back(new std::atomic<int>(0));
+				m_dstAsyncOpThreadFinish.push_back(new std::atomic<int>(1));
+
 				std::future<void> fut = m_dstAsyncWriteFinishSet[tag].get_future();
 
 				fut.wait();
 				m_dstAsyncWriteFinishSet.erase(tag);
 
-				m_dstAsyncOpThreadAtomic[myLocalRank].store(0);
-				m_dstAsyncOpTokenFlag[myLocalRank]=next_thread;
-        	}
+				m_dstAsyncOpThreadFinish[idx]->store(0);
+			}
         	else{
-        		int do_thread = m_dstAsyncOpTokenFlag[myLocalRank];
         		long _counter=0;
-				while(m_dstAsyncOpThreadAtomic[do_thread].load() != 0){
+				while(m_dstAsyncOpThreadFinish[idx]->load() != 0){
 					_counter++;
 					if(_counter<USE_PAUSE)
 						_mm_pause();
@@ -521,8 +544,21 @@ void InprocConduit::AsyncWrite_Finish(int tag){
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
 				}
-				m_dstAsyncOpTokenFlag[myLocalRank]= (m_dstAsyncOpTokenFlag[myLocalRank]+1)%m_numDstLocalThreads;
+				int nthreads = m_numDstLocalThreads-1;
+				while(1){
+					int oldvalue = m_dstAsyncOpThreadAvailable[idx]->load();
+					if(oldvalue ==nthreads){
+						delete m_dstAsyncOpThreadAvailable[idx];
+						m_dstAsyncOpThreadAvailable[idx]=nullptr;
+						delete m_dstAsyncOpThreadFinish[idx];
+						m_dstAsyncOpThreadFinish[idx]=nullptr;
+						break;
+					}
+					if(m_dstAsyncOpThreadAvailable[idx]->compare_exchange_weak(oldvalue,oldvalue+1))
+						break;
+				}
         	}
+			m_dstAsyncOpTokenFlag[myLocalRank]++;
         }
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
@@ -576,10 +612,21 @@ int InprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag){
 		}
 		else{
 			// multiple threads in task
-			if(myLocalRank == m_srcAsyncOpTokenFlag[myLocalRank]){
-				// this thread's turn
-				int next_thread = (m_srcAsyncOpTokenFlag[myLocalRank]+1) % m_numSrcLocalThreads;
-				m_srcAsyncOpThreadAtomic[next_thread].store(1);
+			int idx = m_srcAsyncOpTokenFlag[myLocalRank];
+			int isavailable = 0;
+#ifdef USE_DEBUG_ASSERT
+			assert(idx<m_srcAsyncOpThreadAvailable.size());
+			//assert(m_srcAsyncOpThreadFinish[idx]->load() != 0);
+#endif
+			// first coming thread
+			if(m_srcAsyncOpThreadAvailable[idx]->compare_exchange_strong(isavailable, 1)){
+#ifdef USE_DEBUG_ASSERT
+			assert(idx == m_srcAsyncOpThreadAvailable.size()-1);
+#endif
+				// push next item to vector
+				m_srcAsyncOpThreadAvailable.push_back(new std::atomic<int>(0));
+				m_srcAsyncOpThreadFinish.push_back(new std::atomic<int>(1));
+
 #ifdef USE_DEBUG_LOG
     PRINT_TIME_NOW(*m_threadOstream)
     *m_threadOstream<<"src-thread "<<myThreadRank<<" doing AsyncRead...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
@@ -596,17 +643,16 @@ int InprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag){
         			std::thread(&InprocConduit::asyncWorkerImpl, this, myTaskid).detach();
         		}
 
-        		m_srcAsyncOpThreadAtomic[m_srcAsyncOpTokenFlag[myLocalRank]].store(0);
-        		m_srcAsyncOpTokenFlag[myLocalRank] = next_thread;
+        		m_srcAsyncOpThreadFinish[idx]->store(0);
+
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"src-thread "<<myThreadRank<<" finish AsyncRead:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
 #endif
 			}
 			else{
-				int do_thread = m_srcAsyncOpTokenFlag[myLocalRank];
 				long _counter=0;
-				while(m_srcAsyncOpThreadAtomic[do_thread].load() !=0){
+				while(m_srcAsyncOpThreadFinish[idx]->load() !=0){
 					_counter++;
 					if(_counter<USE_PAUSE)
 						_mm_pause();
@@ -619,12 +665,26 @@ int InprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag){
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
 				}
-				m_srcAsyncOpTokenFlag[myLocalRank] = (m_srcAsyncOpTokenFlag[myLocalRank]+1)%m_numSrcLocalThreads;
+
+				int nthreads = m_numSrcLocalThreads-1;
+				while(1){
+					int oldvalue = m_srcAsyncOpThreadAvailable[idx]->load();
+					if(oldvalue==nthreads){
+						delete m_srcAsyncOpThreadAvailable[idx];
+						m_srcAsyncOpThreadAvailable[idx] = nullptr;
+						delete m_srcAsyncOpThreadFinish[idx];
+						m_srcAsyncOpThreadFinish[idx]=nullptr;
+						break;
+					}
+					if(m_srcAsyncOpThreadAvailable[idx]->compare_exchange_strong(oldvalue, oldvalue+1))
+						break;
+				}
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*m_threadOstream)
 		*m_threadOstream<<"src-thread "<<myThreadRank<<" exit AsyncWrite...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
 			}
+			m_srcAsyncOpTokenFlag[myLocalRank]++;
 		}
     }// end src
     else if(myTaskid == m_dstId){
@@ -657,9 +717,11 @@ int InprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag){
 #endif
         }
         else{
-        	if(myLocalRank == m_dstAsyncOpTokenFlag[myLocalRank]){
-        		int next_thread = (m_dstAsyncOpTokenFlag[myLocalRank]+1) % m_numDstLocalThreads;
-				m_dstAsyncOpThreadAtomic[next_thread].store(1);
+        	int idx = m_dstAsyncOpTokenFlag[myLocalRank];
+			int isavailable = 0;
+			if(m_dstAsyncOpThreadAvailable[idx]->compare_exchange_strong(isavailable, 1)){
+				m_dstAsyncOpThreadAvailable.push_back(new std::atomic<int>(0));
+				m_dstAsyncOpThreadFinish.push_back(new std::atomic<int>(1));
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
 	*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing AsyncRead...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
@@ -678,17 +740,16 @@ int InprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag){
 					std::thread(&InprocConduit::asyncWorkerImpl, this, myTaskid).detach();
 				}
 
-				m_dstAsyncOpThreadAtomic[m_dstAsyncOpTokenFlag[myLocalRank]].store(0);
-				m_dstAsyncOpTokenFlag[myLocalRank] = next_thread;
+				m_dstAsyncOpThreadFinish[idx]->store(0);
+
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
         *m_threadOstream<<"dst-thread "<<myThreadRank<<" finish AsyncRead:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 #endif
         	}
         	else{
-        		int do_thread = m_dstAsyncOpTokenFlag[myLocalRank];
         		long _counter=0;
-				while(m_dstAsyncOpThreadAtomic[do_thread].load() !=0){
+				while(m_dstAsyncOpThreadFinish[idx]->load() !=0){
 					_counter++;
 					if(_counter<USE_PAUSE)
 						_mm_pause();
@@ -701,12 +762,25 @@ int InprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag){
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
 				}
-				m_dstAsyncOpTokenFlag[myLocalRank] = (m_dstAsyncOpTokenFlag[myLocalRank]+1)%m_numDstLocalThreads;
+				int nthreads = m_numDstLocalThreads-1;
+				while(1){
+					int oldvalue = m_dstAsyncOpThreadAvailable[idx]->load();
+					if(oldvalue ==nthreads){
+						delete m_dstAsyncOpThreadAvailable[idx];
+						m_dstAsyncOpThreadAvailable[idx]=nullptr;
+						delete m_dstAsyncOpThreadFinish[idx];
+						m_dstAsyncOpThreadFinish[idx]=nullptr;
+						break;
+					}
+					if(m_dstAsyncOpThreadAvailable[idx]->compare_exchange_weak(oldvalue,oldvalue+1))
+						break;
+				}
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
 	*m_threadOstream<<"dst-thread "<<myThreadRank<<" exit AsyncRead...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
 #endif
         	}
+			m_dstAsyncOpTokenFlag[myLocalRank]++;
         }
     }// end dst
     else{
@@ -972,21 +1046,32 @@ void InprocConduit::AsyncRead_Finish(int tag){
 			m_srcAsyncReadFinishSet.erase(tag);
 		}
 		else{
-			if(myLocalRank == m_srcAsyncOpTokenFlag[myLocalRank]){
-				int next_thread = (myLocalRank+1)%m_numSrcLocalThreads;
-				m_srcAsyncOpThreadAtomic[next_thread].store(1);
+			// multiple threads in task
+			int idx = m_srcAsyncOpTokenFlag[myLocalRank];
+			int isavailable = 0;
+#ifdef USE_DEBUG_ASSERT
+			assert(idx<m_srcAsyncOpThreadAvailable.size());
+			//assert(m_srcAsyncOpThreadFinish[idx]->load() != 0);
+#endif
+			// first coming thread
+			if(m_srcAsyncOpThreadAvailable[idx]->compare_exchange_strong(isavailable, 1)){
+#ifdef USE_DEBUG_ASSERT
+			assert(idx == m_srcAsyncOpThreadAvailable.size()-1);
+#endif
+				// push next item to vector
+				m_srcAsyncOpThreadAvailable.push_back(new std::atomic<int>(0));
+				m_srcAsyncOpThreadFinish.push_back(new std::atomic<int>(1));
 
 				std::future<void> fut = m_srcAsyncReadFinishSet[tag].get_future();
 				fut.wait();
 				m_srcAsyncReadFinishSet.erase(tag);
 
-				m_srcAsyncOpThreadAtomic[myLocalRank].store(0);
-				m_srcAsyncOpTokenFlag[myLocalRank]=next_thread;
+				m_srcAsyncOpThreadFinish[idx]->store(0);
+
 			}
 			else{
-				int do_thread = m_srcAsyncOpTokenFlag[myLocalRank];
 				long _counter=0;
-				while(m_srcAsyncOpThreadAtomic[do_thread].load() != 0){
+				while(m_srcAsyncOpThreadFinish[idx]->load() !=0){
 					_counter++;
 					if(_counter<USE_PAUSE)
 						_mm_pause();
@@ -999,8 +1084,22 @@ void InprocConduit::AsyncRead_Finish(int tag){
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
 				}
-				m_srcAsyncOpTokenFlag[myLocalRank]= (m_srcAsyncOpTokenFlag[myLocalRank]+1)%m_numSrcLocalThreads;
+
+				int nthreads = m_numSrcLocalThreads-1;
+				while(1){
+					int oldvalue = m_srcAsyncOpThreadAvailable[idx]->load();
+					if(oldvalue==nthreads){
+						delete m_srcAsyncOpThreadAvailable[idx];
+						m_srcAsyncOpThreadAvailable[idx] = nullptr;
+						delete m_srcAsyncOpThreadFinish[idx];
+						m_srcAsyncOpThreadFinish[idx]=nullptr;
+						break;
+					}
+					if(m_srcAsyncOpThreadAvailable[idx]->compare_exchange_strong(oldvalue, oldvalue+1))
+						break;
+				}
 			}
+			m_srcAsyncOpTokenFlag[myLocalRank]++;
 		}
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -1020,21 +1119,21 @@ void InprocConduit::AsyncRead_Finish(int tag){
 			m_dstAsyncReadFinishSet.erase(tag);
         }
         else{
-        	if(myLocalRank == m_dstAsyncOpTokenFlag[myLocalRank]){
-        		int next_thread = (myLocalRank+1)%m_numDstLocalThreads;
-				m_dstAsyncOpThreadAtomic[next_thread].store(1);
+        	int idx = m_dstAsyncOpTokenFlag[myLocalRank];
+			int isavailable = 0;
+			if(m_dstAsyncOpThreadAvailable[idx]->compare_exchange_strong(isavailable, 1)){
+				m_dstAsyncOpThreadAvailable.push_back(new std::atomic<int>(0));
+				m_dstAsyncOpThreadFinish.push_back(new std::atomic<int>(1));
 
 				std::future<void> fut = m_dstAsyncReadFinishSet[tag].get_future();
 				fut.wait();
 				m_dstAsyncReadFinishSet.erase(tag);
 
-				m_dstAsyncOpThreadAtomic[myLocalRank].store(0);
-				m_dstAsyncOpTokenFlag[myLocalRank]=next_thread;
+				m_dstAsyncOpThreadFinish[idx]->store(0);
         	}
         	else{
-        		int do_thread = m_dstAsyncOpTokenFlag[myLocalRank];
         		long _counter=0;
-				while(m_dstAsyncOpThreadAtomic[do_thread].load() != 0){
+				while(m_dstAsyncOpThreadFinish[idx]->load() !=0){
 					_counter++;
 					if(_counter<USE_PAUSE)
 						_mm_pause();
@@ -1047,8 +1146,21 @@ void InprocConduit::AsyncRead_Finish(int tag){
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
 				}
-				m_dstAsyncOpTokenFlag[myLocalRank]= (m_dstAsyncOpTokenFlag[myLocalRank]+1)%m_numDstLocalThreads;
+				int nthreads = m_numDstLocalThreads-1;
+				while(1){
+					int oldvalue = m_dstAsyncOpThreadAvailable[idx]->load();
+					if(oldvalue ==nthreads){
+						delete m_dstAsyncOpThreadAvailable[idx];
+						m_dstAsyncOpThreadAvailable[idx]=nullptr;
+						delete m_dstAsyncOpThreadFinish[idx];
+						m_dstAsyncOpThreadFinish[idx]=nullptr;
+						break;
+					}
+					if(m_dstAsyncOpThreadAvailable[idx]->compare_exchange_weak(oldvalue,oldvalue+1))
+						break;
+				}
         	}
+			m_dstAsyncOpTokenFlag[myLocalRank]++;
         }
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)

@@ -171,7 +171,7 @@ int main(int argc, char* argv[])
 	/* define sender and receiver task obj */
 	ProcList rl1(1, 0);
 	Task<SendRecvWorker> sender(rl1);
-	ProcList rl2(1, 1);
+	ProcList rl2(1, 0);
 	Task<SendRecvWorker> receiver(rl2);
 
 	/* define conduit obj */
