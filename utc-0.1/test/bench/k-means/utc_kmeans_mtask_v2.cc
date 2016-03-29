@@ -102,7 +102,7 @@ public:
 		Timer timer;
 		double t1, t2, t3;
 		t1 = t2 = t3=0;
-
+		sbarrier.set(numTotalThreads);
 		/* the main compute procedure */
 		do{
 			timer.start();
@@ -137,7 +137,8 @@ public:
 			updateNewCluster.write_unlock();
 
 			/* sync all task-threads, wait local compute finish*/
-			intra_Barrier();
+			//intra_Barrier();
+			sbarrier.wait();
 			t1 += timer.stop();
 			/* send slave task's cluster info to master */
 			cdt2master->WriteBy(0,&numChanges, sizeof(int), loopcounter*3);
@@ -150,11 +151,8 @@ public:
 			else
 				cdt2master->WriteBy(0,newClusters[0], numClusters * numCoords*sizeof(float), loopcounter*3+2);
 			/* update local cluster from master */
-			cdt2master->ReadBy(0,&continueloop, sizeof(bool), loopcounter*2);
-			cdt2master->WriteBy_Finish(loopcounter*3);
-			cdt2master->WriteBy_Finish(loopcounter*3+1);
-			cdt2master->WriteBy_Finish(loopcounter*3+2);
-			cdt2master->ReadBy_Finish(loopcounter*2);
+			cdt2master->Read(&continueloop, sizeof(bool), loopcounter*2);
+
 			if(continueloop){
 				cdt2master->ReadBy(0,clusters[0], numClusters*numCoords*sizeof(float), loopcounter*2+1);
 				/* reset newClusters for next loop */
@@ -168,8 +166,8 @@ public:
 					memset(newClusters[0], 0, numClusters * numCoords*sizeof(float));
 					numChanges = 0;
 				}
-				cdt2master->ReadBy_Finish(loopcounter*2+1);
-				intra_Barrier();
+				//intra_Barrier();
+				sbarrier.wait();
 			}
 			t2 += timer.stop();
 			loopcounter++;
@@ -259,6 +257,7 @@ private:
 	bool continueloop;
 
 	double *runtime;
+	SpinBarrier sbarrier;
 };
 
 class kmeans_master{
@@ -297,7 +296,7 @@ public:
 		/* averge dataset to slaves */
 		datasetInfo datainfo2slave;
 		int avgnumObjs = numObjs / numSlaves;
-		int residue = numObjs % cdt2slaves.size();
+		int residue = numObjs % numSlaves;
 		datainfo2slave.numClusters = numClusters;
 		datainfo2slave.numCoords = numCoords;
 
@@ -368,7 +367,7 @@ public:
 						clusterSize[j]+=newClusterSize[j];
 					}
 				}
-				intra_Barrier();
+				//intra_Barrier();
 			}
 			/* check if need do next loop */
 			if(getLrank()==0){
@@ -385,7 +384,7 @@ public:
 					}
 				}
 			}
-			intra_Barrier();
+			//intra_Barrier();
 			/* send new cluster info to slaves */
 			for(int i=0; i< cdt2slaves.size(); i++){
 				cdt = cdt2slaves[i];
@@ -507,18 +506,21 @@ int main(int argc, char*argv[]){
 	Task<kmeans_master> kmeansComputeMaster("master", ProcList(0));
 	std::vector<Task<kmeans_slave>*> kmeansComputeSlaves;
 	std::vector<Conduit*> cdtMasterSlave;
-	for( int i=0; i< nslaves; i++){
+	ProcList rlist(nthreads-1, 0);
+	kmeansComputeSlaves.push_back(new Task<kmeans_slave>("slave",rlist));
+	cdtMasterSlave.push_back(new Conduit(&kmeansComputeMaster, kmeansComputeSlaves[0]));
+	for( int i=1; i< nslaves; i++){
 		ProcList rlist(nthreads, i);
 		kmeansComputeSlaves.push_back(new Task<kmeans_slave>("slave",rlist));
 		cdtMasterSlave.push_back(new Conduit(&kmeansComputeMaster, kmeansComputeSlaves[i]));
 	}
 	for(int k=0; k<N; k++){
-		if(ctx.getProcRank()==0){
-				for (int i=0; i<numClusters; i++)
-					for (int j=0; j<numCoords; j++)
-						clusters[i][j] = objects[i][j];
-			}
-		ctx.Barrier();
+	if(ctx.getProcRank()==0){
+			for (int i=0; i<numClusters; i++)
+				for (int j=0; j<numCoords; j++)
+					clusters[i][j] = objects[i][j];
+		}
+	ctx.Barrier();
 	kmeansComputeMaster.init(objects,  numCoords,  numObjs,  numClusters,
 			membership, clusters, cdtMasterSlave, &master_runtime, &loops);
 	for(int i=0; i< nslaves; i++)

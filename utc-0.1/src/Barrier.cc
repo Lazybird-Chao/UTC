@@ -261,8 +261,20 @@ void SpinBarrier::wait(){
 		m_generation.fetch_add(1);
 		return;
 	}
+	long _counter=0;
 	while(m_generation.load()==generation){
-		_mm_pause();
+		_counter++;
+		if(_counter<USE_PAUSE)
+			_mm_pause();
+		else if(_counter<USE_SHORT_SLEEP){
+			__asm__ __volatile__ ("pause" ::: "memory");
+			std::this_thread::yield();
+		}
+		else if(_counter<USE_LONG_SLEEP)
+			nanosleep(&SHORT_PERIOD, nullptr);
+		else
+			nanosleep(&LONG_PERIOD, nullptr);
+
 	}
 	return;
 }
