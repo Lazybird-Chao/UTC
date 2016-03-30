@@ -30,6 +30,8 @@ public:
 	int Write(void* DataPtr, DataSize_t DataSize, int tag);
 	int WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
 	void WriteBy_Finish(int tag){};
+	int WriteByFirst(void* DataPtr, DataSize_t DataSize, int tag);
+
 
 	int PWrite(void* DataPtr, DataSize_t DataSize, int tag);
 	int PWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
@@ -39,6 +41,7 @@ public:
 	int Read(void* DataPtr, DataSize_t DataSize, int tag);
 	int ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
 	void ReadBy_Finish(int tag){};
+	int ReadByFirst(void* DataPtr, DataSize_t DataSize, int tag);
 
 
 	/*
@@ -83,6 +86,8 @@ private:
 	std::vector<std::atomic<int>*> m_OpThreadAvailable;
 	std::vector<std::atomic<intptr_t>*> m_OpThreadFinish;
 
+	int *m_OpFirstIdx;
+	std::atomic<bool> m_OpThreadIsFirst[1024];
 
 #ifdef ENALBE_OPBY_FINISH
 	///// for OpByFinish

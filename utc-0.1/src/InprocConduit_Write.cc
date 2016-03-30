@@ -629,4 +629,153 @@ void InprocConduit::WriteBy_Finish(int tag)
 }// end PWriteBy_Finish
 #endif
 
+
+
+int InprocConduit::WriteByFirst(void *DataPtr, DataSize_t DataSize, int tag){
+#ifdef USE_DEBUG_LOG
+    if(!m_threadOstream)
+        m_threadOstream = getThreadOstream();
+#endif
+    // current calling thread's belonging task id
+    static thread_local int myTaskid = -1;
+    static thread_local int myThreadRank = -1;
+    static thread_local int myLocalRank = -1;
+    if(myTaskid == -1)
+    {
+        myTaskid = TaskManager::getCurrentTaskId();
+        myThreadRank = TaskManager::getCurrentThreadRankinTask();
+        myLocalRank = TaskManager::getCurrentThreadRankInLocal();
+    }
+    if(myTaskid == m_srcId){
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" call write...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+#endif
+        int idx = m_srcOpFirstIdx[myLocalRank];
+        bool isfirst = true;
+        if(m_srcOpThreadIsFirst[idx].compare_exchange_strong(isfirst, false)){
+        	// do msg r/w
+            MsgInfo_t *tmp_buffptr = m_srcInnerMsgQueue->pop(myLocalRank);
+            if(tmp_buffptr == nullptr){
+                std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
+                exit(1);
+            }
+#ifdef USE_DEBUG_LOG
+    PRINT_TIME_NOW(*m_threadOstream)
+    *m_threadOstream<<"src-thread "<<myThreadRank<<" doing write ...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+#endif
+            if(DataSize <= CONDUIT_BUFFER_SIZE){
+				// small message, no need malloc space
+				tmp_buffptr->dataPtr = tmp_buffptr->smallDataBuff;
+				memcpy(tmp_buffptr->dataPtr, DataPtr, DataSize);
+				tmp_buffptr->usingPtr = false;
+        	}
+        	else{
+        		// big msg, using ptr for transfer
+        		tmp_buffptr->dataPtr= DataPtr;
+        		tmp_buffptr->usingPtr = true;
+        		tmp_buffptr->safeRelease = &m_srcUsingPtrFinishFlag[myLocalRank];
+        		m_srcUsingPtrFinishFlag[myLocalRank] = 0;
+        	}
+			tmp_buffptr->dataSize = DataSize;
+            tmp_buffptr->msgTag = tag;
+            // push msg to buffqueue for reader to read
+            if(m_srcBuffQueue->push(tmp_buffptr,myLocalRank)){
+                std::cerr<<"ERROR, potential write timeout!"<<std::endl;
+                exit(1);
+            }
+            if(DataSize > CONDUIT_BUFFER_SIZE){
+        		// big msg using ptr, need wait reader finish
+            	long _counter=0;
+        		while(m_srcUsingPtrFinishFlag[myLocalRank] == 0){
+        			_counter++;
+					if(_counter<USE_PAUSE)
+						_mm_pause();
+					else if(_counter<USE_SHORT_SLEEP){
+						__asm__ __volatile__ ("pause" ::: "memory");
+						std::this_thread::yield();
+					}
+					else if(_counter<USE_LONG_SLEEP)
+						nanosleep(&SHORT_PERIOD, nullptr);
+					else
+						nanosleep(&LONG_PERIOD, nullptr);
+        		}
+        	}
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" finish write!:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+#endif
+        }
+        m_srcOpFirstIdx[myLocalRank]++;
+    }
+    else if(myTaskid == m_dstId){
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" call write...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+#endif
+        int idx = m_dstOpFirstIdx[myLocalRank];
+        bool isfirst = true;
+        if(m_dstOpThreadIsFirst[idx].compare_exchange_strong(isfirst, false)){
+        	 MsgInfo_t *tmp_buffptr = m_dstInnerMsgQueue->pop(myLocalRank);
+            if(tmp_buffptr == nullptr){
+                std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
+                exit(1);
+            }
+#ifdef USE_DEBUG_LOG
+    PRINT_TIME_NOW(*m_threadOstream)
+    *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing write ...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+#endif
+            if(DataSize <= CONDUIT_BUFFER_SIZE){
+				// small message, no need malloc space
+				tmp_buffptr->dataPtr = tmp_buffptr->smallDataBuff;
+				memcpy(tmp_buffptr->dataPtr, DataPtr, DataSize);
+				tmp_buffptr->usingPtr = false;
+        	}
+        	else{
+        		// big msg, using ptr for transfer
+        		tmp_buffptr->dataPtr= DataPtr;
+        		tmp_buffptr->usingPtr = true;
+        		tmp_buffptr->safeRelease = &m_dstUsingPtrFinishFlag[myLocalRank];
+        		m_dstUsingPtrFinishFlag[myLocalRank] = 0;
+        	}
+            tmp_buffptr->dataSize = DataSize;
+            tmp_buffptr->msgTag = tag;
+            if(m_dstBuffQueue->push(tmp_buffptr,myLocalRank)){
+                std::cerr<<"ERROR, potential write timeout!"<<std::endl;
+                exit(1);
+            }
+            if(DataSize > CONDUIT_BUFFER_SIZE){
+            	long _counter=0;
+            	while(m_dstUsingPtrFinishFlag[myLocalRank] == 0){
+            		_counter++;
+					if(_counter<USE_PAUSE)
+						_mm_pause();
+					else if(_counter<USE_SHORT_SLEEP){
+						__asm__ __volatile__ ("pause" ::: "memory");
+						std::this_thread::yield();
+					}
+					else if(_counter<USE_LONG_SLEEP)
+						nanosleep(&SHORT_PERIOD, nullptr);
+					else
+						nanosleep(&LONG_PERIOD, nullptr);
+	        	}
+            }
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" finish write!:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+#endif
+        }
+
+        m_dstOpFirstIdx[myLocalRank]++;
+    }
+    else{
+    	std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
+        exit(1);
+    }
+    return 0;
+}// end WriteByFirst()
+
+
+
+
 }// end namespace iUtc

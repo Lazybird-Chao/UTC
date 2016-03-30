@@ -43,19 +43,6 @@ private:
 
 
 
-/*
- *  A pair of macros, used in user task codes to define a piece of statements that will
- *  only be executed by one thread. Other threads would wait the completion of
- *  the executed thread.
- */
-
-#define UNIQUE_EXE_START(onec_flag_idx)
-
-#define UNIQUE_EXE_END
-
-
-
-
 class SpinLock{
 public:
 	SpinLock();

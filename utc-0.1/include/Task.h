@@ -184,7 +184,6 @@ private:
 
 
 
-
 // C++ template can not use separate compilation
 // template declare and define(implement) shout both in header file
 #include "Task.inc"

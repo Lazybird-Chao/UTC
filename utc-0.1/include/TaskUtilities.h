@@ -4,7 +4,9 @@
 namespace iUtc{
 
 
-// some utility functions can be used in user task code.
+/*
+ * some utility functions can be used in user task code.
+ */
 
 // get the process's output file stream
 std::ofstream* getProcOstream();
@@ -36,6 +38,14 @@ int getGsize();
 TaskBase* getCurrentTask();
 
 TaskBase* getParentTask();
+
+
+bool getUniqueExecution();
+
+
+
+
+
 
 }// end namespace iUtc
 

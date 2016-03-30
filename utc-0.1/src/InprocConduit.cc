@@ -67,6 +67,7 @@ void InprocConduit::initInprocConduit(){
     m_srcOpThreadAvailable.push_back(new std::atomic<int>(0));
     m_srcOpThreadFinish.push_back(new std::atomic<intptr_t>((intptr_t)new boost::latch(1)));
 
+
     // extra one for async op
     m_srcUsingPtrFinishFlag = new std::atomic<int>[m_numSrcLocalThreads+1];
     for(int i=0; i<m_numSrcLocalThreads+1; i++){
@@ -109,6 +110,17 @@ void InprocConduit::initInprocConduit(){
         m_dstUsingPtrFinishFlag[i].store(0);
     }
 
+
+    m_srcOpFirstIdx = new int[m_numSrcLocalThreads];
+    for(int i=0; i<m_numSrcLocalThreads; i++)
+    	m_srcOpFirstIdx=0;
+    m_dstOpFirstIdx = new int[m_numDstLocalThreads];
+    for(int i=0; i<m_numDstLocalThreads; i++)
+    	m_dstOpFirstIdx=0;
+    for(int i=0; i<1024; i++){
+    	m_srcOpThreadIsFirst[i]=true;
+    	m_dstOpThreadIsFirst[i]=true;
+    }
 
 
 #ifdef ENABLE_OPBY_FINISH
@@ -203,6 +215,9 @@ void InprocConduit::clear(){
     m_srcOpThreadFinish.clear();
     m_dstOpThreadAvailable.clear();
     m_dstOpThreadFinish.clear();
+
+    delete m_srcOpFirstIdx;
+    delete m_dstOpFirstIdx;
 
     //
     m_dstInnerMsgQueue->setupEndPop();

@@ -41,6 +41,7 @@ public:
 	int Write(void* DataPtr, DataSize_t DataSize, int tag);
     int WriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
     void WriteBy_Finish(int tag){};
+    int WriteByFirst(void* DataPtr, DataSize_t DataSize, int tag);
 	
 	/*
 	 *
@@ -59,6 +60,7 @@ public:
     int Read(void* DataPtr, DataSize_t DataSize, int tag);
 	int ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
 	void ReadBy_Finish(int tag){};
+	int ReadByFirst(void *DataPtr, DataSize_t DataSize, int tag);
 
 	/*
 	 *
@@ -145,6 +147,11 @@ private:
 	std::vector<std::atomic<intptr_t>*> m_srcOpThreadFinish;
 	std::vector<std::atomic<int>*> m_dstOpThreadAvailable;
 	std::vector<std::atomic<intptr_t>*> m_dstOpThreadFinish;
+
+	std::atomic<bool> m_srcOpThreadIsFirst[1024];
+	int *m_srcOpFirstIdx;
+	std::atomic<bool> m_dstOpThreadIsFirst[1024];
+	int *m_dstOpFirstIdx;
 
 	/*
 	 * dst side buffer pool

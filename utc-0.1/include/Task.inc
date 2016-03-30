@@ -456,6 +456,7 @@ void Task<T>::threadImpl(ThreadRank_t trank, ThreadRank_t lrank, std::ofstream *
 
 	ThreadPrivateData *threadPrivateData = new ThreadPrivateData();
 	threadPrivateData->threadOstream = output;
+	threadPrivateData->taskUniqueExeTagObj = m_uniqueExeObjPtr;
 	m_threadPrivateData.reset(threadPrivateData);
 
 	//
@@ -701,6 +702,11 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList)
 	{
 		// create the barrier object in a task
 		m_taskBarrierObjPtr = new Barrier(m_numLocalThreads, m_TaskId, &m_taskComm);
+	}
+
+	if(m_numLocalThreads !=0){
+		// init unique execution control info
+		m_uniqueExeObjPtr = new UniqueExeTag(m_numLocalThreads, 64);
 	}
 
 	if(m_numLocalThreads!=0)  // there are threads need to be created on current process

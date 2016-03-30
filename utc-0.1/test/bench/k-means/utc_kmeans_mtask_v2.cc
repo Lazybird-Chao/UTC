@@ -141,7 +141,7 @@ public:
 			sbarrier.wait();
 			t1 += timer.stop();
 			/* send slave task's cluster info to master */
-			cdt2master->WriteBy(0,&numChanges, sizeof(int), loopcounter*3);
+			/*cdt2master->WriteBy(0,&numChanges, sizeof(int), loopcounter*3);
 			if(numTotalThreads>1)
 				cdt2master->WriteBy(1,newClusterSize, numClusters*sizeof(int), loopcounter*3+1);
 			else
@@ -149,14 +149,17 @@ public:
 			if(numTotalThreads>2)
 				cdt2master->WriteBy(2,newClusters[0], numClusters * numCoords*sizeof(float), loopcounter*3+2);
 			else
-				cdt2master->WriteBy(0,newClusters[0], numClusters * numCoords*sizeof(float), loopcounter*3+2);
+				cdt2master->WriteBy(0,newClusters[0], numClusters * numCoords*sizeof(float), loopcounter*3+2);*/
+			cdt2master->WriteByFirst(&numChanges, sizeof(int), loopcounter*3);
+			cdt2master->WriteByFirst(newClusterSize, numClusters*sizeof(int), loopcounter*3+1);
+			cdt2master->WriteByFirst(newClusters[0], numClusters * numCoords*sizeof(float), loopcounter*3+2);
 			/* update local cluster from master */
 			cdt2master->Read(&continueloop, sizeof(bool), loopcounter*2);
 
 			if(continueloop){
-				cdt2master->ReadBy(0,clusters[0], numClusters*numCoords*sizeof(float), loopcounter*2+1);
+				cdt2master->ReadByFirst(clusters[0], numClusters*numCoords*sizeof(float), loopcounter*2+1);
 				/* reset newClusters for next loop */
-				if(numTotalThreads>1 && taskThreadId ==1){
+				/*if(numTotalThreads>1 && taskThreadId ==1){
 					memset(newClusterSize, 0, numClusters*sizeof(int));
 					memset(newClusters[0], 0, numClusters * numCoords*sizeof(float));
 					numChanges = 0;
@@ -165,7 +168,7 @@ public:
 					memset(newClusterSize, 0, numClusters*sizeof(int));
 					memset(newClusters[0], 0, numClusters * numCoords*sizeof(float));
 					numChanges = 0;
-				}
+				}*/
 				//intra_Barrier();
 				sbarrier.wait();
 			}

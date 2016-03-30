@@ -1,6 +1,7 @@
 #include "Task.h"
 #include "RootTask.h"
 #include "../include/TaskUtilities.h"
+#include "UniqueExeTag.h"
 
 #include <functional>
 #include "boost/filesystem.hpp"
@@ -161,6 +162,18 @@ TaskBase* getParentTask()
 		ParentTaskPtr = TaskManager::getParentTask();
 	}
 	return ParentTaskPtr;
+}
+
+
+
+bool getUniqueExecution(){
+	static thread_local UniqueExeTag *uniqueExeTagPtr = nullptr;
+	static thread_local int mylocalrank = -1;
+	if(uniqueExeTagPtr== nullptr){
+		uniqueExeTagPtr = TaskBase::getThreadPrivateData()->taskUniqueExeTagObj;
+		mylocalrank = TaskManager::getCurrentThreadRankInLocal();
+	}
+	return uniqueExeTagPtr->getUniqueExe(mylocalrank);
 }
 
 

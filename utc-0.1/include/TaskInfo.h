@@ -1,11 +1,14 @@
 #ifndef UTC_TASKINFO_H_
 #define UTC_TASKINFO_H_
 
+#include "UtcBasics.h"
+#include "Barrier.h"
+#include "UniqueExeTag.h"
+
+
 #include <pthread.h>
 #include <iostream>
 
-#include "UtcBasics.h"
-#include "Barrier.h"
 #ifdef USE_MPI_BASE
 	#include <mpi.h>
 #endif
@@ -46,6 +49,7 @@ struct ThreadPrivateData
 {
 	 //
 	 std::ofstream *threadOstream = nullptr;
+	 UniqueExeTag *taskUniqueExeTagObj = nullptr;
 };
 
 }//namespace iUtc

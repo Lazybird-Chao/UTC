@@ -48,6 +48,7 @@ public:
 #ifdef ENABLE_OPBY_FINISH
 	void WriteBy_Finish(int tag);
 #endif
+	int WriteByFirst(void* DataPtr, DataSize_t DataSize, int tag);
 
 	int BWrite(void* DataPtr, DataSize_t DataSize, int tag);
 	int BWriteBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSize, int tag);
@@ -66,6 +67,8 @@ public:
 #ifdef ENABLE_OPBY_FINISH
 	void ReadBy_Finish(int tag);
 #endif
+	int ReadByFirst(void* DataPtr, DataSize_t DataSize, int tag);
+
 
 	int AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag);
 	void AsyncWrite_Finish(int tag);

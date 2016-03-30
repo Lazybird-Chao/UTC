@@ -3,6 +3,7 @@
 
 #include "UtcBasics.h"
 #include "TaskInfo.h"
+#include "UniqueExeTag.h"
 
 
 #include <map>
@@ -15,6 +16,7 @@
 #include "ProcList.h"
 
 namespace iUtc{
+
 
 class TaskBase{
 public:
@@ -56,6 +58,7 @@ public:
 
     bool hasActiveLocalThread();
     void waitLocalThreadFinish();
+
 
     void display();
 
@@ -101,6 +104,9 @@ protected:
     int m_activeLocalThreadCount;
     std::mutex m_activeLocalThreadMutex;
     std::condition_variable m_activeLocalThreadCond;
+
+    // used for unique execution control
+    UniqueExeTag *m_uniqueExeObjPtr;
 
     // can't use taskbase obj directly
     TaskBase();

@@ -249,6 +249,18 @@ void Conduit::WriteBy_Finish(int tag)
 }
 #endif
 
+int Conduit::WriteByFirst(void* DataPtr, DataSize_t DataSize, int tag)
+{
+	if(m_realConduitPtr){
+		m_realConduitPtr->WriteByFirst(DataPtr, DataSize, tag);
+	}
+	else{
+		return 1;
+	}
+	return 0;
+}
+
+
 int Conduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag)
 {
 	if(m_realConduitPtr)
@@ -371,6 +383,18 @@ void Conduit::ReadBy_Finish(int tag)
 	return;
 }
 #endif
+
+int Conduit::ReadByFirst(void* DataPtr, DataSize_t DataSize, int tag)
+{
+	if(m_realConduitPtr){
+		m_realConduitPtr->Read(DataPtr, DataSize, tag);
+	}
+	else{
+		return 1;
+	}
+	return 0;
+}
+
 
 
 int Conduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)

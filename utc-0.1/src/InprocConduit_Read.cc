@@ -567,6 +567,7 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 				m_dstOpThreadAvailable.push_back(new std::atomic<int>(0));
 				boost::latch* tmp_latch= new boost::latch(1);
 				m_dstOpThreadFinish.push_back(new std::atomic<intptr_t>((intptr_t)tmp_latch));
+
 				MsgInfo_t	*tmp_buffptr;
 				long _counter=0;
 				while(1){
@@ -1157,6 +1158,223 @@ void InprocConduit::ReadBy_Finish(int tag)
 
 }// end ReadBy_Finish()
 #endif
+
+
+int InprocConduit::ReadByFirst(void * DataPtr, DataSize_t DataSize, int tag){
+#ifdef USE_DEBUG_LOG
+    if(!m_threadOstream)
+        m_threadOstream = getThreadOstream();
+#endif
+    static thread_local int myTaskid = -1;
+    static thread_local int myThreadRank = -1;
+    static thread_local int myLocalRank = -1;
+    if(myTaskid == -1)
+	{
+		myTaskid = TaskManager::getCurrentTaskId();
+		myThreadRank = TaskManager::getCurrentThreadRankinTask();
+		myLocalRank = TaskManager::getCurrentThreadRankInLocal();
+	}
+
+	if(myTaskid == m_srcId){
+#ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"src-thread "<<myThreadRank<<" call ReadByFirst..."<<std::endl;
+#endif
+		int idx = m_srcOpFirstIdx[myLocalRank];
+		bool isfirst=true;
+		if(m_srcOpThreadIsFirst[idx].compare_exchange_strong(isfirst, false)){
+			// the first coming thread
+			// doing read op
+			MsgInfo_t	*tmp_buffptr;
+			long _counter=0;
+			while(1){
+				tmp_buffptr = m_dstBuffQueue->try_pop(myLocalRank);
+				if(tmp_buffptr!=nullptr && tmp_buffptr->msgTag == tag)
+					break;
+				else{
+					if(tmp_buffptr!=nullptr)
+						m_dstBuffMap.insert(std::pair<int, MsgInfo_t*>(tmp_buffptr->msgTag, tmp_buffptr));
+					if(m_dstBuffMap.find(tag) != m_dstBuffMap.end()){
+						// find msg in map
+						tmp_buffptr = m_dstBuffMap[tag];
+						m_dstBuffMap.erase(tag);
+						break;
+					}
+
+				}
+				_counter++;
+				if(_counter<USE_PAUSE)
+					_mm_pause();
+				else if(_counter<USE_SHORT_SLEEP){
+					__asm__ __volatile__ ("pause" ::: "memory");
+					std::this_thread::yield();
+				}
+				else if(_counter<USE_LONG_SLEEP)
+					nanosleep(&SHORT_PERIOD, nullptr);
+				else
+					nanosleep(&LONG_PERIOD, nullptr);
+			}
+#ifdef USE_DEBUG_LOG
+PRINT_TIME_NOW(*m_threadOstream)
+*m_threadOstream<<"src-thread "<<myThreadRank<<" doing read msg...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+#endif
+			if(tmp_buffptr->usingPtr){
+				// use ptr for transfer
+#ifdef USE_DEBUG_ASSERT
+				assert((tmp_buffptr->safeRelease)->load()==0);
+#endif
+				char *p_s = (char*)tmp_buffptr->dataPtr;
+				char *p_d = (char*)DataPtr;
+				long tmp_size = DataSize;
+				for(int i=0; i<(DataSize+INPROC_COPY_THRESHHOLD-1)/INPROC_COPY_THRESHHOLD -1; i++)
+				{
+					memcpy(p_d, p_s, INPROC_COPY_THRESHHOLD);
+					p_d=p_d+INPROC_COPY_THRESHHOLD;
+					p_s=p_s+INPROC_COPY_THRESHHOLD;
+					tmp_size -= INPROC_COPY_THRESHHOLD;
+				}
+				memcpy(p_d, p_s, tmp_size);
+				// tell writer, here finish read, he can go
+				(tmp_buffptr->safeRelease)->store(1);
+			}
+			else{
+				// use intermediate buffer
+				char *p_s = (char*)tmp_buffptr->dataPtr;
+				char *p_d = (char*)DataPtr;
+				long tmp_size = DataSize;
+				for(int i=0; i<(DataSize+INPROC_COPY_THRESHHOLD-1)/INPROC_COPY_THRESHHOLD -1; i++)
+				{
+					memcpy(p_d, p_s, INPROC_COPY_THRESHHOLD);
+					p_d=p_d+INPROC_COPY_THRESHHOLD;
+					p_s=p_s+INPROC_COPY_THRESHHOLD;
+					tmp_size -= INPROC_COPY_THRESHHOLD;
+				}
+				memcpy(p_d, p_s, tmp_size);
+				if(DataSize > CONDUIT_BUFFER_SIZE)
+					// big msg space is malloced, need free after read
+					free(tmp_buffptr->dataPtr);
+			}
+			//
+			tmp_buffptr->dataSize = 0;
+			tmp_buffptr->usingPtr = false;
+			tmp_buffptr->msgTag = -1;
+			tmp_buffptr->dataPtr = nullptr;
+			tmp_buffptr->safeRelease = nullptr;
+			// return this buffer to dst's inner msg queue
+			if(m_dstInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
+				std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
+				exit(1);
+			}
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" finish read:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+#endif
+		}
+
+		m_srcOpFirstIdx[myLocalRank]++;
+
+	}
+	else if(myTaskid== m_dstId){
+#ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"dst-thread "<<myThreadRank<<" call ReadByFirst..."<<std::endl;
+#endif
+		int idx = m_dstOpFirstIdx[myLocalRank];
+		bool isfirst = true;
+		if(m_dstOpThreadIsFirst[idx].compare_exchange_strong(isfirst, false)){
+			MsgInfo_t	*tmp_buffptr;
+			long _counter=0;
+			while(1){
+				tmp_buffptr = m_srcBuffQueue->try_pop(myLocalRank);
+				if(tmp_buffptr!=nullptr && tmp_buffptr->msgTag == tag)
+					break;
+				else{
+					if(tmp_buffptr!=nullptr)
+						m_srcBuffMap.insert(std::pair<int, MsgInfo_t*>(tmp_buffptr->msgTag, tmp_buffptr));
+					if(m_srcBuffMap.find(tag) != m_srcBuffMap.end()){
+						// find msg in map
+						tmp_buffptr = m_srcBuffMap[tag];
+						m_srcBuffMap.erase(tag);
+						break;
+					}
+
+				}
+				_counter++;
+				if(_counter<USE_PAUSE)
+					_mm_pause();
+				else if(_counter<USE_SHORT_SLEEP){
+					__asm__ __volatile__ ("pause" ::: "memory");
+					std::this_thread::yield();
+				}
+				else if(_counter<USE_LONG_SLEEP)
+					nanosleep(&SHORT_PERIOD, nullptr);
+				else
+					nanosleep(&LONG_PERIOD, nullptr);
+			}
+#ifdef USE_DEBUG_LOG
+PRINT_TIME_NOW(*m_threadOstream)
+*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read msg...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+#endif
+			if(tmp_buffptr->usingPtr){
+				// use ptr for transfer
+#ifdef USE_DEBUG_ASSERT
+				assert((tmp_buffptr->safeRelease)->load()==0);
+#endif
+				char *p_s = (char*)tmp_buffptr->dataPtr;
+				char *p_d = (char*)DataPtr;
+				long tmp_size = DataSize;
+				for(int i=0; i<(DataSize+INPROC_COPY_THRESHHOLD-1)/INPROC_COPY_THRESHHOLD -1; i++)
+				{
+					memcpy(p_d, p_s, INPROC_COPY_THRESHHOLD);
+					p_d=p_d+INPROC_COPY_THRESHHOLD;
+					p_s=p_s+INPROC_COPY_THRESHHOLD;
+					tmp_size -= INPROC_COPY_THRESHHOLD;
+				}
+				memcpy(p_d, p_s, tmp_size);
+				// tell writer, here finish read, he can go
+				(tmp_buffptr->safeRelease)->store(1);
+			}
+			else{
+				// use intermediate buffer
+				char *p_s = (char*)tmp_buffptr->dataPtr;
+				char *p_d = (char*)DataPtr;
+				long tmp_size = DataSize;
+				for(int i=0; i<(DataSize+INPROC_COPY_THRESHHOLD-1)/INPROC_COPY_THRESHHOLD -1; i++)
+				{
+					memcpy(p_d, p_s, INPROC_COPY_THRESHHOLD);
+					p_d=p_d+INPROC_COPY_THRESHHOLD;
+					p_s=p_s+INPROC_COPY_THRESHHOLD;
+					tmp_size -= INPROC_COPY_THRESHHOLD;
+				}
+				memcpy(p_d, p_s, tmp_size);
+				if(DataSize > CONDUIT_BUFFER_SIZE)
+					// big msg space is malloced, need free after read
+					free(tmp_buffptr->dataPtr);
+			}
+			//
+			tmp_buffptr->dataSize = 0;
+			tmp_buffptr->usingPtr = false;
+			tmp_buffptr->msgTag = -1;
+			tmp_buffptr->dataPtr = nullptr;
+			tmp_buffptr->safeRelease = nullptr;
+			// return this buffer to dst's inner msg queue
+			if(m_srcInnerMsgQueue->push(tmp_buffptr,myLocalRank)){
+				std::cerr<<"ERROR, potential return buff timeout!"<<std::endl;
+				exit(1);
+			}
+#ifdef USE_DEBUG_LOG
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" finish read:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+#endif
+		}
+		m_dstOpFirstIdx[myLocalRank]++;
+	}
+	else{
+		std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
+		exit(1);
+	}
+	return 0;
+}// end ReadByFirst()
 
 
 

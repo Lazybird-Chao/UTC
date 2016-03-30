@@ -46,15 +46,20 @@ XprocConduit::XprocConduit(TaskBase* srctask, TaskBase* dsttask, int cdtId, std:
 	m_OpThreadAvailable.push_back(new std::atomic<int>(0));
 	m_OpThreadFinish.push_back(new std::atomic<intptr_t>((intptr_t)new boost::latch(1)));
 
+	m_OpFirstIdx = new int[numLocalThreads];
+	for(int i=0; i<numLocalThreads; i++)
+		m_OpFirstIdx[i]=0;
+	for(int i=0; i<1024;i++)
+		m_OpThreadIsFirst[i]=true;
 
-	//
+	// for opby
 #ifdef ENABLE_OPBY_FINISH
 	m_readbyFinishSet.clear();
 	m_writebyFinishSet.clear();
 #endif
 
 
-	//
+	// for async
 #ifdef USE_MPI_BASE
 	m_asyncReadFinishSet.clear();
 	m_asyncWriteFinishSet.clear();
@@ -1213,6 +1218,7 @@ XprocConduit::~XprocConduit()
 	delete m_OpThreadAtomic;*/
 	m_OpThreadAvailable.clear();
 	m_OpThreadFinish.clear();
+	delete m_OpFirstIdx;
 
 	//
 #ifdef ENABLE_OPBY_FINISH
@@ -1246,6 +1252,189 @@ XprocConduit::~XprocConduit()
 #endif
 
 }
+
+int XprocConduit::WriteByFirst(void* DataPtr, DataSize_t DataSize, int tag){
+#ifdef USE_DEBUG_LOG
+    if(!m_threadOstream)
+        m_threadOstream = getThreadOstream();
+#endif
+    //
+	int mpiOtherEndProc = -1;
+	int localNumthreads = -1;
+	static thread_local int myThreadRank = -1;
+	static thread_local int myTaskid=-1;
+	static thread_local int myLocalRank = -1;
+	if(myTaskid == -1)
+	{
+		myTaskid = TaskManager::getCurrentTaskId();
+		myThreadRank = TaskManager::getCurrentThreadRankinTask();
+		myLocalRank = TaskManager::getCurrentThreadRankInLocal();
+	}
+	if(myTaskid == m_srcId)
+	{
+		mpiOtherEndProc = m_dstMainResideProc;
+		localNumthreads = m_numSrcLocalThreads;
+	}
+	else if(myTaskid == m_dstId)
+	{
+		mpiOtherEndProc = m_srcMainResideProc;
+		localNumthreads = m_numDstLocalThreads;
+	}
+	else
+	{
+		std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;
+		exit(1);
+	}
+
+#ifdef USE_DEBUG_LOG
+	if(myTaskid == m_srcId)
+	{
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"src-thread "<<myThreadRank<<" call write...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+	}
+	else
+	{
+		PRINT_TIME_NOW(*m_threadOstream)
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" call write...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+	}
+#endif
+
+	int idx = m_OpFirstIdx[myLocalRank];
+	bool isfirst = true;
+	if(m_OpThreadIsFirst[idx].compare_exchange_strong(isfirst, false)){
+#ifdef USE_DEBUG_LOG
+	if(myTaskid == m_srcId)
+	{
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"src-thread "<<myThreadRank<<" doing write...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+	}
+	else
+	{
+		PRINT_TIME_NOW(*m_threadOstream)
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing write...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+	}
+#endif
+
+#ifdef USE_MPI_BASE
+		MPI_Datatype datatype=MPI_CHAR;
+		if(DataSize > ((unsigned)1<<31)-1){
+			DataSize = (DataSize+3)/4;
+			datatype = MPI_INT;
+		}
+		MPI_Send(DataPtr, (int)DataSize, datatype, mpiOtherEndProc,
+				(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD);
+#endif
+	}
+
+	m_OpFirstIdx[myLocalRank]++;
+
+#ifdef USE_DEBUG_LOG
+	if(myTaskid == m_srcId)
+	{
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"src-thread "<<myThreadRank<<" finish write:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+	}
+	else
+	{
+		PRINT_TIME_NOW(*m_threadOstream)
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish write:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+	}
+#endif
+
+	return 0;
+}// end WriteByFirst()
+
+
+int XprocConduit::Read(void* DataPtr, DataSize_t DataSize, int tag){
+#ifdef USE_DEBUG_LOG
+    if(!m_threadOstream)
+        m_threadOstream = getThreadOstream();
+#endif
+    // current calling thread's belonging task id
+	int mpiOtherEndProc = -1;
+	int localNumthreads = -1;
+	static thread_local int myThreadRank = -1;
+	static thread_local int myTaskid=-1;
+	static thread_local int myLocalRank=-1;
+	if(myTaskid == -1)
+	{
+		myTaskid = TaskManager::getCurrentTaskId();
+		myThreadRank = TaskManager::getCurrentThreadRankinTask();
+		myLocalRank = TaskManager::getCurrentThreadRankInLocal();
+	}
+	if(myTaskid == m_srcId)
+	{
+		mpiOtherEndProc = m_dstMainResideProc;
+		localNumthreads = m_numSrcLocalThreads;
+	}
+	else if(myTaskid == m_dstId)
+	{
+		mpiOtherEndProc = m_srcMainResideProc;
+		localNumthreads = m_numDstLocalThreads;
+	}
+	else
+	{
+		std::cerr<<"Error, conduit doesn't associate to calling task!"<<std::endl;
+		exit(1);
+	}
+
+#ifdef USE_DEBUG_LOG
+	if(myTaskid == m_srcId)
+	{
+        PRINT_TIME_NOW(*m_threadOstream)
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" call read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+	}
+	else
+	{
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"dst-thread "<<myThreadRank<<" call read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+	}
+#endif
+
+	int idx = m_OpFirstIdx[myLocalRank];
+	bool isfirst = true;
+	if(m_OpThreadIsFirst[idx].compare_exchange_strong(isfirst, false)){
+#ifdef USE_DEBUG_LOG
+	if(myTaskid == m_srcId)
+	{
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"src-thread "<<myThreadRank<<" doing read...:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+	}
+	else
+	{
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing read...:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+	}
+#endif
+
+#ifdef USE_MPI_BASE
+			// TODO:
+			MPI_Datatype datatype=MPI_CHAR;
+			if(DataSize > ((unsigned)1<<31)-1){
+				DataSize = (DataSize+3)/4;
+				datatype = MPI_INT;
+			}
+			MPI_Recv(DataPtr, (int)DataSize, datatype, mpiOtherEndProc,
+					(tag<<LOG_MAX_CONDUITS)+m_conduitId, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+#endif
+	}
+
+	m_OpFirstIdx[myLocalRank]++;
+
+#ifdef USE_DEBUG_LOG
+		if(myTaskid == m_srcId)
+		{
+			PRINT_TIME_NOW(*m_threadOstream)
+			*m_threadOstream<<"src-thread "<<myThreadRank<<" finish read:("<<m_srcId<<"<-"<<m_dstId<<")"<<std::endl;
+		}
+		else
+		{
+			PRINT_TIME_NOW(*m_threadOstream)
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish read:("<<m_dstId<<"<-"<<m_srcId<<")"<<std::endl;
+		}
+#endif
+	return 0;
+}// end ReadByFirst()
 
 
 }//end namespace iUtc
