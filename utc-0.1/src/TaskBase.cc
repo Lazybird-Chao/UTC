@@ -122,7 +122,8 @@ m_numTotalThreads(0),
 m_processRank(-1),
 m_procOstream(nullptr),
 m_activeLocalThreadCount(0),
-m_mainResideProcess(-1)
+m_mainResideProcess(-1),
+m_uniqueExeObjPtr(nullptr)
 {
     m_TaskRankList.clear();
     m_LocalThreadList.clear();

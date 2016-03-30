@@ -32,7 +32,7 @@ vpath %.cc ./src
 default: test
 
 ### utc library targets
-obj:= 	UtcContext.o UtcMpi.o RankList.o \
+obj:= 	UtcContext.o UtcMpi.o ProcList.o UniqueExeTag.o\
 		RootTask.o  TaskBase.o TaskManager.o Task.o  \
 		ConduitManager.o Conduit.o InprocConduit.o XprocConduit.o\
 		InprocConduit_Write.o InprocConduit_BWrite.o InprocConduit_PWrite.o	InprocConduit_Read.o \
@@ -42,9 +42,9 @@ LIB_UTC := libutc.a
  
 	
 ## test target
-TARGET_SOURCE:= ./test/bench/latency/utc_latency.cc
+TARGET_SOURCE:= ./test/bench/k-means/utc_kmeans_mtask_v2.cc
 TARGET_OBJ:= main.o	
-TARGET_EXE:= utc_latency.out
+TARGET_EXE:= a.out
 
 $(TARGET_OBJ): $(TARGET_SOURCE)
 	$(G++)	-o $(TARGET_OBJ) -c $(TARGET_SOURCE)  $(CCFLAG) $(INCLUDE) 	
@@ -60,9 +60,11 @@ test: $(LIB_UTC) $(TARGET_OBJ)
 
 ### library required object files
 $(LIB_UTC): $(obj)
-	ar -r -uv libutc.a $(obj)
+	ar -r -uv $(LIB_UTC) $(obj)
 	mkdir -p lib; cd lib; mv ../*.o ./; mv ../*.a ./
-RankList.o: RankList.cc
+ProcList.o: ProcList.cc
+	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+UniqueExeTag.o: UniqueExeTag.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 RootTask.o: RootTask.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)

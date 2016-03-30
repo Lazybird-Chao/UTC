@@ -1345,7 +1345,7 @@ int XprocConduit::WriteByFirst(void* DataPtr, DataSize_t DataSize, int tag){
 }// end WriteByFirst()
 
 
-int XprocConduit::Read(void* DataPtr, DataSize_t DataSize, int tag){
+int XprocConduit::ReadByFirst(void* DataPtr, DataSize_t DataSize, int tag){
 #ifdef USE_DEBUG_LOG
     if(!m_threadOstream)
         m_threadOstream = getThreadOstream();

@@ -159,6 +159,11 @@ public:
 			if(continueloop){
 				cdt2master->ReadByFirst(clusters[0], numClusters*numCoords*sizeof(float), loopcounter*2+1);
 				/* reset newClusters for next loop */
+				if(getUniqueExecution()){
+					memset(newClusterSize, 0, numClusters*sizeof(int));
+					memset(newClusters[0], 0, numClusters * numCoords*sizeof(float));
+					numChanges = 0;
+				}
 				/*if(numTotalThreads>1 && taskThreadId ==1){
 					memset(newClusterSize, 0, numClusters*sizeof(int));
 					memset(newClusters[0], 0, numClusters * numCoords*sizeof(float));

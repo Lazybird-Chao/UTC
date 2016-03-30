@@ -9,7 +9,7 @@
 
 namespace iUtc{
 
-void UniqueExeTag::UniqueExeTag(int nthreads, int ntags){
+UniqueExeTag::UniqueExeTag(int nthreads, int ntags){
 	m_uniqueExeTag = new std::atomic<bool>[ntags];
 	for(int i=0; i<ntags; i++)
 		m_uniqueExeTag[i]=true;

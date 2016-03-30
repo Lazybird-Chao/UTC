@@ -16,7 +16,7 @@ namespace iUtc{
 //
 class UniqueExeTag{
 public:
-	void UniqueExeTag(int nthreads, int ntags);
+	UniqueExeTag(int nthreads, int ntags);
 
 	void reset();
 
