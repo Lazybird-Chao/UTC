@@ -27,8 +27,10 @@ public:
 
 	// synch among threads of a task in one process
 	void synch_intra(int local_rank);
+
 	// synch among threads in a task, including all threads
 	void synch_inter(int local_rank);
+
 
 
 private:
@@ -62,6 +64,7 @@ private:
 
 // utility functions
 void intra_Barrier();
+
 
 void inter_Barrier();
 

@@ -22,8 +22,10 @@ public:
 
 	bool getUniqueExe(int tid);
 
+	~UniqueExeTag();
+
 private:
-	std::atomic<bool> *m_uniqueExeTag;
+	std::atomic<int> *m_uniqueExeTag;
 	int *m_uniqueExeIdx;
 	int m_nthreads;
 	int m_ntags;

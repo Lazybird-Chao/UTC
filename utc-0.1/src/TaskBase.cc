@@ -139,6 +139,8 @@ TaskBase::~TaskBase()
     m_LocalThreadRegistry.clear();
     m_ThreadRank2Local.clear();
     m_procOstream=nullptr;
+    if(m_uniqueExeObjPtr)
+    	delete m_uniqueExeObjPtr;
 }
 
 void TaskBase::RegisterTask()

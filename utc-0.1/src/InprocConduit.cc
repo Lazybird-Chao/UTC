@@ -64,8 +64,11 @@ void InprocConduit::initInprocConduit(){
     }*/
     for(int i=0; i<m_numSrcLocalThreads; i++)
     	m_srcOpTokenFlag[i]=0;
-    m_srcOpThreadAvailable.push_back(new std::atomic<int>(0));
-    m_srcOpThreadFinish.push_back(new std::atomic<intptr_t>((intptr_t)new boost::latch(1)));
+    for(int i=0; i< m_nOps2;i++){
+		m_srcOpThreadAvailable.push_back(new std::atomic<int>(0));
+		m_srcOpThreadFinish.push_back(new std::atomic<int>(1));
+		m_srcOpThreadFinishLatch.push_back(new boost::latch(1));
+    }
 
 
     // extra one for async op
@@ -101,8 +104,11 @@ void InprocConduit::initInprocConduit(){
     }*/
     for(int i=0; i<m_numDstLocalThreads; i++)
 		m_dstOpTokenFlag[i]=0;
-	m_dstOpThreadAvailable.push_back(new std::atomic<int>(0));
-	m_dstOpThreadFinish.push_back(new std::atomic<intptr_t>((intptr_t)new boost::latch(1)));
+    for(int i=0; i<m_nOps2; i++){
+		m_dstOpThreadAvailable.push_back(new std::atomic<int>(0));
+		m_dstOpThreadFinish.push_back(new std::atomic<int>(1));
+		m_dstOpThreadFinishLatch.push_back(new boost::latch(1));
+    }
 
     // extra one for async op
     m_dstUsingPtrFinishFlag = new std::atomic<int>[m_numDstLocalThreads+1];
@@ -113,13 +119,15 @@ void InprocConduit::initInprocConduit(){
 
     m_srcOpFirstIdx = new int[m_numSrcLocalThreads];
     for(int i=0; i<m_numSrcLocalThreads; i++)
-    	m_srcOpFirstIdx=0;
+    	m_srcOpFirstIdx[i]=0;
     m_dstOpFirstIdx = new int[m_numDstLocalThreads];
     for(int i=0; i<m_numDstLocalThreads; i++)
-    	m_dstOpFirstIdx=0;
-    for(int i=0; i<1024; i++){
-    	m_srcOpThreadIsFirst[i]=true;
-    	m_dstOpThreadIsFirst[i]=true;
+    	m_dstOpFirstIdx[i]=0;
+    m_srcOpThreadIsFirst = new std::atomic<int>[m_nOps];
+    m_dstOpThreadIsFirst = new std::atomic<int>[m_nOps];
+    for(int i=0; i<m_nOps; i++){
+    	m_srcOpThreadIsFirst[i]=0;
+    	m_dstOpThreadIsFirst[i]=0;
     }
 
 
@@ -153,12 +161,16 @@ void InprocConduit::initInprocConduit(){
     }*/
     for(int i=0; i<m_numSrcLocalThreads; i++)
 		m_srcAsyncOpTokenFlag[i]=0;
-	m_srcAsyncOpThreadAvailable.push_back(new std::atomic<int>(0));
-	m_srcAsyncOpThreadFinish.push_back(new std::atomic<int>(1));
+    for(int i=0; i<m_nOps2; i++){
+    	m_srcAsyncOpThreadAvailable.push_back(new std::atomic<int>(0));
+    	m_srcAsyncOpThreadFinish.push_back(new std::atomic<int>(1));
+    }
     for(int i=0; i<m_numDstLocalThreads; i++)
 		m_dstAsyncOpTokenFlag[i]=0;
-	m_dstAsyncOpThreadAvailable.push_back(new std::atomic<int>(0));
-	m_dstAsyncOpThreadFinish.push_back(new std::atomic<int>(1));
+    for(int i=0; i<m_nOps2; i++){
+		m_dstAsyncOpThreadAvailable.push_back(new std::atomic<int>(0));
+		m_dstAsyncOpThreadFinish.push_back(new std::atomic<int>(1));
+    }
 
     m_srcAsyncWorkerOn.store(false);
     m_dstAsyncWorkerOn.store(false);
@@ -211,13 +223,25 @@ void InprocConduit::clear(){
     }
     m_srcOpThreadLatch.clear();
 */
+    for(int i=0; i<m_nOps2; i++){
+    	delete m_srcOpThreadAvailable[i];
+    	delete m_srcOpThreadFinish[i];
+    	delete m_dstOpThreadAvailable[i];
+    	delete m_dstOpThreadFinish[i];
+    	delete m_srcOpThreadFinishLatch[i];
+    	delete m_dstOpThreadFinishLatch[i];
+    }
     m_srcOpThreadAvailable.clear();
     m_srcOpThreadFinish.clear();
     m_dstOpThreadAvailable.clear();
     m_dstOpThreadFinish.clear();
+    m_srcOpThreadFinishLatch.clear();
+    m_dstOpThreadFinishLatch.clear();
 
     delete m_srcOpFirstIdx;
     delete m_dstOpFirstIdx;
+    delete m_srcOpThreadIsFirst;
+    delete m_dstOpThreadIsFirst;
 
     //
     m_dstInnerMsgQueue->setupEndPop();
@@ -251,7 +275,14 @@ void InprocConduit::clear(){
     m_srcAsyncWriteFinishSet.clear();
     delete m_srcAsyncWorkQueue;
     delete m_srcAsyncOpTokenFlag;
+
     /*delete m_srcAsyncOpThreadAtomic;*/
+    for(int i=0; i<m_nOps2; i++){
+    	delete m_srcAsyncOpThreadAvailable[i];
+    	delete m_srcAsyncOpThreadFinish[i];
+    	delete m_dstAsyncOpThreadAvailable[i];
+    	delete m_dstAsyncOpThreadFinish[i];
+    }
     m_srcAsyncOpThreadAvailable.clear();
     m_srcAsyncOpThreadFinish.clear();
     m_dstAsyncOpThreadAvailable.clear();

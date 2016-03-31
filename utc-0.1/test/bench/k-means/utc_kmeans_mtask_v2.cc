@@ -67,8 +67,8 @@ public:
 		/* get computation data from master task */
 		cdt2master->Read(objects[0], numObjs * numCoords*sizeof(float), 1);
 		cdt2master->Read(clusters[0], numClusters * numCoords * sizeof(float), 2);
-		//if(getLrank()==0)
-			//std::cout<<"slave finish init()"<<std::endl;
+		/*if(getLrank()==0)
+			std::cout<<"slave finish init()"<<std::endl;*/
 	}
 
 	void run(){
@@ -197,6 +197,8 @@ public:
 		free(localClusters[0]);
 		free(localClusters);
 		free(localClusterSize);
+
+		//std::cout<<"slave finish run"<<std::endl;
 	}
 
 	~kmeans_slave(){
@@ -326,8 +328,8 @@ public:
 			objptr= objptr + datainfo2slave.numObjs*numCoords;
 			cdt->Write(clusters[0], sizeof(float)*numClusters*numCoords, 2);
 		}
-		//if(getLrank()==0)
-			//std::cout<<"master finish init()"<<std::endl;
+		/*if(getLrank()==0)
+			std::cout<<"master finish init()"<<std::endl;*/
 
 	}
 
@@ -420,7 +422,7 @@ public:
 			cdt->Read(memberptr, sizeof(int)*numObjsSlave[i], 0);
 			memberptr += numObjsSlave[i];
 		}
-
+		//std::cout<<"master finish run"<<std::endl;
 	}
 
 	~kmeans_master(){
@@ -522,6 +524,7 @@ int main(int argc, char*argv[]){
 		kmeansComputeSlaves.push_back(new Task<kmeans_slave>("slave",rlist));
 		cdtMasterSlave.push_back(new Conduit(&kmeansComputeMaster, kmeansComputeSlaves[i]));
 	}
+
 	for(int k=0; k<N; k++){
 	if(ctx.getProcRank()==0){
 			for (int i=0; i<numClusters; i++)

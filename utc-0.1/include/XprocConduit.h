@@ -84,10 +84,13 @@ private:
 	 * new mechanism for multi-threads op
 	 */
 	std::vector<std::atomic<int>*> m_OpThreadAvailable;
-	std::vector<std::atomic<intptr_t>*> m_OpThreadFinish;
+	std::vector<std::atomic<int>*> m_OpThreadFinish;
+	std::vector<boost::latch*> m_OpThreadFinishLatch;
+	int m_nOps2=32;
 
 	int *m_OpFirstIdx;
-	std::atomic<bool> m_OpThreadIsFirst[1024];
+	std::atomic<int> *m_OpThreadIsFirst;
+	int m_nOps=32;
 
 #ifdef ENALBE_OPBY_FINISH
 	///// for OpByFinish

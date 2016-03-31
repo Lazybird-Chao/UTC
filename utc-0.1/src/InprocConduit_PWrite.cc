@@ -94,10 +94,6 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 #endif
 			if(m_srcOpThreadAvailable[idx]->compare_exchange_strong(isavailable,1))
 			{
-				// push next item to vector
-				m_srcOpThreadAvailable.push_back(new std::atomic<int>(0));
-				boost::latch* tmp_latch= new boost::latch(1);
-				m_srcOpThreadFinish.push_back(new std::atomic<intptr_t>((intptr_t)tmp_latch));
 
                 // do msg r/w
                 MsgInfo_t *tmp_buffptr = m_srcInnerMsgQueue->pop(myLocalRank);
@@ -137,12 +133,12 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 	        	}
 
 	        	// wake up other waiting thread
-				tmp_latch = (boost::latch*)m_srcOpThreadFinish[idx]->load();
+
 				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
-					tmp_latch->count_down();
+					m_srcOpThreadFinishLatch[idx]->count_down();
 				}
 				else{
-					delete tmp_latch;
+
 					m_srcOpThreadFinish[idx]->store(0);
 				}
 #ifdef USE_DEBUG_LOG
@@ -153,7 +149,7 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
             else{
             	// not the op thread, just wait the op thread finish
 				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
-					boost::latch* tmp_latch = (boost::latch*)m_srcOpThreadFinish[idx]->load();
+					boost::latch* tmp_latch = m_srcOpThreadFinishLatch[idx];
 					if(!tmp_latch->try_wait()){
 						tmp_latch->wait();         // wait on associated latch
 					}
@@ -179,14 +175,14 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 				while(1){
 					int oldvalue = m_srcOpThreadAvailable[idx]->load();
 					if(oldvalue == nthreads){
-						delete m_srcOpThreadAvailable[idx];
-						m_srcOpThreadAvailable[idx]=nullptr;
+						m_srcOpThreadAvailable[idx]->store(0);
 						if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
-							boost::latch* tmp_latch = (boost::latch*)m_srcOpThreadFinish[idx]->load();
-							delete tmp_latch;
+							m_srcOpThreadFinishLatch[idx]->reset(1);
+
 						}
-						delete m_srcOpThreadFinish[idx];
-						m_srcOpThreadFinish[idx]=nullptr;
+						else{
+							m_srcOpThreadFinish[idx]->store(1);
+						}
 						break;
 					}
 					if(m_srcOpThreadAvailable[idx]->compare_exchange_strong(oldvalue,oldvalue+1))
@@ -199,6 +195,7 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 
             }
 			m_srcOpTokenFlag[myLocalRank]++;
+			m_srcOpTokenFlag[myLocalRank]=m_srcOpTokenFlag[myLocalRank]%m_nOps2;
         }
     }// end src
     else if(myTaskid == m_dstId){
@@ -252,9 +249,6 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 			int isavailable = 0;
 			if(m_dstOpThreadAvailable[idx]->compare_exchange_strong(isavailable, 1))
 			{
-				m_dstOpThreadAvailable.push_back(new std::atomic<int>(0));
-				boost::latch* tmp_latch= new boost::latch(1);
-				m_dstOpThreadFinish.push_back(new std::atomic<intptr_t>((intptr_t)tmp_latch));
 
                 MsgInfo_t *tmp_buffptr = m_dstInnerMsgQueue->pop(myLocalRank);
                 if(tmp_buffptr == nullptr){
@@ -291,12 +285,11 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 						nanosleep(&LONG_PERIOD, nullptr);
 	        	}
 
-	        	tmp_latch = (boost::latch*)m_dstOpThreadFinish[idx]->load();
+
 				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
-					tmp_latch->count_down();
+					m_dstOpThreadFinishLatch[idx]->count_down();
 				}
 				else{
-					delete tmp_latch;
 					m_dstOpThreadFinish[idx]->store(0);
 				}
 #ifdef USE_DEBUG_LOG
@@ -305,7 +298,7 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 #endif
             }
             else{
-            	boost::latch* temp_latch = (boost::latch*)m_dstOpThreadFinish[idx]->load();
+            	boost::latch* temp_latch = m_dstOpThreadFinishLatch[idx];
 				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
 					if(!temp_latch->try_wait()){
 						temp_latch->wait();
@@ -332,14 +325,14 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 				while(1){
 					int oldvalue = m_dstOpThreadAvailable[idx]->load();
 					if(oldvalue == nthreads){
-						delete m_dstOpThreadAvailable[idx];
-						m_dstOpThreadAvailable[idx]=nullptr;
+						m_dstOpThreadAvailable[idx]->store(0);
 						if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
-							boost::latch* tmp_latch = (boost::latch*)m_dstOpThreadFinish[idx]->load();
-							delete tmp_latch;
+							m_dstOpThreadFinishLatch[idx]->reset(1);
 						}
-						delete m_dstOpThreadFinish[idx];
-						m_dstOpThreadFinish[idx]=nullptr;
+						else{
+							m_dstOpThreadFinish[idx]->store(1);
+						}
+
 						break;
 					}
 					if(m_dstOpThreadAvailable[idx]->compare_exchange_strong(oldvalue,oldvalue+1))
@@ -351,6 +344,7 @@ int InprocConduit::PWrite(void *DataPtr, DataSize_t DataSize, int tag){
 #endif            
             }
 			m_dstOpTokenFlag[myLocalRank]++;
+			m_dstOpTokenFlag[myLocalRank]=m_dstOpTokenFlag[myLocalRank]%m_nOps2;
         }
     } //end dst
     else{

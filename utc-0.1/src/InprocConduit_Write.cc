@@ -102,12 +102,7 @@ int InprocConduit::Write(void *DataPtr, DataSize_t DataSize, int tag){
 #endif
         	if(m_srcOpThreadAvailable[idx]->compare_exchange_strong(isavailable,1))
             {
-        		// push next item to vector
-				m_srcOpThreadAvailable.push_back(new std::atomic<int>(0));
-				boost::latch* tmp_latch= new boost::latch(1);
-				m_srcOpThreadFinish.push_back(new std::atomic<intptr_t>((intptr_t)tmp_latch));
-
-                // do msg r/w
+        		// do msg r/w
                 MsgInfo_t *tmp_buffptr = m_srcInnerMsgQueue->pop(myLocalRank);
                 if(tmp_buffptr == nullptr){
                     std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
@@ -156,12 +151,13 @@ int InprocConduit::Write(void *DataPtr, DataSize_t DataSize, int tag){
 	        	}
 
                 // wake up other waiting thread
-                tmp_latch = (boost::latch*)m_srcOpThreadFinish[idx]->load();
+
 				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
+					boost::latch* tmp_latch = m_srcOpThreadFinishLatch[idx];
 					tmp_latch->count_down();
 				}
 				else{
-					delete tmp_latch;
+
 					m_srcOpThreadFinish[idx]->store(0);
 				}
 #ifdef USE_DEBUG_LOG
@@ -172,7 +168,7 @@ int InprocConduit::Write(void *DataPtr, DataSize_t DataSize, int tag){
             else{
                 // not the op thread, just wait the op thread finish
                 if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
-                	boost::latch* tmp_latch = (boost::latch*)m_srcOpThreadFinish[idx]->load();
+                	boost::latch* tmp_latch = m_srcOpThreadFinishLatch[idx];
 					if(!tmp_latch->try_wait()){
 						tmp_latch->wait();         // wait on associated latch
 					}
@@ -197,14 +193,14 @@ int InprocConduit::Write(void *DataPtr, DataSize_t DataSize, int tag){
 				while(1){
 					int oldvalue = m_srcOpThreadAvailable[idx]->load();
 					if(oldvalue == nthreads){
-						delete m_srcOpThreadAvailable[idx];
-						m_srcOpThreadAvailable[idx]=nullptr;
+						m_srcOpThreadAvailable[idx]->store(0);
+
 						if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
-							boost::latch* tmp_latch = (boost::latch*)m_srcOpThreadFinish[idx]->load();
-							delete tmp_latch;
+							m_srcOpThreadFinishLatch[idx]->reset(1);
 						}
-						delete m_srcOpThreadFinish[idx];
-						m_srcOpThreadFinish[idx]=nullptr;
+						else{
+							m_srcOpThreadFinish[idx]->store(1);
+						}
 						break;
 					}
 					if(m_srcOpThreadAvailable[idx]->compare_exchange_strong(oldvalue,oldvalue+1))
@@ -218,6 +214,7 @@ int InprocConduit::Write(void *DataPtr, DataSize_t DataSize, int tag){
 
             }
         	m_srcOpTokenFlag[myLocalRank]++;
+        	m_srcOpTokenFlag[myLocalRank]= m_srcOpTokenFlag[myLocalRank]%m_nOps2;
         }
     }// end src
     else if(myTaskid == m_dstId){
@@ -281,9 +278,6 @@ int InprocConduit::Write(void *DataPtr, DataSize_t DataSize, int tag){
         	int isavailable = 0;
             if(m_dstOpThreadAvailable[idx]->compare_exchange_strong(isavailable, 1))
             {
-            	m_dstOpThreadAvailable.push_back(new std::atomic<int>(0));
-				boost::latch* tmp_latch= new boost::latch(1);
-				m_dstOpThreadFinish.push_back(new std::atomic<intptr_t>((intptr_t)tmp_latch));
 
                 MsgInfo_t *tmp_buffptr = m_dstInnerMsgQueue->pop(myLocalRank);
                 if(tmp_buffptr == nullptr){
@@ -330,12 +324,12 @@ int InprocConduit::Write(void *DataPtr, DataSize_t DataSize, int tag){
 		        	}
 	            }
 
-	            tmp_latch = (boost::latch*)m_dstOpThreadFinish[idx]->load();
+
 				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
-					tmp_latch->count_down();
+					m_dstOpThreadFinishLatch[idx]->count_down();
 				}
 				else{
-					delete tmp_latch;
+
 					m_dstOpThreadFinish[idx]->store(0);
 				}
 #ifdef USE_DEBUG_LOG
@@ -344,7 +338,7 @@ int InprocConduit::Write(void *DataPtr, DataSize_t DataSize, int tag){
 #endif
             }
             else{
-            	boost::latch* temp_latch = (boost::latch*)m_dstOpThreadFinish[idx]->load();
+            	boost::latch* temp_latch = m_dstOpThreadFinishLatch[idx];
 				if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
 					if(!temp_latch->try_wait()){
 						temp_latch->wait();
@@ -370,14 +364,14 @@ int InprocConduit::Write(void *DataPtr, DataSize_t DataSize, int tag){
 				while(1){
 					int oldvalue = m_dstOpThreadAvailable[idx]->load();
 					if(oldvalue == nthreads){
-						delete m_dstOpThreadAvailable[idx];
-						m_dstOpThreadAvailable[idx]=nullptr;
+						m_dstOpThreadAvailable[idx]->store(0);
 						if(DataSize > CONDUIT_LATCH_ATOMI_THRESHHOLD){
-							boost::latch* tmp_latch = (boost::latch*)m_dstOpThreadFinish[idx]->load();
-							delete tmp_latch;
+							m_dstOpThreadFinishLatch[idx]->reset(1);
+
 						}
-						delete m_dstOpThreadFinish[idx];
-						m_dstOpThreadFinish[idx]=nullptr;
+						else{
+							m_dstOpThreadFinish[idx]->store(1);
+						}
 						break;
 					}
 					if(m_dstOpThreadAvailable[idx]->compare_exchange_strong(oldvalue,oldvalue+1))
@@ -390,6 +384,7 @@ int InprocConduit::Write(void *DataPtr, DataSize_t DataSize, int tag){
 #endif            
             }
             m_dstOpTokenFlag[myLocalRank]++;
+            m_dstOpTokenFlag[myLocalRank]=m_dstOpTokenFlag[myLocalRank]%m_nOps2;
         }
     } //end dst
     else{
@@ -649,46 +644,45 @@ int InprocConduit::WriteByFirst(void *DataPtr, DataSize_t DataSize, int tag){
     if(myTaskid == m_srcId){
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"src-thread "<<myThreadRank<<" call write...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+        *m_threadOstream<<"src-thread "<<myThreadRank<<" call writebyfirst...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
-        int idx = m_srcOpFirstIdx[myLocalRank];
-        bool isfirst = true;
-        if(m_srcOpThreadIsFirst[idx].compare_exchange_strong(isfirst, false)){
-        	// do msg r/w
-            MsgInfo_t *tmp_buffptr = m_srcInnerMsgQueue->pop(myLocalRank);
-            if(tmp_buffptr == nullptr){
-                std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
-                exit(1);
-            }
+        if(m_numSrcLocalThreads==1){
+        	// only one local thread for the task
+			// get avilable msg buff
+			MsgInfo_t *tmp_buffptr = m_srcInnerMsgQueue->pop(myLocalRank);
+			if(tmp_buffptr == nullptr){
+				std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
+				exit(1);
+			}
 #ifdef USE_DEBUG_LOG
-    PRINT_TIME_NOW(*m_threadOstream)
-    *m_threadOstream<<"src-thread "<<myThreadRank<<" doing write ...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"src-thread "<<myThreadRank<<" doing write ...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
-            if(DataSize <= CONDUIT_BUFFER_SIZE){
+			if(DataSize <= CONDUIT_BUFFER_SIZE){
 				// small message, no need malloc space
 				tmp_buffptr->dataPtr = tmp_buffptr->smallDataBuff;
 				memcpy(tmp_buffptr->dataPtr, DataPtr, DataSize);
 				tmp_buffptr->usingPtr = false;
-        	}
-        	else{
-        		// big msg, using ptr for transfer
-        		tmp_buffptr->dataPtr= DataPtr;
-        		tmp_buffptr->usingPtr = true;
-        		tmp_buffptr->safeRelease = &m_srcUsingPtrFinishFlag[myLocalRank];
-        		m_srcUsingPtrFinishFlag[myLocalRank] = 0;
-        	}
+			}
+			else{
+				// big msg, using ptr for transfer
+				tmp_buffptr->dataPtr= DataPtr;
+				tmp_buffptr->usingPtr = true;
+				tmp_buffptr->safeRelease = &m_srcUsingPtrFinishFlag[myLocalRank];
+				m_srcUsingPtrFinishFlag[myLocalRank] = 0;
+			}
 			tmp_buffptr->dataSize = DataSize;
-            tmp_buffptr->msgTag = tag;
-            // push msg to buffqueue for reader to read
-            if(m_srcBuffQueue->push(tmp_buffptr,myLocalRank)){
-                std::cerr<<"ERROR, potential write timeout!"<<std::endl;
-                exit(1);
-            }
-            if(DataSize > CONDUIT_BUFFER_SIZE){
-        		// big msg using ptr, need wait reader finish
-            	long _counter=0;
-        		while(m_srcUsingPtrFinishFlag[myLocalRank] == 0){
-        			_counter++;
+			tmp_buffptr->msgTag = tag;
+			// push msg to buffqueue for reader to read
+			if(m_srcBuffQueue->push(tmp_buffptr,myLocalRank)){
+				std::cerr<<"ERROR, potential write timeout!"<<std::endl;
+				exit(1);
+			}
+			if(DataSize > CONDUIT_BUFFER_SIZE){
+				// big msg using ptr, need wait reader finish
+				long _counter=0;
+				while(m_srcUsingPtrFinishFlag[myLocalRank] == 0){
+					_counter++;
 					if(_counter<USE_PAUSE)
 						_mm_pause();
 					else if(_counter<USE_SHORT_SLEEP){
@@ -699,55 +693,127 @@ int InprocConduit::WriteByFirst(void *DataPtr, DataSize_t DataSize, int tag){
 						nanosleep(&SHORT_PERIOD, nullptr);
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
-        		}
-        	}
+				}
+			}
 #ifdef USE_DEBUG_LOG
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"src-thread "<<myThreadRank<<" finish write!:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"src-thread "<<myThreadRank<<" finish write!:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
 #endif
         }
-        m_srcOpFirstIdx[myLocalRank]++;
+        else{
+			int idx = m_srcOpFirstIdx[myLocalRank];
+
+			int isfirst = 0;
+			if(m_srcOpThreadIsFirst[idx].compare_exchange_strong(isfirst, 1)){
+				// do msg r/w
+				MsgInfo_t *tmp_buffptr = m_srcInnerMsgQueue->pop(myLocalRank);
+				if(tmp_buffptr == nullptr){
+					std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
+					exit(1);
+				}
+	#ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"src-thread "<<myThreadRank<<" doing writebyfirst ...:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+	#endif
+				if(DataSize <= CONDUIT_BUFFER_SIZE){
+					// small message, no need malloc space
+					tmp_buffptr->dataPtr = tmp_buffptr->smallDataBuff;
+					memcpy(tmp_buffptr->dataPtr, DataPtr, DataSize);
+					tmp_buffptr->usingPtr = false;
+				}
+				else{
+					// big msg, using ptr for transfer
+					tmp_buffptr->dataPtr= DataPtr;
+					tmp_buffptr->usingPtr = true;
+					tmp_buffptr->safeRelease = &m_srcUsingPtrFinishFlag[myLocalRank];
+					m_srcUsingPtrFinishFlag[myLocalRank] = 0;
+				}
+				tmp_buffptr->dataSize = DataSize;
+				tmp_buffptr->msgTag = tag;
+				// push msg to buffqueue for reader to read
+				if(m_srcBuffQueue->push(tmp_buffptr,myLocalRank)){
+					std::cerr<<"ERROR, potential write timeout!"<<std::endl;
+					exit(1);
+				}
+				if(DataSize > CONDUIT_BUFFER_SIZE){
+					// big msg using ptr, need wait reader finish
+					long _counter=0;
+					while(m_srcUsingPtrFinishFlag[myLocalRank] == 0){
+						_counter++;
+						if(_counter<USE_PAUSE)
+							_mm_pause();
+						else if(_counter<USE_SHORT_SLEEP){
+							__asm__ __volatile__ ("pause" ::: "memory");
+							std::this_thread::yield();
+						}
+						else if(_counter<USE_LONG_SLEEP)
+							nanosleep(&SHORT_PERIOD, nullptr);
+						else
+							nanosleep(&LONG_PERIOD, nullptr);
+					}
+				}
+	#ifdef USE_DEBUG_LOG
+			PRINT_TIME_NOW(*m_threadOstream)
+			*m_threadOstream<<"src-thread "<<myThreadRank<<" finish writebyfirst!:("<<m_srcId<<"->"<<m_dstId<<")"<<std::endl;
+	#endif
+			}
+			else{
+				while(1){
+					// last thread reset the isfirst flag to 0, for next turn't use
+					int oldvalue = m_srcOpThreadIsFirst[idx].load();
+					if(oldvalue == m_numSrcLocalThreads-1){
+						m_srcOpThreadIsFirst[idx].store(0);
+						break;
+					}
+					if(m_srcOpThreadIsFirst[idx].compare_exchange_strong(oldvalue, oldvalue+1))
+						break;
+
+				}
+			}
+			// TODO: here may be a little bug, we assume that after there won't be unbarriered
+			// op between threads for too long
+			m_srcOpFirstIdx[myLocalRank]++;
+			m_srcOpFirstIdx[myLocalRank]= m_srcOpFirstIdx[myLocalRank]%m_nOps;
+        }
     }
     else if(myTaskid == m_dstId){
 #ifdef USE_DEBUG_LOG
         PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"dst-thread "<<myThreadRank<<" call write...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+        *m_threadOstream<<"dst-thread "<<myThreadRank<<" call writebyfirst...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
-        int idx = m_dstOpFirstIdx[myLocalRank];
-        bool isfirst = true;
-        if(m_dstOpThreadIsFirst[idx].compare_exchange_strong(isfirst, false)){
-        	 MsgInfo_t *tmp_buffptr = m_dstInnerMsgQueue->pop(myLocalRank);
-            if(tmp_buffptr == nullptr){
-                std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
-                exit(1);
-            }
+        if(m_numDstLocalThreads == 1){
+			MsgInfo_t *tmp_buffptr = m_dstInnerMsgQueue->pop(myLocalRank);
+			if(tmp_buffptr == nullptr){
+				std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
+				exit(1);
+			}
 #ifdef USE_DEBUG_LOG
-    PRINT_TIME_NOW(*m_threadOstream)
-    *m_threadOstream<<"dst-thread "<<myThreadRank<<" doing write ...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing write ...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
-            if(DataSize <= CONDUIT_BUFFER_SIZE){
+			if(DataSize <= CONDUIT_BUFFER_SIZE){
 				// small message, no need malloc space
 				tmp_buffptr->dataPtr = tmp_buffptr->smallDataBuff;
 				memcpy(tmp_buffptr->dataPtr, DataPtr, DataSize);
 				tmp_buffptr->usingPtr = false;
-        	}
-        	else{
-        		// big msg, using ptr for transfer
-        		tmp_buffptr->dataPtr= DataPtr;
-        		tmp_buffptr->usingPtr = true;
-        		tmp_buffptr->safeRelease = &m_dstUsingPtrFinishFlag[myLocalRank];
-        		m_dstUsingPtrFinishFlag[myLocalRank] = 0;
-        	}
-            tmp_buffptr->dataSize = DataSize;
-            tmp_buffptr->msgTag = tag;
-            if(m_dstBuffQueue->push(tmp_buffptr,myLocalRank)){
-                std::cerr<<"ERROR, potential write timeout!"<<std::endl;
-                exit(1);
-            }
-            if(DataSize > CONDUIT_BUFFER_SIZE){
-            	long _counter=0;
-            	while(m_dstUsingPtrFinishFlag[myLocalRank] == 0){
-            		_counter++;
+			}
+			else{
+				// big msg, using ptr for transfer
+				tmp_buffptr->dataPtr= DataPtr;
+				tmp_buffptr->usingPtr = true;
+				tmp_buffptr->safeRelease = &m_dstUsingPtrFinishFlag[myLocalRank];
+				m_dstUsingPtrFinishFlag[myLocalRank] = 0;
+			}
+			tmp_buffptr->dataSize = DataSize;
+			tmp_buffptr->msgTag = tag;
+			if(m_dstBuffQueue->push(tmp_buffptr,myLocalRank)){
+				std::cerr<<"ERROR, potential write timeout!"<<std::endl;
+				exit(1);
+			}
+			if(DataSize > CONDUIT_BUFFER_SIZE){
+				long _counter=0;
+				while(m_dstUsingPtrFinishFlag[myLocalRank] == 0){
+					_counter++;
 					if(_counter<USE_PAUSE)
 						_mm_pause();
 					else if(_counter<USE_SHORT_SLEEP){
@@ -758,15 +824,82 @@ int InprocConduit::WriteByFirst(void *DataPtr, DataSize_t DataSize, int tag){
 						nanosleep(&SHORT_PERIOD, nullptr);
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
-	        	}
-            }
+				}
+			}
 #ifdef USE_DEBUG_LOG
-        PRINT_TIME_NOW(*m_threadOstream)
-        *m_threadOstream<<"dst-thread "<<myThreadRank<<" finish write!:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish write!:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
 #endif
-        }
+		}
+        else{
+			int idx = m_dstOpFirstIdx[myLocalRank];
 
-        m_dstOpFirstIdx[myLocalRank]++;
+			int isfirst = 0;
+			if(m_dstOpThreadIsFirst[idx].compare_exchange_strong(isfirst, 1)){
+				 MsgInfo_t *tmp_buffptr = m_dstInnerMsgQueue->pop(myLocalRank);
+				if(tmp_buffptr == nullptr){
+					std::cerr<<"ERROR, potential get buff timeout!"<<std::endl;
+					exit(1);
+				}
+	#ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*m_threadOstream)
+		*m_threadOstream<<"dst-thread "<<myThreadRank<<" doing writebyfirst ...:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+	#endif
+				if(DataSize <= CONDUIT_BUFFER_SIZE){
+					// small message, no need malloc space
+					tmp_buffptr->dataPtr = tmp_buffptr->smallDataBuff;
+					memcpy(tmp_buffptr->dataPtr, DataPtr, DataSize);
+					tmp_buffptr->usingPtr = false;
+				}
+				else{
+					// big msg, using ptr for transfer
+					tmp_buffptr->dataPtr= DataPtr;
+					tmp_buffptr->usingPtr = true;
+					tmp_buffptr->safeRelease = &m_dstUsingPtrFinishFlag[myLocalRank];
+					m_dstUsingPtrFinishFlag[myLocalRank] = 0;
+				}
+				tmp_buffptr->dataSize = DataSize;
+				tmp_buffptr->msgTag = tag;
+				if(m_dstBuffQueue->push(tmp_buffptr,myLocalRank)){
+					std::cerr<<"ERROR, potential write timeout!"<<std::endl;
+					exit(1);
+				}
+				if(DataSize > CONDUIT_BUFFER_SIZE){
+					long _counter=0;
+					while(m_dstUsingPtrFinishFlag[myLocalRank] == 0){
+						_counter++;
+						if(_counter<USE_PAUSE)
+							_mm_pause();
+						else if(_counter<USE_SHORT_SLEEP){
+							__asm__ __volatile__ ("pause" ::: "memory");
+							std::this_thread::yield();
+						}
+						else if(_counter<USE_LONG_SLEEP)
+							nanosleep(&SHORT_PERIOD, nullptr);
+						else
+							nanosleep(&LONG_PERIOD, nullptr);
+					}
+				}
+	#ifdef USE_DEBUG_LOG
+			PRINT_TIME_NOW(*m_threadOstream)
+			*m_threadOstream<<"dst-thread "<<myThreadRank<<" finish writebyfirst!:("<<m_dstId<<"->"<<m_srcId<<")"<<std::endl;
+	#endif
+			}
+			else{
+				while(1){
+					int oldvalue = m_dstOpThreadIsFirst[idx].load();
+					if(oldvalue == m_numDstLocalThreads-1){
+						m_dstOpThreadIsFirst[idx].store(0);
+						break;
+					}
+					if(m_dstOpThreadIsFirst[idx].compare_exchange_strong(oldvalue, oldvalue+1))
+						break;
+				}
+			}
+
+			m_dstOpFirstIdx[myLocalRank]++;
+			m_dstOpFirstIdx[myLocalRank]=m_dstOpFirstIdx[myLocalRank]%m_nOps;
+		}
     }
     else{
     	std::cerr<<"Error, conduit doesn't associated to calling task!"<<std::endl;

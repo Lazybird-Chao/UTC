@@ -121,6 +121,7 @@ Task<T>::~Task()
 		m_userTaskObjPtr = nullptr;
 	}
 
+
 	TaskManager::unregisterTask(this, m_TaskId);
 
 	//if(m_numLocalThreads !=0)
@@ -706,7 +707,7 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList)
 
 	if(m_numLocalThreads !=0){
 		// init unique execution control info
-		m_uniqueExeObjPtr = new UniqueExeTag(m_numLocalThreads, 64);
+		m_uniqueExeObjPtr = new UniqueExeTag(m_numLocalThreads, 32);
 	}
 
 	if(m_numLocalThreads!=0)  // there are threads need to be created on current process

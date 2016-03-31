@@ -144,14 +144,18 @@ private:
 	 * new method for multi threads do op and let one do, others wait
 	 */
 	std::vector<std::atomic<int>*> m_srcOpThreadAvailable;
-	std::vector<std::atomic<intptr_t>*> m_srcOpThreadFinish;
+	std::vector<std::atomic<int>*> m_srcOpThreadFinish;
+	std::vector<boost::latch*> m_srcOpThreadFinishLatch;
 	std::vector<std::atomic<int>*> m_dstOpThreadAvailable;
-	std::vector<std::atomic<intptr_t>*> m_dstOpThreadFinish;
+	std::vector<std::atomic<int>*> m_dstOpThreadFinish;
+	std::vector<boost::latch*> m_dstOpThreadFinishLatch;
+	int m_nOps2=32;
 
-	std::atomic<bool> m_srcOpThreadIsFirst[1024];
+	std::atomic<int> *m_srcOpThreadIsFirst;
 	int *m_srcOpFirstIdx;
-	std::atomic<bool> m_dstOpThreadIsFirst[1024];
+	std::atomic<int> *m_dstOpThreadIsFirst;
 	int *m_dstOpFirstIdx;
+	int m_nOps=32;
 
 	/*
 	 * dst side buffer pool

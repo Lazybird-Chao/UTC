@@ -167,12 +167,13 @@ TaskBase* getParentTask()
 
 
 bool getUniqueExecution(){
-	static thread_local UniqueExeTag *uniqueExeTagPtr = nullptr;
+	UniqueExeTag *uniqueExeTagPtr = nullptr;
 	static thread_local int mylocalrank = -1;
-	if(uniqueExeTagPtr== nullptr){
-		uniqueExeTagPtr = TaskBase::getThreadPrivateData()->taskUniqueExeTagObj;
+	if(mylocalrank== -1){
+
 		mylocalrank = TaskManager::getCurrentThreadRankInLocal();
 	}
+	uniqueExeTagPtr = TaskBase::getThreadPrivateData()->taskUniqueExeTagObj;
 	return uniqueExeTagPtr->getUniqueExe(mylocalrank);
 }
 
