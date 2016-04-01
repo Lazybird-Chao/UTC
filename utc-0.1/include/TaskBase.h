@@ -108,6 +108,11 @@ protected:
     // used for unique execution control
     UniqueExeTag *m_uniqueExeObjPtr;
 
+    // used for bcast within task
+    void* m_bcastDataBuffer;
+    std::atomic<int> m_bcastAvailable;
+    std::atomic<int> ｍ_bcastDataReady;
+
     // can't use taskbase obj directly
     TaskBase();
 

@@ -167,15 +167,45 @@ TaskBase* getParentTask()
 
 
 bool getUniqueExecution(){
-	UniqueExeTag *uniqueExeTagPtr = nullptr;
+	static thread_local UniqueExeTag *uniqueExeTagPtr = nullptr;
 	static thread_local int mylocalrank = -1;
 	if(mylocalrank== -1){
 
 		mylocalrank = TaskManager::getCurrentThreadRankInLocal();
+		uniqueExeTagPtr = TaskBase::getThreadPrivateData()->taskUniqueExeTagObj;
 	}
-	uniqueExeTagPtr = TaskBase::getThreadPrivateData()->taskUniqueExeTagObj;
+
 	return uniqueExeTagPtr->getUniqueExe(mylocalrank);
 }
+
+
+void BcastInTask(void* Data, DataSize_t DataSize, Rank_t rootthread, Rank_t rootproc){
+	static thread_local int currentProcRank = -1;
+	static thread_local int currentThreadRank = -1;
+	static thread_local int currentThreadLocalRank = -1;
+	if(currentProcRank == -1){
+		currentProcRank= getPrank();
+		currentThreadRank = getTrank();
+		currentThreadLocalRank = getLrank();
+	}
+
+	if(currentThreadRank == rootthread){
+		// the bcast thread
+
+	}
+	else if(currentProcRank==rootproc){
+		// not bcaster, but in same process with bcaster
+	}
+	else{
+		// other thread on other process
+
+	}
+
+
+
+
+}
+
 
 
 }// namespcae iUtc

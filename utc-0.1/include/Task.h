@@ -121,6 +121,7 @@ private:
 
 	// barrier obj, shared by all threads in one task
 	Barrier *m_taskBarrierObjPtr;
+	SpinBarrier *m_taskSpinBarrierObjPtr;
 
 	// mpi comm related obj
 #ifdef USE_MPI_BASE

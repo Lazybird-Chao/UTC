@@ -42,6 +42,8 @@ TaskBase* getParentTask();
 
 bool getUniqueExecution();
 
+void BcastInTask(void *Data, DataSize_t DataSize, ThreadRank_t root);
+
 
 
 

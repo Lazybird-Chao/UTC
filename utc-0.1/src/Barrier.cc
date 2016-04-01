@@ -280,5 +280,13 @@ void SpinBarrier::wait(){
 }
 
 
+void intra_SpinBarrier(){
+	static thread_local SpinBarrier* taskSpinBarrierPtr = nullptr;
+	if(taskSpinBarrierPtr==nullptr){
+		taskSpinBarrierPtr = TaskManager::getTaskInfo()->spinBarrierObjPtr;
+	}
+	taskSpinBarrierPtr->wait();
+}
+
 
 }// namepsce iUtc

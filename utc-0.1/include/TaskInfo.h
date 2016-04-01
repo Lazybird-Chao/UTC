@@ -37,6 +37,7 @@ namespace iUtc{
     ThreadRank_t lRank = -1; // local thread rank of a task in one process
 
     Barrier* barrierObjPtr = nullptr;   // same value in one task
+    SpinBarrier* spinBarrierObjPtr = nullptr;
 
 #ifdef USE_MPI_BASE
     MPI_Comm* commPtr = nullptr;  // same value in one task
@@ -50,6 +51,10 @@ struct ThreadPrivateData
 	 //
 	 std::ofstream *threadOstream = nullptr;
 	 UniqueExeTag *taskUniqueExeTagObj = nullptr;
+	 //
+	 void* bcastDataBuffer;
+	 std::atomic<int> *bcastAvailable;
+	 std::atomic<int> *bcastDataReady;
 };
 
 }//namespace iUtc

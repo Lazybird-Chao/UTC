@@ -113,6 +113,8 @@ Task<T>::~Task()
 	{
 		delete m_taskBarrierObjPtr;
 		m_taskBarrierObjPtr=nullptr;
+		delete m_taskSpinBarrierObjPtr;
+		m_taskSpinBarrierObjPtr=nullptr;
 	}
 
 	if(m_userTaskObjPtr!=nullptr)
@@ -449,6 +451,7 @@ void Task<T>::threadImpl(ThreadRank_t trank, ThreadRank_t lrank, std::ofstream *
 	taskInfoPtr->taskId = m_TaskId;
 	taskInfoPtr->threadId = std::this_thread::get_id(); //same as m_LocalThreadList(local_rank)
 	taskInfoPtr->barrierObjPtr = m_taskBarrierObjPtr;
+	taskInfoPtr->spinBarrierObjPtr = m_taskSpinBarrierObjPtr;
 #ifdef USE_MPI_BASE
 	taskInfoPtr->commPtr = &m_taskComm;
 	taskInfoPtr->mpigroupPtr = &m_taskmpiGroup;
@@ -703,6 +706,7 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList)
 	{
 		// create the barrier object in a task
 		m_taskBarrierObjPtr = new Barrier(m_numLocalThreads, m_TaskId, &m_taskComm);
+		m_taskSpinBarrierObjPtr = new SpinBarrier(m_numLocalThreads);
 	}
 
 	if(m_numLocalThreads !=0){

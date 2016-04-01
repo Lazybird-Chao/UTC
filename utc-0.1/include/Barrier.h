@@ -89,6 +89,7 @@ private:
 	std::atomic<int> m_barrierReady;
 };
 
+void intra_SpinBarrier();
 
 }// namespace iUtc
 
