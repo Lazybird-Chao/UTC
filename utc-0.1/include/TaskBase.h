@@ -43,6 +43,7 @@ public:
     int getNumTotalThreads();
 
     ProcRank_t getCurrentProcRank();
+    ProcRank_t getProcRankOfThread(ThreadRank_t trank);
 
     ProcRank_t getMainResideProcess();
 
@@ -109,9 +110,8 @@ protected:
     UniqueExeTag *m_uniqueExeObjPtr;
 
     // used for bcast within task
-    void* m_bcastDataBuffer;
     std::atomic<int> m_bcastAvailable;
-    std::atomic<int> ｍ_bcastDataReady;
+    std::atomic<int> m_gatherAvailable;
 
     // can't use taskbase obj directly
     TaskBase();

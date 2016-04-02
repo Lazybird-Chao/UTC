@@ -34,6 +34,9 @@ int getLsize();
 // return the number of task threads of the task
 int getGsize();
 
+// return the number of processes of the task running on
+int getPsize();
+
 // return the current task obj pointer
 TaskBase* getCurrentTask();
 
@@ -42,9 +45,9 @@ TaskBase* getParentTask();
 
 bool getUniqueExecution();
 
-void BcastInTask(void *Data, DataSize_t DataSize, ThreadRank_t root);
+void SharedDataBcast(void* Data, DataSize_t DataSize, Rank_t rootthread);
 
-
+void SharedDataGather(void *DataSend, DataSize_t DataSize, void *DataGathered,Rank_t rootthread);
 
 
 

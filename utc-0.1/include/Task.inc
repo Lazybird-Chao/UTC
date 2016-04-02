@@ -461,6 +461,8 @@ void Task<T>::threadImpl(ThreadRank_t trank, ThreadRank_t lrank, std::ofstream *
 	ThreadPrivateData *threadPrivateData = new ThreadPrivateData();
 	threadPrivateData->threadOstream = output;
 	threadPrivateData->taskUniqueExeTagObj = m_uniqueExeObjPtr;
+	threadPrivateData->bcastAvailable = &m_bcastAvailable;
+	threadPrivateData->gatherAvailable = &m_gatherAvailable;
 	m_threadPrivateData.reset(threadPrivateData);
 
 	//

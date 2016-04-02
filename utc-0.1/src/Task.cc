@@ -143,6 +143,14 @@ int getGsize()
 	return globalthreads;
 }
 
+int getPsize(){
+	static thread_local int numProcs = -1;
+	if(numProcs ==-1){
+		numProcs = TaskManager::getCurrentTask()->getNumProcesses();
+	}
+	return numProcs;
+}
+
 
 TaskBase* getCurrentTask()
 {
@@ -179,33 +187,269 @@ bool getUniqueExecution(){
 }
 
 
+/*
 void BcastInTask(void* Data, DataSize_t DataSize, Rank_t rootthread, Rank_t rootproc){
 	static thread_local int currentProcRank = -1;
 	static thread_local int currentThreadRank = -1;
 	static thread_local int currentThreadLocalRank = -1;
+	static thread_local ThreadPrivateData* tpd;
+	static thread_local SpinBarrier* sbarrier;
+	static thread_local int numProcs = -1;
+	static thread_local int numLocalThreads=-1;
 	if(currentProcRank == -1){
 		currentProcRank= getPrank();
 		currentThreadRank = getTrank();
 		currentThreadLocalRank = getLrank();
+		tpd = TaskBase::getThreadPrivateData();
+		sbarrier = TaskManager::getTaskInfo()->spinBarrierObjPtr;
+		numProcs = getPsize();
+		numLocalThreads = getLsize();
 	}
-
+	void **bcastDataBufferPtr = tpd->bcastDataBuffer;
+	std::atomic<int>* bcastDataReadyPtr = tpd->bcastDataReady;
 	if(currentThreadRank == rootthread){
 		// the bcast thread
+		MPI_Comm *taskcomm = TaskManager::getTaskInfo()->commPtr;
+		if(numLocalThreads > 1){
+			while(bcastDataReadyPtr->load()!=0){
+				_mm_pause();
+			}
+			assert(*bcastDataBufferPtr == nullptr);
+			*bcastDataBufferPtr = Data;
+			bcastDataReadyPtr->store(1);
+		}
+		if(numProcs>1){
+#ifdef USE_MPI_BASE
+			// TODO: solving int(datasize) problem
+			MPI_Datatype datatype=MPI_CHAR;
+			if(DataSize > ((unsigned)1<<31)-1){
+				DataSize = (DataSize+3)/4;
+				datatype = MPI_INT;
+			}
+			MPI_Bcast(Data, (int)DataSize, datatype, rootproc, taskcomm);
+#endif
+		}
+		if(numLocalThreads > 1){
+			sbarrier->wait();
+		}
 
 	}
 	else if(currentProcRank==rootproc){
 		// not bcaster, but in same process with bcaster
+		while(bcastDataReadyPtr->load()==0){
+			_mm_pause();
+		}
+		if(Data != *bcastDataBufferPtr){
+			memcpy(Data, *bcastDataBufferPtr, DataSize);
+		}
+		bcastDataReadyPtr->fetch_add(1);
+		int nthreads = numLocalThreads;
+		if(bcastDataReadyPtr->compare_exchange_strong(nthreads, 0)){
+			*bcastDataBufferPtr = nullptr;
+		}
+		sbarrier->wait();
 	}
 	else{
 		// other thread on other process
+		std::atomic<int>* bcastAvailable = tpd->bcastAvailable;
+		int isavailable =0;
+		if(bcastAvailable->compare_exchange_strong(isavailable, 1)){
+			// first threads
+#ifdef USE_MPI_BASE
+			// TODO: solving int(datasize) problem
+			MPI_Datatype datatype=MPI_CHAR;
+			if(DataSize > ((unsigned)1<<31)-1){
+				DataSize = (DataSize+3)/4;
+				datatype = MPI_INT;
+			}
+			MPI_Bcast(Data, (int)DataSize, datatype, rootproc, taskcomm);
+#endif
+			if(numLocalThreads > 1){
+				while(bcastDataReadyPtr->load()!=0){
+					_mm_pause();
+				}
+				assert(*bcastDataBufferPtr == nullptr);
+				*bcastDataBufferPtr = Data;
+				bcastDataReadyPtr->store(1);
+
+				sbarrier->wait();
+			}
+			else{
+				bcastAvailable->store(0);
+			}
+		}
+		else{
+			// other late threads
+			while(bcastDataReadyPtr->load()==0){
+				_mm_pause();
+			}
+			if(Data != *bcastDataBufferPtr){
+				memcpy(Data, *bcastDataBufferPtr, DataSize);
+			}
+			bcastDataReadyPtr->fetch_add(1);
+			int nthreads = numLocalThreads;
+			if(bcastDataReadyPtr->compare_exchange_strong(nthreads, 0)){
+				bcastAvailable->store(0);
+				*bcastDataBufferPtr = nullptr;
+			}
+			sbarrier->wait();
+		}
 
 	}
 
+}// end bcastintask()
+*/
 
+void SharedDataBcast(void* Data, DataSize_t DataSize, Rank_t rootthread){
+	static thread_local int currentProcRank = -1;
+	static thread_local int currentThreadRank = -1;
+	static thread_local SpinBarrier* sbarrier;
+	static thread_local int numProcs = -1;
+	static thread_local int numLocalThreads=-1;
+	int rootproc;
+	if(currentProcRank == -1){
+		currentProcRank= getPrank();
+		currentThreadRank = getTrank();
+		sbarrier = TaskManager::getTaskInfo()->spinBarrierObjPtr;
+		numProcs = getPsize();
+		numLocalThreads = getLsize();
+	}
+	rootproc = TaskManager::getCurrentTask()->getProcRankOfThread(rootthread);
+	if(numProcs <2)
+		return;
+	if(currentThreadRank == rootthread){
+		MPI_Comm *taskcomm = TaskManager::getTaskInfo()->commPtr;
+#ifdef USE_MPI_BASE
+			// TODO: solving int(datasize) problem
+			MPI_Datatype datatype=MPI_CHAR;
+			if(DataSize > ((unsigned)1<<31)-1){
+				DataSize = (DataSize+3)/4;
+				datatype = MPI_INT;
+			}
+			MPI_Bcast(Data, (int)DataSize, datatype, rootproc, taskcomm);
+#endif
+			sbarrier->wait();
+	}
+	else if(currentProcRank == rootproc){
+		sbarrier->wait();
+	}
+	else{
+		if(numLocalThreads>1){
+			std::atomic<int>* bcastAvailable = TaskBase::getThreadPrivateData()->bcastAvailable;
+			int isavailable = 0;
+			if(bcastAvailable->compare_exchange_strong(isavailable, 1)){
+				MPI_Comm *taskcomm = TaskManager::getTaskInfo()->commPtr;
+#ifdef USE_MPI_BASE
+				// TODO: solving int(datasize) problem
+				MPI_Datatype datatype=MPI_CHAR;
+				if(DataSize > ((unsigned)1<<31)-1){
+					DataSize = (DataSize+3)/4;
+					datatype = MPI_INT;
+				}
+				MPI_Bcast(Data, (int)DataSize, datatype, rootproc, taskcomm);
+#endif
+				sbarrier->wait();
+			}
+			else{
+				bcastAvailable->fetch_add(1);
+				int nthreads = numLocalThreads;
+				bcastAvailable->compare_exchange_strong(nthreads, 0);
+				sbarrier->wait();
+			}
+		}
+		else{
+			MPI_Comm *taskcomm = TaskManager::getTaskInfo()->commPtr;
+#ifdef USE_MPI_BASE
+			// TODO: solving int(datasize) problem
+			MPI_Datatype datatype=MPI_CHAR;
+			if(DataSize > ((unsigned)1<<31)-1){
+				DataSize = (DataSize+3)/4;
+				datatype = MPI_INT;
+			}
+			MPI_Bcast(Data, (int)DataSize, datatype, rootproc, taskcomm);
+#endif
+		}
+	}
+	return;
 
+}// end ShareadDataBcast()
 
-}
-
+void SharedDataGather(void *DataSend, DataSize_t DataSize, void *DataGathered,
+		Rank_t rootthread){
+	static thread_local int currentProcRank = -1;
+	static thread_local int currentThreadRank = -1;
+	static thread_local SpinBarrier* sbarrier;
+	static thread_local int numProcs = -1;
+	static thread_local int numLocalThreads=-1;
+	int rootproc;
+	if(currentProcRank == -1){
+		currentProcRank= getPrank();
+		currentThreadRank = getTrank();
+		sbarrier = TaskManager::getTaskInfo()->spinBarrierObjPtr;
+		numProcs = getPsize();
+		numLocalThreads = getLsize();
+	}
+	rootproc = TaskManager::getCurrentTask()->getProcRankOfThread(rootthread);
+	if(numProcs<2)
+		return;
+	if(currentThreadRank == rootthread){
+		MPI_Comm *taskcomm = TaskManager::getTaskInfo()->commPtr;
+#ifdef USE_MPI_BASE
+		// TODO: solving int(datasize) problem
+		MPI_Datatype datatype=MPI_CHAR;
+		if(DataSize > ((unsigned)1<<31)-1){
+			DataSize = (DataSize+3)/4;
+			datatype = MPI_INT;
+		}
+		MPI_Gather(DataSend, DataSize, datatype, DataGathered, DataSize, datatype,
+				rootproc, taskcomm);
+#endif
+		sbarrier->wait();
+	}
+	else if(currentProcRank == rootproc){
+		sbarrier->wait();
+	}
+	else{
+		if(numLocalThreads>1){
+			std::atomic<int>* gatherAvailable = TaskBase::getThreadPrivateData()->gatherAvailable;
+			int isavailable=0;
+			if(gatherAvailable->compare_exchange_strong(isavailable, 1)){
+				MPI_Comm *taskcomm = TaskManager::getTaskInfo()->commPtr;
+#ifdef USE_MPI_BASE
+				// TODO: solving int(datasize) problem
+				MPI_Datatype datatype=MPI_CHAR;
+				if(DataSize > ((unsigned)1<<31)-1){
+					DataSize = (DataSize+3)/4;
+					datatype = MPI_INT;
+				}
+				MPI_Gather(DataSend, DataSize, datatype, DataGathered, DataSize, datatype,
+						rootproc, taskcomm);
+#endif
+				sbarrier->wait();
+			}
+			else{
+				gatherAvailable->fetch_add(1);
+				int nthreads = numLocalThreads;
+				gatherAvailable->compare_exchange_strong(nthread, 0);
+				sbarrier->wait();
+			}
+		}
+		else{
+			MPI_Comm *taskcomm = TaskManager::getTaskInfo()->commPtr;
+#ifdef USE_MPI_BASE
+			// TODO: solving int(datasize) problem
+			MPI_Datatype datatype=MPI_CHAR;
+			if(DataSize > ((unsigned)1<<31)-1){
+				DataSize = (DataSize+3)/4;
+				datatype = MPI_INT;
+			}
+			MPI_Gather(DataSend, DataSize, datatype, DataGathered, DataSize, datatype,
+					rootproc, taskcomm);
+#endif
+		}
+	}
+	return;
+}// end ShareadDataGather()
 
 
 }// namespcae iUtc

@@ -52,9 +52,8 @@ struct ThreadPrivateData
 	 std::ofstream *threadOstream = nullptr;
 	 UniqueExeTag *taskUniqueExeTagObj = nullptr;
 	 //
-	 void* bcastDataBuffer;
 	 std::atomic<int> *bcastAvailable;
-	 std::atomic<int> *bcastDataReady;
+	 std::atomic<int> *gatherAvailable;
 };
 
 }//namespace iUtc

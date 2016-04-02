@@ -73,6 +73,10 @@ ProcRank_t TaskBase::getCurrentProcRank()
     return m_processRank;
 }
 
+ProcRank_t TaskBase::getProcRankOfThread(ThreadRank_t trank){
+	return m_TaskRankList[trank];
+}
+
 bool TaskBase::isLocal(ThreadRank_t tRank)
 {
     return m_TaskRankList[tRank]==m_processRank;
