@@ -4,7 +4,7 @@ G++ := g++
 MPICXX := mpicxx
 
 CFLAG := -Wall
-CCFLAG := -g -std=c++11
+CCFLAG := -g -std=c++11 -O2
 
 ###################
 MPI_LIB :=	-pthread -Wl,-rpath -Wl,/opt/openmpi/lib -Wl,--enable-new-dtags \

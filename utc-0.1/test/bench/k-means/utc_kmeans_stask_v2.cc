@@ -7,6 +7,7 @@
 
 /* user included file*/
 #include "file_io.h"
+#include "../helper_getopt.h"
 
 /* main UTC header file */
 #include "Utc.h"
@@ -297,6 +298,17 @@ private:
 	int *loops;
 };
 
+void usage(char *argv0) {
+    std::string help =
+        "Usage: %s [switches] -i filename\n"
+        "       -i filename     :  file containing data to be clustered\n"
+        "       -t nthreads     :threads per node of Task\n"
+		"       -p nprocs       :number of nodes running on \n"
+        "       -n clusters     :number of clusters\n"
+    	"       -l nloops       :number of loops to run the test\n";
+    fprintf(stderr, help.c_str(), argv0);
+    exit(-1);
+}
 
 int main(int argc, char*argv[]){
 	int numClusters, numCoords, numObjs;
@@ -307,18 +319,41 @@ int main(int argc, char*argv[]){
 	int nthreads;
 	int nprocs;
 	int N;
-	if(argc<6){
-		std::cout<<"run like: ./a.out 'nthread' 'num-cluster' 'inputfile'  'loop'"<<std::endl;
-	}
-	else{
-		nthreads = atoi(argv[1]);
-		nprocs = atoi(argv[2]);
-		numClusters = atoi(argv[3]);
-		filename = argv[4];
-		N = atoi(argv[5]);
-	}
+
 	/* startup utc contex*/
 	UtcContext ctx(argc, argv);
+
+	int opt;
+	extern char *optarg;
+	extern int optind;
+	opt=getopt(argc, argv, "i:t:p:n:l:");
+	while( opt!=EOF ){
+		switch (opt){
+			case 'i':
+				filename = optarg;
+				break;
+			case 't':
+				nthreads = atoi(optarg);
+				break;
+			case 'p':
+				nprocs = atoi(optarg);
+				break;
+			case 'n':
+				numClusters = atoi(optarg);
+				break;
+			case 'l':
+				N = atoi(optarg);
+				break;
+			case '?':
+				usage(argv[0]);
+				break;
+			default:
+				usage(argv[0]);
+				break;
+		}
+		//std::cout<<opt;
+		opt=getopt(argc, argv, "i:t:p:n:l:");
+	}
 
 	/* read data points from file*/
 	if(ctx.getProcRank()==0)
