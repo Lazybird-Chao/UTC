@@ -133,6 +133,8 @@ m_uniqueExeObjPtr(nullptr)
     m_LocalThreadList.clear();
     m_LocalThreadRegistry.clear();
     m_ThreadRank2Local.clear();
+    m_bcastAvailable.store(0);
+    m_gatherAvailable.store(0);
 }
 
 TaskBase::~TaskBase()

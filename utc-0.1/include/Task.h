@@ -9,6 +9,7 @@
 #include "UtcException.h"
 #include "ProcList.h"
 #include "Barrier.h"
+#include "AffinityUtilities.h"
 
 #include <thread>
 #include <mutex>
@@ -101,7 +102,8 @@ protected:
 
 private:
 	//
-	void threadImpl(ThreadRank_t trank, ThreadRank_t lrank, std::ofstream* output);
+	void threadImpl(ThreadRank_t trank, ThreadRank_t lrank,
+			std::ofstream* output, int hardcoreId = -1);
 
 	void threadExit(ThreadRank_t trank);
 

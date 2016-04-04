@@ -315,10 +315,10 @@ void SharedDataBcast(void* Data, DataSize_t DataSize, Rank_t rootthread){
 		numLocalThreads = getLsize();
 	}
 	rootproc = TaskManager::getCurrentTask()->getProcRankOfThread(rootthread);
-	if(numProcs <2)
-		return;
+
 	if(currentThreadRank == rootthread){
-		MPI_Comm *taskcomm = TaskManager::getTaskInfo()->commPtr;
+		if(numProcs>1){
+			MPI_Comm *taskcomm = TaskManager::getTaskInfo()->commPtr;
 #ifdef USE_MPI_BASE
 			// TODO: solving int(datasize) problem
 			MPI_Datatype datatype=MPI_CHAR;
@@ -326,9 +326,10 @@ void SharedDataBcast(void* Data, DataSize_t DataSize, Rank_t rootthread){
 				DataSize = (DataSize+3)/4;
 				datatype = MPI_INT;
 			}
-			MPI_Bcast(Data, (int)DataSize, datatype, rootproc, taskcomm);
+			MPI_Bcast(Data, (int)DataSize, datatype, rootproc, *taskcomm);
 #endif
-			sbarrier->wait();
+		}
+		sbarrier->wait();
 	}
 	else if(currentProcRank == rootproc){
 		sbarrier->wait();
@@ -346,7 +347,7 @@ void SharedDataBcast(void* Data, DataSize_t DataSize, Rank_t rootthread){
 					DataSize = (DataSize+3)/4;
 					datatype = MPI_INT;
 				}
-				MPI_Bcast(Data, (int)DataSize, datatype, rootproc, taskcomm);
+				MPI_Bcast(Data, (int)DataSize, datatype, rootproc, *taskcomm);
 #endif
 				sbarrier->wait();
 			}
@@ -366,7 +367,7 @@ void SharedDataBcast(void* Data, DataSize_t DataSize, Rank_t rootthread){
 				DataSize = (DataSize+3)/4;
 				datatype = MPI_INT;
 			}
-			MPI_Bcast(Data, (int)DataSize, datatype, rootproc, taskcomm);
+			MPI_Bcast(Data, (int)DataSize, datatype, rootproc, *taskcomm);
 #endif
 		}
 	}
@@ -390,20 +391,24 @@ void SharedDataGather(void *DataSend, DataSize_t DataSize, void *DataGathered,
 		numLocalThreads = getLsize();
 	}
 	rootproc = TaskManager::getCurrentTask()->getProcRankOfThread(rootthread);
-	if(numProcs<2)
-		return;
+
 	if(currentThreadRank == rootthread){
-		MPI_Comm *taskcomm = TaskManager::getTaskInfo()->commPtr;
+		if(numProcs >1){
+			MPI_Comm *taskcomm = TaskManager::getTaskInfo()->commPtr;
 #ifdef USE_MPI_BASE
-		// TODO: solving int(datasize) problem
-		MPI_Datatype datatype=MPI_CHAR;
-		if(DataSize > ((unsigned)1<<31)-1){
-			DataSize = (DataSize+3)/4;
-			datatype = MPI_INT;
-		}
-		MPI_Gather(DataSend, DataSize, datatype, DataGathered, DataSize, datatype,
-				rootproc, taskcomm);
+			// TODO: solving int(datasize) problem
+			MPI_Datatype datatype=MPI_CHAR;
+			if(DataSize > ((unsigned)1<<31)-1){
+				DataSize = (DataSize+3)/4;
+				datatype = MPI_INT;
+			}
+			MPI_Gather(DataSend, DataSize, datatype, DataGathered, DataSize, datatype,
+					rootproc, *taskcomm);
 #endif
+		}
+		else{
+			memcpy(DataGathered, DataSend, DataSize);
+		}
 		sbarrier->wait();
 	}
 	else if(currentProcRank == rootproc){
@@ -423,14 +428,14 @@ void SharedDataGather(void *DataSend, DataSize_t DataSize, void *DataGathered,
 					datatype = MPI_INT;
 				}
 				MPI_Gather(DataSend, DataSize, datatype, DataGathered, DataSize, datatype,
-						rootproc, taskcomm);
+						rootproc, *taskcomm);
 #endif
 				sbarrier->wait();
 			}
 			else{
 				gatherAvailable->fetch_add(1);
 				int nthreads = numLocalThreads;
-				gatherAvailable->compare_exchange_strong(nthread, 0);
+				gatherAvailable->compare_exchange_strong(nthreads, 0);
 				sbarrier->wait();
 			}
 		}
@@ -444,7 +449,7 @@ void SharedDataGather(void *DataSend, DataSize_t DataSize, void *DataGathered,
 				datatype = MPI_INT;
 			}
 			MPI_Gather(DataSend, DataSize, datatype, DataGathered, DataSize, datatype,
-					rootproc, taskcomm);
+					rootproc, *taskcomm);
 #endif
 		}
 	}

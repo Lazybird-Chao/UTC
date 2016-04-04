@@ -15,7 +15,7 @@
 //#define USE_DEBUG_LOG
 //#define USE_DEBUG_ASSERT
 
-
+#define SET_CPU_AFFINITY
 
 
 /*

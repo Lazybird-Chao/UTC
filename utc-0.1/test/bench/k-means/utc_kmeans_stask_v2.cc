@@ -37,42 +37,45 @@ public:
 			this->numClusters = numClusters;
 			this->membership = membership;
 			this->clusters = clusters;
+			//std::cout<<getTrank()<<" "<<this->numCoords<<" "<<this->numObjs<<" "<<this->numClusters<<std::endl;
 		}
 		SharedDataBcast((void*)&(this->numCoords), sizeof(int), 0);
 		SharedDataBcast((void*)&(this->numObjs), sizeof(int), 0);
 		SharedDataBcast((void*)&(this->numClusters), sizeof(int), 0);
+		//std::cout<<getTrank()<<" "<<this->numCoords<<" "<<this->numObjs<<" "<<this->numClusters<<std::endl;
 		int objsize = this->numCoords * this->numObjs;
 		int clustersize = this->numClusters *this->numCoords;
 		if(getTrank()!=0 && getLrank()==0){
 			this->objects = (float**)malloc(this->numObjs * sizeof(float*));
 			this->objects[0]=(float*)malloc(objsize*sizeof(float));
 			for(int i=1; i<this->numObjs; i++)
-				objects[i]=objects[i-1]+this->numCoords;
-			clusters    = (float**) malloc(this->numClusters * sizeof(float*));
-			assert(clusters != NULL);
-			clusters[0] = (float*)  malloc(clustersize*sizeof(float));
-			assert(clusters[0] != NULL);
+				this->objects[i]=this->objects[i-1]+this->numCoords;
+			this->clusters    = (float**) malloc(this->numClusters * sizeof(float*));
+			assert(this->clusters != NULL);
+			this->clusters[0] = (float*)  malloc(clustersize*sizeof(float));
+			assert(this->clusters[0] != NULL);
 			for (int i=1; i<numClusters; i++)
-				clusters[i] = clusters[i-1] + this->numCoords;
+				this->clusters[i] = this->clusters[i-1] + this->numCoords;
 			this->membership = (int*)malloc(this->numObjs *sizeof(int));
 		}
+		intra_Barrier();
 		SharedDataBcast((void*)this->objects[0], objsize*sizeof(float), 0);
 		SharedDataBcast((void*)this->clusters[0], clustersize*sizeof(float), 0);
+		//std::cout<<getTrank()<<std::endl;
 		if(getLrank()==0){
-			for (int i=0; i<this->numObjs; i++)
-				membership[i] = -1;
 			newClusters    = (float**) malloc(this->numClusters * sizeof(float*));
 			assert(newClusters != NULL);
 			newClusters[0] = (float*)  calloc(clustersize, sizeof(float));
 			assert(newClusters[0] != NULL);
 			for (int i=1; i<this->numClusters; i++)
-				newClusters[i] = newClusters[i-1] + numCoords;
+				newClusters[i] = newClusters[i-1] + this->numCoords;
 			newClusterSize = (int*) calloc(this->numClusters, sizeof(int));
 			for(int i=0; i<this->numObjs; i++){
 				this->membership[i]=-1;
 			}
 		}
-
+		/*if(getLrank()==0)
+			std::cout<<"Finish init."<<std::endl;*/
 	}
 
 	void run(){
@@ -95,7 +98,7 @@ public:
 	    if(taskThreadId ==0){
 	    	clusterforgather = (float*)malloc(numClusters* numCoords * getPsize()*sizeof(float));
 	    	changeforgather = new int[getPsize()];
-	    	clustersizeforgather = (float*)malloc(numClusters*getPsize()*sizeof(int));
+	    	clustersizeforgather = (int*)malloc(numClusters*getPsize()*sizeof(int));
 	    }
 
 		int localComputeSize = numObjs / numTotalThreads;
@@ -115,6 +118,7 @@ public:
 		Timer timer;
 		double loopruntime[2];
 		loopruntime[0]=loopruntime[1]=0;
+
 		/* the main compute procedure */
 		do{
 			changedObjs =0;
@@ -132,6 +136,7 @@ public:
 				for(int j=0; j<numCoords; j++)
 					localClusters[idx][j] += objects[i][j];
 			}
+
 			/* update task-threads shared newClusters with localClusters */
 			updateNewCluster.write_lock();
 			for(int i=0; i<numClusters; i++){
@@ -146,10 +151,10 @@ public:
 			}
 			numChanges +=changedObjs;
 			updateNewCluster.write_unlock();
-
 			/* sync all task-threads, wait local compute finish*/
 			intra_Barrier();
 			loopruntime[0]+=timer.stop();
+			//std::cout<<"changes1:"<<numChanges<<std::endl;
 			/* get total changes*/
 			SharedDataGather(&numChanges, sizeof(int), changeforgather, 0);
 			if(taskThreadId==0){
@@ -160,6 +165,7 @@ public:
 			}
 			SharedDataBcast(&numChanges,sizeof(int), 0);
 			changedObjs = numChanges;
+			//std::cout<<"changes2:"<<changedObjs<<std::endl;
 			/* get global clusters */
 			SharedDataGather(newClusters[0], numClusters*numCoords*sizeof(float),
 										clusterforgather, 0);
@@ -198,11 +204,11 @@ public:
 			}
 			SharedDataBcast(clusters[0], numClusters*numCoords*sizeof(float), 0);
 			loopruntime[1]+= timer.stop();
-
-		}while(((float)changedObjs)/numObjs > threshold && loopcounter++ < 100);
+			loopcounter++;
+		}while(((float)changedObjs)/numObjs > threshold && loopcounter < 100);
 
 		/* finish compute */
-		if(taskThreadId ==0){
+		if(getLrank() ==0){
 			//std::cout<<"run() time: "<<loopruntime<<std::endl;
 			//std::cout<<"changed objs:"<<changedObjs<<std::endl;
 			//std::cout<<"loops: "<<loopcounter<<std::endl;
@@ -215,7 +221,7 @@ public:
 		free(localClusters);
 		free(localClusterSize);
 		if(taskThreadId==0){
-			free(clustersforgather);
+			free(clusterforgather);
 			delete changeforgather;
 			free(clustersizeforgather);
 		}
@@ -226,6 +232,8 @@ public:
 			free(clusters);
 			free(membership);
 		}
+		/*if(getLrank()==0)
+			std::cout<<"Finish run."<<std::endl;*/
 	}
 
 	~kmeans_algorithm(){
@@ -281,7 +289,7 @@ private:
 	int numChanges;
 
 	float **newClusters;
-	float *newClusterSize;
+	int *newClusterSize;
 
 	SharedDataLock updateNewCluster;
 
@@ -313,7 +321,8 @@ int main(int argc, char*argv[]){
 	UtcContext ctx(argc, argv);
 
 	/* read data points from file*/
-	std::cout<<"reading data points from file."<<std::endl;
+	if(ctx.getProcRank()==0)
+		std::cout<<"reading data points from file."<<std::endl;
 	Task<FileRead> file_read("file-read", ProcList(0));
 	file_read.init(filename, &numObjs, &numCoords, std::ref(objects));
 	file_read.run();
@@ -321,22 +330,24 @@ int main(int argc, char*argv[]){
 
 	/* allocate a 2D space for clusters[] (coordinates of cluster centers)
 	       this array should be the same across all processes                  */
-	clusters    = (float**) malloc(numClusters *             sizeof(float*));
-	assert(clusters != NULL);
-	clusters[0] = (float*)  malloc(numClusters * numCoords * sizeof(float));
-	assert(clusters[0] != NULL);
-	for (int i=1; i<numClusters; i++)
-		clusters[i] = clusters[i-1] + numCoords;
-	/* allocate space for membership array for each object */
-	membership = (int*) malloc(numObjs * sizeof(int));
-	assert(membership != NULL);
-	/* initial cluster centers with first numClusters points*/
-	for (int i=0; i<numClusters; i++)
-		for (int j=0; j<numCoords; j++)
-			clusters[i][j] = objects[i][j];
-
+	if(ctx.getProcRank()==0){
+		clusters    = (float**) malloc(numClusters *             sizeof(float*));
+		assert(clusters != NULL);
+		clusters[0] = (float*)  malloc(numClusters * numCoords * sizeof(float));
+		assert(clusters[0] != NULL);
+		for (int i=1; i<numClusters; i++)
+			clusters[i] = clusters[i-1] + numCoords;
+		/* allocate space for membership array for each object */
+		membership = (int*) malloc(numObjs * sizeof(int));
+		assert(membership != NULL);
+		/* initial cluster centers with first numClusters points*/
+		for (int i=0; i<numClusters; i++)
+			for (int j=0; j<numCoords; j++)
+				clusters[i][j] = objects[i][j];
+	}
 	/* begin clustering */
-	std::cout<<"Start clustering..."<<std::endl;
+	if(ctx.getProcRank()==0)
+		std::cout<<"Start clustering..."<<std::endl;
 	double kmeans_runtime[3];
 	double kmeans_runtimeTotal[3];
 	kmeans_runtimeTotal[0]=kmeans_runtimeTotal[1]=kmeans_runtimeTotal[2]=0;
@@ -344,16 +355,18 @@ int main(int argc, char*argv[]){
 	std::vector<int> rvec;
 	for(int i=0; i< nprocs; i++)
 		for(int j=0; j<nthreads;j++)
-			rvec.push_bach(i);
+			rvec.push_back(i);
 	ProcList rlist(rvec); // task with  nthreads on each proc
 	Task<kmeans_algorithm> kmeansCompute("kmeans", rlist);
 	for(int k =0; k<N; k++){
+		if(ctx.getProcRank()==0){
 		for (int i=0; i<numClusters; i++)
 					for (int j=0; j<numCoords; j++)
 						clusters[i][j] = objects[i][j];
+		}
 	ctx.Barrier();
 	kmeansCompute.init(objects,  numCoords,  numObjs,  numClusters,
-			membership, clusters, &kmeans_runtime, &loops);
+			membership, clusters, kmeans_runtime, &loops);
 	kmeansCompute.run();
 	kmeansCompute.wait();
 	kmeans_runtimeTotal[0]+=kmeans_runtime[0];
@@ -370,11 +383,13 @@ int main(int argc, char*argv[]){
 	file_write.run();
 	file_write.finish();
 
-	free(membership);
-	free(clusters[0]);
-	free(clusters);
-	free(objects[0]);
-	free(objects);
+	if(ctx.getProcRank()==0){
+		free(membership);
+		free(clusters[0]);
+		free(clusters);
+		free(objects[0]);
+		free(objects);
+	}
 
 	/* output some info*/
 	double t1, t2, t3;

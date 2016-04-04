@@ -432,7 +432,8 @@ int Task<T>::runImpl(){
 
 
 template<class T>
-void Task<T>::threadImpl(ThreadRank_t trank, ThreadRank_t lrank, std::ofstream *output)
+void Task<T>::threadImpl(ThreadRank_t trank, ThreadRank_t lrank,
+		std::ofstream *output, int hardcoreId)
 {
 	//
 	std::ofstream *m_threadOstream = output;
@@ -440,6 +441,13 @@ void Task<T>::threadImpl(ThreadRank_t trank, ThreadRank_t lrank, std::ofstream *
 	PRINT_TIME_NOW(*m_threadOstream)
 	(*m_threadOstream)<<"thread("<<trank<<") "<<std::this_thread::get_id()<<" start up on "
 			<<getpid()<<"..."<<std::endl;
+#endif
+
+#ifdef SET_CPU_AFFINITY
+	assert(hardcoreId>=0);
+	std::vector<int> cpus;
+	cpus.push_back(hardcoreId);
+	setAffinity(cpus);
 #endif
 
 	// create task info in this thread TSS
@@ -778,7 +786,13 @@ void Task<T>::LaunchThreads(std::vector<ThreadRank_t> &tRankList)
 
 		m_ThreadRank2Local.insert(std::pair<ThreadRank_t, int>(trank, i));
 		// crteate a thread
+#ifdef SET_CPU_AFFINITY
+		int hardcoreId = UtcContext::HARDCORES_ID_FOR_USING;
+		UtcContext::HARDCORES_ID_FOR_USING = (UtcContext::HARDCORES_ID_FOR_USING+1)%UtcContext::HARDCORES_TOTAL_CURRENT_NODE;
+		m_taskThreads.push_back(std::thread(&Task<T>::threadImpl, this, trank, i, output, hardcoreId));
+#else
 		m_taskThreads.push_back(std::thread(&Task<T>::threadImpl, this, trank, i, output));
+#endif
 		//m_taskThreads[i].detach();
 		// record some info
 		id = m_taskThreads.back().get_id();

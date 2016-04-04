@@ -31,7 +31,9 @@ class UtcContext{
         //
         static TaskManager* getTaskManager();
 
-
+        //
+        static int HARDCORES_TOTAL_CURRENT_NODE;
+        static int HARDCORES_ID_FOR_USING;
     protected:
 
     private:

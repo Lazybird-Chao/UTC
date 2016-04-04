@@ -1,7 +1,7 @@
 #include "UtcContext.h"
 #include "RootTask.h"
 #include "ConduitManager.h"
-
+#include "AffinityUtilities.h"
 
 std::chrono::system_clock::time_point SYSTEM_START_TIME = std::chrono::system_clock::now();
 
@@ -11,6 +11,8 @@ UtcBase* UtcContext::Utcbase_provider=0;
 TaskId_t UtcContext::m_rootTaskId = -1;
 int UtcContext::m_nCount = 0;
 RootTask* UtcContext::root = nullptr;
+int UtcContext::HARDCORES_TOTAL_CURRENT_NODE=getConcurrency();
+int UtcContext::HARDCORES_ID_FOR_USING = 0;
 
 UtcContext::UtcContext()
 {
@@ -88,6 +90,7 @@ void UtcContext::initialize(int& argc, char** argv)
 
     ConduitManager* cdtMgr = ConduitManager::getInstance(); // The very first time and only this
     														// time to create a ConduitManager obj
+
 #ifdef USE_MPI_BASE
     MPI_Barrier(*(root->getWorldComm()));
 #endif
