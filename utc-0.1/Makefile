@@ -1,67 +1,52 @@
+###################
+
+default:libutc.a
+###################
 ##################
-GCC := gcc
-G++ := g++
-MPICXX := mpicxx
+PROJECT_HOMEDIR = /home/chao/Desktop/UTC-Project/utc-0.1
+PROJECT_BINDIR = $(PROJECT_HOMEDIR)/bin
+PROJECT_LIBDIR = $(PROJECT_HOMEDIR)/lib
+PROJECT_INCLUDEDIR = $(PROJECT_HOMEDIR)/include
+PROJECT_SRCDIR = $(PROJECT_HOMEDIR)/src
+
+##################
+GCC = gcc
+G++ = g++
+MPICXX = mpicxx
 
 CFLAG := -Wall
 CCFLAG := -g -std=c++11 -O2
 
 ###################
-MPI_LIB :=	-pthread -Wl,-rpath -Wl,/opt/openmpi/lib -Wl,--enable-new-dtags \
+MPI_LIB =	-pthread -Wl,-rpath -Wl,/opt/openmpi/lib -Wl,--enable-new-dtags \
 				-L/opt/openmpi/lib -lmpi_cxx -lmpi
-BOOST_LIB := /opt/boost/lib/libboost_thread.a \
+BOOST_LIB = /opt/boost/lib/libboost_thread.a \
 				/opt/boost/lib/libboost_system.a \
-				/opt/boost/lib/libboost_filesystem.a
-
-INCLUDE := -I/opt/openmpi/include
+				/opt/boost/lib/libboost_filesystem.a				
+LIB = $(MPI_LIB) $(BOOST_LIB)
+				
+###################		
+INCLUDE = -I/opt/openmpi/include
 INCLUDE += -I/opt/boost/include
-INCLUDE += -I./include
-
-LIB :=
-LIB += $(MPI_LIB) $(BOOST_LIB)
-LIB += -L./lib
-###################
-vpath %.h  ./include
-vpath %.cc ./src
-
-
+INCLUDE += -I$(PROJECT_HOMEDIR)/include	
 
 ###################
+vpath %.h  $(PROJECT_INCLUDEDIR)
+vpath %.cc $(PROJECT_SRCDIR)
 
-.PHONY: default
-default: test
-
-### utc library targets
-obj:= 	UtcContext.o UtcMpi.o ProcList.o UniqueExeTag.o\
-		RootTask.o  TaskBase.o TaskManager.o Task.o  \
-		ConduitManager.o Conduit.o InprocConduit.o XprocConduit.o\
-		InprocConduit_Write.o InprocConduit_BWrite.o InprocConduit_PWrite.o	InprocConduit_Read.o \
-		InprocConduit_Async.o XprocConduit_Async.o \
-		Timer.o  Barrier.o SharedDataLock.o
-LIB_UTC := libutc.a
- 
+###################
+OBJ_UTC:= 	UtcContext.o UtcMpi.o ProcList.o UniqueExeTag.o\
+    		RootTask.o  TaskBase.o TaskManager.o Task.o  \
+    		ConduitManager.o Conduit.o InprocConduit.o XprocConduit.o\
+    		InprocConduit_Write.o InprocConduit_BWrite.o InprocConduit_PWrite.o	InprocConduit_Read.o \
+    		InprocConduit_Async.o XprocConduit_Async.o \
+    		Timer.o  Barrier.o SharedDataLock.o
 	
-## test target
-TARGET_SOURCE:= ./test/bench/k-means/utc_kmeans_mtask_v2.cc
-TARGET_OBJ:= main.o	
-TARGET_EXE:= a.out
-
-$(TARGET_OBJ): $(TARGET_SOURCE)
-	$(G++)	-o $(TARGET_OBJ) -c $(TARGET_SOURCE)  $(CCFLAG) $(INCLUDE) 	
-
-
-test: $(LIB_UTC) $(TARGET_OBJ)
-	$(G++)	-o $(TARGET_EXE) $(TARGET_OBJ) $(CCFLAG) -lutc $(LIB)
-	mkdir -p bin; cd bin; mv ../$(TARGET_EXE) ./; mv ../$(TARGET_OBJ) ./
-	mkdir -p log
-	@echo "make successful !!!" 
-
-
-
 ### library required object files
-$(LIB_UTC): $(obj)
-	ar -r -uv $(LIB_UTC) $(obj)
-	mkdir -p lib; cd lib; mv ../*.o ./; mv ../*.a ./
+libutc.a: $(OBJ_UTC)
+	ar -r -uv libutc.a $(OBJ_UTC)
+	mkdir -p $(PROJECT_HOMEDIR)/lib; mv *.o $(PROJECT_HOMEDIR)/lib; mv *.a $(PROJECT_HOMEDIR)/lib
+	@echo "make library successful !!!" 
 ProcList.o: ProcList.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 UniqueExeTag.o: UniqueExeTag.cc
@@ -105,15 +90,4 @@ Barrier.o: Barrier.cc
 SharedDataLock.o: SharedDataLock.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 	
-	
-###
-.PHONY: clean cleanall cleanlog
-clean:
-	rm -rf ./bin/*
-	rm -f ./lib/*.o
-cleanall:
-	rm -rf ./bin
-	rm -rf ./lib
-	rm -rf ./log
-cleanlog:
-	rm -rf ./log/*.log
+

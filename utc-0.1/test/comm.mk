@@ -1,1 +1,0 @@
-g++ -std=c++11 ./test/test_MM3.cc  ./lib/libutc.a /opt/boost/lib/libboost_thread.a /opt/boost/lib/libboost_system.a /opt/boost/lib/libboost_filesystem.a -pthread -Wl,-rpath -Wl,/opt/openmpi/lib -Wl,--enable-new-dtags -L/opt/openmpi/lib -lmpi_cxx -lmpi  -I./include -I/opt/boost/include -I/opt/openmpi/include
