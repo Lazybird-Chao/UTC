@@ -8,7 +8,11 @@ PROGRAM_SOURCE:= utc_kmeans_stask_v2.cc
 PROGRAM = $(BINDIR)/$(BENCHMARK).out
 default: $(PROGRAM)
 
-include ../../../comm.mk
+include ../../../for-lab.comm
+
+libutc:
+	cd $(PROJECT_HOMEDIR);$(MAKE) -f for-lab.mk
+
 
 ### helper function for test program
 HELPER_OBJ = helper_getopt.o 
@@ -18,7 +22,7 @@ $(HELPER_OBJ): $(PROJECT_HOMEDIR)/test/bench/helper_getopt.c
 PROGRAM_OBJ:= $(addsuffix .o, $(basename $(PROGRAM_SOURCE))) \
 				$(HELPER_OBJ)
 
-$(PROGRAM): $(PROGRAM_OBJ) $(LIB_UTC)
+$(PROGRAM): $(PROGRAM_OBJ) libutc
 	$(G++)	$(CCFLAG) $(LINKFLAG) -o $(PROGRAM) $(PROGRAM_OBJ) $(LIB)
 	@echo "make target successful !!!" 
 

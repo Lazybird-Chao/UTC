@@ -694,7 +694,7 @@ void write_ep_info(FILE *fp, char class)
 #define VERBOSE
 #define LL 400
 #include <stdio.h>
-#define DEFFILE "../config/make.def"
+#define DEFFILE "../../config/make.def"
 #define DEFAULT_MESSAGE "(none)"
 FILE *deffile;
 void write_compiler_info(int type, FILE *fp)

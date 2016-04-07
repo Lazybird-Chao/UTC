@@ -1,4 +1,4 @@
-PROGRAM  = $(BINDIR)/$(BENCHMARK).$(CLASS).x
+#PROGRAM  = $(BINDIR)/$(BENCHMARK).$(CLASS).x
 CCOMPILE = $(CC)  -c $(C_INC) $(CFLAGS)
 CCOMPILE_pp = $(CC_pp)  -c $(C_INC_pp) $(CFLAGS_pp)
 
@@ -17,43 +17,43 @@ default:: ${PROGRAM}
 # target does not exist and is not created. 
 # If you create a file called "config" you will break things. 
 config:
-	@cd ../sys; ${MAKE} all
-	../sys/setparams ${BENCHMARK} ${CLASS}
+	@cd ../../sys; ${MAKE} all
+	../../sys/setparams ${BENCHMARK} ${CLASS}
 
-COMMON=../common
-${COMMON}/${RAND}.o: ${COMMON}/${RAND}.c ../config/make.def
+COMMON=../../common
+${COMMON}/${RAND}.o: ${COMMON}/${RAND}.c ../../config/make.def
 	cd ${COMMON}; ${CCOMPILE} ${RAND}.c
 
-${COMMON}/print_results.o: ${COMMON}/print_results.c ../config/make.def
+${COMMON}/print_results.o: ${COMMON}/print_results.c ../../config/make.def
 	cd ${COMMON}; ${CCOMPILE} print_results.c
+${COMMON}/print_results_omp.o: ${COMMON}/print_results_omp.c ../../config/make.def
+	cd ${COMMON}; ${CCOMPILE} -fopenmp print_results_omp.c
 
-${COMMON}/c_print_results.o: ${COMMON}/c_print_results.c ../config/make.def
+${COMMON}/c_print_results.o: ${COMMON}/c_print_results.c ../../config/make.def
 	cd ${COMMON}; ${CCOMPILE} c_print_results.c
+${COMMON}/c_print_results_omp.o: ${COMMON}/c_print_results_omp.c ../../config/make.def
+	cd ${COMMON}; ${CCOMPILE} -fopenmp c_print_results_omp.c
 
-${COMMON}/timers.o: ${COMMON}/timers.c ../config/make.def
-	cd ${COMMON}; ${CCOMPILE} timers.c
 
-${COMMON}/c_timers.o: ${COMMON}/c_timers.c ../config/make.def
+${COMMON}/c_timers.o: ${COMMON}/c_timers.c ../../config/make.def
 	cd ${COMMON}; ${CCOMPILE} c_timers.c
+${COMMON}/c_timers_omp.o: ${COMMON}/c_timers_omp.c ../../config/make.def
+	cd ${COMMON}; ${CCOMPILE} -fopenmp c_timers_omp.c
 
-${COMMON}/wtime.o: ${COMMON}/${WTIME} ../config/make.def
-	cd ${COMMON}; ${CCOMPILE} ${MACHINE} -o wtime.o ${COMMON}/${WTIME}
-# For most machines or CRAY or IBM
-#	cd ${COMMON}; ${CCOMPILE} ${MACHINE} ${COMMON}/wtime.c
-# For a precise timer on an SGI Power Challenge, try:
-#	cd ${COMMON}; ${CCOMPILE} -o wtime.o ${COMMON}/wtime_sgi64.c
+${COMMON}/wtime.o: ${COMMON}/${WTIME} ../../config/make.def
+	cd ${COMMON}; ${CCOMPILE}  -o wtime.o ${WTIME}
 
-${COMMON}/c_wtime.o: ${COMMON}/${WTIME} ../config/make.def
-	cd ${COMMON}; ${CCOMPILE} -o c_wtime.o ${COMMON}/${WTIME}
+${COMMON}/c_wtime.o: ${COMMON}/${WTIME} ../../config/make.def
+	cd ${COMMON}; ${CCOMPILE} -o c_wtime.o ${WTIME}
 
 
 # Normally setparams updates npbparams.h only if the settings (CLASS)
 # have changed. However, we also want to update if the compile options
 # may have changed (set in ../config/make.def). 
-npbparams.h: ../config/make.def
+npbparams.h: ../../config/make.def
 	@ echo make.def modified. Rebuilding npbparams.h just in case
 	rm -f npbparams.h
-	../sys/setparams ${BENCHMARK} ${CLASS}
+	../../sys/setparams ${BENCHMARK} ${CLASS}
 
 # So that "make benchmark-name" works
 ${BENCHMARK}:  default
