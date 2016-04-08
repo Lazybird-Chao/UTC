@@ -90,7 +90,7 @@ int main()
     timers_enabled = true;
     fclose(fp);
   }
-
+  timers_enabled = true;
   //--------------------------------------------------------------------
   //  Because the size of the problem is too large to store in a 32-bit
   //  integer for some classes, we put it into a string (for printing).
