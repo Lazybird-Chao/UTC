@@ -27,4 +27,8 @@ ep.o: ep.c npbparams.h
 clean:
 	- rm -f *.o *~ 
 	- rm -f npbparams.h core
+	- rm ${COMMON}/print_results.o \
+			${COMMON}/${RAND}.o \
+       		${COMMON}/c_timers.o \
+			${COMMON}/wtime.o
 

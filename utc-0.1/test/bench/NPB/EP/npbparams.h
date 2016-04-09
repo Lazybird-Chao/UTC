@@ -5,7 +5,7 @@
    in this directory. Do not modify it by hand.   
 */
 #define CLASS  'A'
-#define M      28
+#define _M      28
 
 #define CONVERTDOUBLE  false
 #define COMPILETIME "08 Apr 2016"

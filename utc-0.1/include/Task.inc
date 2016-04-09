@@ -791,7 +791,7 @@ void Task<T>::LaunchThreads(std::vector<ThreadRank_t> &tRankList)
 		UtcContext::HARDCORES_ID_FOR_USING = (UtcContext::HARDCORES_ID_FOR_USING+1)%UtcContext::HARDCORES_TOTAL_CURRENT_NODE;
 		m_taskThreads.push_back(std::thread(&Task<T>::threadImpl, this, trank, i, output, hardcoreId));
 #else
-		m_taskThreads.push_back(std::thread(&Task<T>::threadImpl, this, trank, i, output));
+		m_taskThreads.push_back(std::thread(&Task<T>::threadImpl, this, trank, i, output, -1));
 #endif
 		//m_taskThreads[i].detach();
 		// record some info

@@ -29,4 +29,5 @@ ep.o: ep.c npbparams.h
 clean:
 	- rm -f *.o *~ 
 	- rm -f npbparams.h core
+	- rm ${COMMON}/print_results_omp.o ${COMMON}/c_timers_omp.o ${COMMON}/${RAND}.o ${COMMON}/wtime.o
 	- if [ -d rii_files ]; then rm -r rii_files; fi

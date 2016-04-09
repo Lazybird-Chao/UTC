@@ -19,7 +19,7 @@ using namespace iUtc;
 #define MAX(X,Y)  (((X) > (Y)) ? (X) : (Y))
 
 #define MK        16
-#define MM        (M - MK)
+#define MM        (_M - MK)
 #define NN        (1 << MM)
 #define NK        (1 << MK)
 #define NQ        10
@@ -30,18 +30,22 @@ using namespace iUtc;
 
 class ep_kernel_compute{
 public:
-	void init(int np, double *sx, double *sy, double *gc, double* q, double* timeVal){
+	void init( double *sx, double *sy, double *gc, double* q, double* timeVal){
 		myTrank = getTrank();
 		myLrank = getLrank();
-		if(getUniqueExecution){
+		if(getUniqueExecution()){
 			nTotalthreads = getGsize();
 			nLocalthreads = getLsize();
 			this->sx_out = sx;
 			this->sy_out = sy;
 			this->q_out = q;
-			this->gc = gc;
+			this->gc_out = gc;
 			this->timeVal = timeVal;
 			sbarrier.set(nLocalthreads);
+			this->sx =0.0;
+			this->sy =0.0;
+			for(int i=0; i<NQ;i++)
+				this->q[i]=0.0;
 		}
 		intra_Barrier();
 		int np_add;
@@ -51,8 +55,8 @@ public:
 			np_add = 1;
 		else
 			np_add =0;
-		this->np[myLrank] = np + np_add;
-		if(this->np[myLrank] ==0){
+		this->np = np + np_add;
+		if(this->np==0){
 			std::cerr<<"Too many threads: "<<nTotalthreads<<" "<<NN<<std::endl;
 			exit(1);
 		}
@@ -60,6 +64,9 @@ public:
 			k_offset= this->np * myTrank -1;
 		else
 			k_offset= no_large_nodes*(this->np+1) + (this->np)*(myTrank - no_large_nodes)-1;
+
+		/*if(myLrank ==0)
+			std::cout<<"Finish init()"<<np<<" "<<nTotalthreads<<std::endl;*/
 	}
 
 	void run(){
@@ -73,23 +80,31 @@ public:
 		if(myTrank==0){
 			sx_forgather = new double[getPsize()];
 			sy_forgather = new double[getPsize()];
-			q_forgather = new double[getPsize*NQ];
+			q_forgather = new double[getPsize()*NQ];
 		}
 
-		vranlc(0, &dum[0], dum[1], dum[2]);
+		vranlc(0, &dum[0], dum[1], &dum[2]);
 		dum[0] = randlc(&dum[1], dum[2]);
 		for( int i=0; i<2*NK; i++)
 			x[i]= -1.0e99;
-		double local_timeVal[5];
+		double local_timeVal[4];
 		Timer timer1, timer2;
-		for(int i=0; i<5; i++)
+		for(int i=0; i<4; i++)
 			local_timeVal[i] = 0.0;
 		inter_Barrier();
 		timer1.start();
 
 		t1 = A;
+		vranlc(0, &t1, A, x);
+
+		//--------------------------------------------------------------------
+		//  Compute AN = A ^ (2 * NK) (mod 2^46).
+		//--------------------------------------------------------------------
+		t1 = A;
+
 		for(int i=0; i<MK +1; i++)
 			t2 = randlc(&t1, t1);
+		//std::cout<<t1<<" "<<t2<<std::endl;
 		an = t1;
 		tt = S;
 		local_sx = 0.0;
@@ -100,7 +115,7 @@ public:
 		for(int k=1; k<= np; k++){
 			int kk = k_offset + k;
 			t1 = S;
-			t1 = an;
+			t2 = an;
 
 			// Find starting seed t1 for this kk.
 			for( int i=1; i<=100; i++){
@@ -116,7 +131,7 @@ public:
 			//--------------------------------------------------------------------
 			timer2.start();
 			vranlc(2*NK, &t1, A, x);
-			local_timeVal[1] += timer2.stop(); // t_randn
+			local_timeVal[2] += timer2.stop(); // t_randn
 
 			//--------------------------------------------------------------------
 			//  Compute Gaussian deviates by acceptance-rejection method and
@@ -138,7 +153,7 @@ public:
 					local_sy    = local_sy + t4;
 				}
 			}
-			local_timeVal[2] += timer2.stop();  // t_gpairs
+			local_timeVal[1] += timer2.stop();  // t_gpairs
 
 		}
 
@@ -185,9 +200,12 @@ public:
 			*sy_out = sy;
 			for(int i=0; i<NQ; i++)
 				q_out[i]=q[i];
+		}
+		if(myLrank==0){
 			for(int i=0; i<4; i++)
 				timeVal[i] = timeVal[i]/nLocalthreads;
 		}
+
 
 	}
 
@@ -205,12 +223,17 @@ private:
 	SpinBarrier sbarrier;
 	SpinLock rwlock;
 };
+thread_local int ep_kernel_compute::np;
+thread_local int ep_kernel_compute::k_offset;
+thread_local int ep_kernel_compute::myTrank;
+thread_local int ep_kernel_compute::myLrank;
+
 
 void usage() {
     std::string help =
         "use option: -t nthreads\n   :threads per node of Task\n"
-		"            -p nprocs       :number of nodes running on \n"
-    std::cerr<<help;
+		"            -p nprocs       :number of nodes running on \n";
+    std::cerr<<help.c_str();
     exit(-1);
 }
 
@@ -250,15 +273,16 @@ int main(int argc, char* argv[]){
 	double q[NQ];
 
 	if(ctx.getProcRank()==0){
-		sprintf(size, "%15.0lf", pow(2.0, M+1));
+		sprintf(size, "%15.0lf", pow(2.0, _M+1));
 		int j = 14;
 		if (size[j] == '.') j--;
 		size[j+1] = '\0';
 		printf("\n\n NAS Parallel Benchmarks (NPB3.3-SER-C) - EP Benchmark\n");
 		printf("\n Number of random numbers generated: %15s\n", size);
 	}
-	np = NN;
 
+	/*if(ctx.getProcRank()==0)
+		std::cout<<nprocs<<" "<<nthreads<<std::endl;*/
 	std::vector<int> rvec;
 	for(int i=0; i< nprocs; i++)
 			for(int j=0; j<nthreads;j++)
@@ -267,7 +291,7 @@ int main(int argc, char* argv[]){
 	Task<ep_kernel_compute> ep_instance("ep-compute", rlist);
 
 	double timeVal[4]={0,0,0,0};
-	ep_instance.init(np, &sx, &sy, &gc, q, timeVal);
+	ep_instance.init(&sx, &sy, &gc, q, timeVal);
 
 	ep_instance.run();
 
@@ -281,25 +305,25 @@ int main(int argc, char* argv[]){
 	if(ctx.getProcRank()==0){
 		nit = 0;
 		verified = true;
-		if (M == 24) {
+		if (_M == 24) {
 			sx_verify_value = -3.247834652034740e+3;
 			sy_verify_value = -6.958407078382297e+3;
-		} else if (M == 25) {
+		} else if (_M == 25) {
 			sx_verify_value = -2.863319731645753e+3;
 			sy_verify_value = -6.320053679109499e+3;
-		} else if (M == 28) {
+		} else if (_M == 28) {
 			sx_verify_value = -4.295875165629892e+3;
 			sy_verify_value = -1.580732573678431e+4;
-		} else if (M == 30) {
+		} else if (_M == 30) {
 			sx_verify_value =  4.033815542441498e+4;
 			sy_verify_value = -2.660669192809235e+4;
-		} else if (M == 32) {
+		} else if (_M == 32) {
 			sx_verify_value =  4.764367927995374e+4;
 			sy_verify_value = -8.084072988043731e+4;
-		} else if (M == 36) {
+		} else if (_M == 36) {
 			sx_verify_value =  1.982481200946593e+5;
 			sy_verify_value = -1.020596636361769e+5;
-		} else if (M == 40) {
+		} else if (_M == 40) {
 			sx_verify_value = -5.319717441530e+05;
 			sy_verify_value = -3.688834557731e+05;
 		} else {
@@ -313,13 +337,13 @@ int main(int argc, char* argv[]){
 		}
 
 		for(int i=0; i<4; i++)
-			timeVal[i] = timeVal[i]/ctx.numProcs();
+			timeVal[i] = timeValgather[i]/ctx.numProcs();
 
-		Mops = pow(2.0, M+1) / timeVal[0] / 1000000.0;
+		Mops = pow(2.0, _M+1) / timeVal[0] / 1000000.0;
 
 		printf("\nEP Benchmark Results:\n\n");
 		printf("CPU Time =%10.4lf\n", timeVal[0]);
-		printf("N = 2^%5d\n", M);
+		printf("N = 2^%5d\n", _M);
 		printf("No. Gaussian Pairs = %15.0lf\n", gc);
 		printf("Sums = %25.15lE %25.15lE\n", sx, sy);
 		printf("Counts: \n");
@@ -327,7 +351,7 @@ int main(int argc, char* argv[]){
 			printf("%3d%15.0lf\n", i, q[i]);
 		}
 
-		print_results("EP", CLASS, M+1, 0, 0, nit,
+		print_results("EP", CLASS, _M+1, 0, 0, nit,
 			  timeVal[0], Mops,
 			  "Random numbers generated",
 			  verified, NPBVERSION, COMPILETIME, CS1,

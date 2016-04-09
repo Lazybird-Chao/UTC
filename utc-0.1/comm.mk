@@ -37,9 +37,9 @@ INCLUDE += -I$(PROJECT_HOMEDIR)/include
 .PHONY: cleanlib cleanlog cleanbin
 
 cleanlib:
-	rm -rf $(PROJECT_LIDDIR)
+	rm  $(PROJECT_LIBDIR)/*
 cleanlog:
-	rm -rf $(PROJECT_HOMEDIR)/log
+	rm  $(PROJECT_HOMEDIR)/log/*
 cleanbin:
-	rm -rf $(PROJECT_BINDIR)
+	rm  $(PROJECT_BINDIR)/*
 		

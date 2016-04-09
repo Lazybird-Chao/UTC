@@ -1,0 +1,22 @@
+UCC = cc
+include ../config/make.def
+
+# Note that COMPILE is also defined in make.common and should
+# be the same. We can't include make.common because it has a lot
+# of other garbage. 
+FCOMPILE = $(F77) -c $(F_INC) $(FFLAGS)
+
+all: setparams_for_utc 
+
+# setparams creates an npbparam.h file for each benchmark 
+# configuration. npbparams.h also contains info about how a benchmark
+# was compiled and linked
+
+setparams: setparams_for_utc.c ../config/make.def
+	$(UCC) ${CONVERTFLAG} -o setparams_for_utc setparams_for_utc.c
+
+
+clean: 
+	-rm -f setparams_for_utc setparams.h npbparams.h
+	-rm -f *~ *.o
+

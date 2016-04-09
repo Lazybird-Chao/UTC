@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
   }
   timers_enabled = true;
   int nthreads = 1;
-  if(argc >2)
+  if(argc >1)
 	  nthreads = atoi(argv[1]);
   omp_set_num_threads(nthreads);
   //--------------------------------------------------------------------
@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
   for (i = 0; i < MK + 1; i++) {
     t2 = randlc(&t1, t1);
   }
-
+  //printf("%f, %f\n", t1, t2);
   an = t1;
   tt = S;
   gc = 0.0;

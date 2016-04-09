@@ -22,7 +22,7 @@ UniqueExeTag::UniqueExeTag(int nthreads, int ntags){
 
 void UniqueExeTag::reset(){
 	for(int i=0; i< m_ntags; i++)
-		m_uniqueExeTag[i] = true;
+		m_uniqueExeTag[i] = 0;
 	for(int i=0; i<m_nthreads; i++)
 		m_uniqueExeIdx[i] = 0;
 }

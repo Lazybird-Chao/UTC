@@ -379,7 +379,8 @@ void SharedDataGather(void *DataSend, DataSize_t DataSize, void *DataGathered,
 		Rank_t rootthread){
 	static thread_local int currentProcRank = -1;
 	static thread_local int currentThreadRank = -1;
-	static thread_local SpinBarrier* sbarrier;
+	static thread_local SpinBarrier* sbarrier=nullptr;
+	//static thread_local Barrier* barrier = nullptr;
 	static thread_local int numProcs = -1;
 	static thread_local int numLocalThreads=-1;
 	int rootproc;
@@ -387,6 +388,7 @@ void SharedDataGather(void *DataSend, DataSize_t DataSize, void *DataGathered,
 		currentProcRank= getPrank();
 		currentThreadRank = getTrank();
 		sbarrier = TaskManager::getTaskInfo()->spinBarrierObjPtr;
+		//barrier = TaskManager::getTaskInfo()->barrierObjPtr;
 		numProcs = getPsize();
 		numLocalThreads = getLsize();
 	}
@@ -410,9 +412,11 @@ void SharedDataGather(void *DataSend, DataSize_t DataSize, void *DataGathered,
 			memcpy(DataGathered, DataSend, DataSize);
 		}
 		sbarrier->wait();
+		//barrier->synch_intra(0);
 	}
 	else if(currentProcRank == rootproc){
 		sbarrier->wait();
+		//barrier->synch_intra(0);
 	}
 	else{
 		if(numLocalThreads>1){
@@ -431,12 +435,14 @@ void SharedDataGather(void *DataSend, DataSize_t DataSize, void *DataGathered,
 						rootproc, *taskcomm);
 #endif
 				sbarrier->wait();
+				//barrier->synch_intra(0);
 			}
 			else{
 				gatherAvailable->fetch_add(1);
 				int nthreads = numLocalThreads;
 				gatherAvailable->compare_exchange_strong(nthreads, 0);
 				sbarrier->wait();
+				//barrier->synch_intra(0);
 			}
 		}
 		else{
