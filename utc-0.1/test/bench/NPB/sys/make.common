@@ -29,10 +29,16 @@ ${COMMON}/print_results.o: ${COMMON}/print_results.c ../../config/make.def
 ${COMMON}/print_results_omp.o: ${COMMON}/print_results_omp.c ../../config/make.def
 	cd ${COMMON}; ${CCOMPILE} -fopenmp print_results_omp.c
 
+#${COMMON}/print_results_utc.o: ${COMMON}/print_results_utc.cc
+#    cd ${COMMON};  $(G++) -c -g -Wall -O3 -mcmodel=medium print_results_utc.cc
+
 ${COMMON}/c_print_results.o: ${COMMON}/c_print_results.c ../../config/make.def
 	cd ${COMMON}; ${CCOMPILE} c_print_results.c
 ${COMMON}/c_print_results_omp.o: ${COMMON}/c_print_results_omp.c ../../config/make.def
 	cd ${COMMON}; ${CCOMPILE} -fopenmp c_print_results_omp.c
+
+#${COMMON}/c_print_results_utc.o: ${COMMON}/c_print_results_utc.cc
+#    cd ${COMMON};  $(G++) -c -g -Wall -O3 -mcmodel=medium c_print_results_utc.cc
 
 
 ${COMMON}/c_timers.o: ${COMMON}/c_timers.c ../../config/make.def

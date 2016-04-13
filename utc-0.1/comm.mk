@@ -16,19 +16,22 @@ CCFLAG := -g -std=c++11 -O2
 LINKFLAG =
 
 ###################
-MPI_LIB :=	-pthread -Wl,-rpath -Wl,/opt/openmpi-1.10/lib -Wl,--enable-new-dtags \
-				-L/opt/openmpi-1.10/lib -lmpi_cxx -lmpi
-BOOST_LIB := /opt/boost-1.60/lib/libboost_thread.a \
-				/opt/boost-1.60/lib/libboost_system.a \
-				/opt/boost-1.60/lib/libboost_filesystem.a
+MPI_DIR = /opt/openmpi-1.10
+BOOST_DIR = /opt/boost-1.60
+
+MPI_LIB :=	-pthread -Wl,-rpath -Wl,$(MPI_DIR)/lib -Wl,--enable-new-dtags \
+				-L$(MPI_DIR)/lib -lmpi_cxx -lmpi
+BOOST_LIB := $(BOOST_DIR)/lib/libboost_thread.a \
+				$(BOOST_DIR)/lib/libboost_system.a \
+				$(BOOST_DIR)/lib/libboost_filesystem.a
 				
 LIB = $(PROJECT_LIBDIR)/libutc.a
 LIB += -lrt
 LIB += $(MPI_LIB) $(BOOST_LIB)
 				
 ###################		
-INCLUDE = -I/opt/openmpi-1.10/include
-INCLUDE += -I/opt/boost-1.60/include
+INCLUDE = -I$(MPI_DIR)/include
+INCLUDE += -I$(BOOST_DIR)/include
 INCLUDE += -I$(PROJECT_HOMEDIR)/include		
 
 

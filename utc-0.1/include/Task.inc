@@ -318,6 +318,23 @@ void Task<T>::run()
 }
 
 template<class T>
+template<typename T1>
+void Task<T>::run(T1 arg1)
+{
+    // no task threads on this process, just return.
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
+    m_userTaskRunFunctionHandle = std::bind(&T::run, m_userTaskObjPtr, arg1);
+    m_jobHandleQueue.push_back(m_userTaskRunFunctionHandle);
+    runImpl();
+    return;
+}
+
+
+template<class T>
 void Task<T>::wait(){
 	if(m_numLocalThreads ==0)
 	{
