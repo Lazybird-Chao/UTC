@@ -1,10 +1,11 @@
 /*****************************************************************/
 /******     C  _  P  R  I  N  T  _  R  E  S  U  L  T  S     ******/
 /*****************************************************************/
+#include "c_print_results.h"
 #include <stdlib.h>
 #include <stdio.h>
 
-void c_print_results( char   *name,
+void c_print_results( const char   *name,
                       char   _class,
                       int    n1,
                       int    n2,
@@ -12,7 +13,7 @@ void c_print_results( char   *name,
                       int    niter,
                       double t,
                       double mops,
-					  char   *optype,
+					  const char   *optype,
                       int    passed_verification,
                       const char   *npbversion,
                       const char   *compiletime,
@@ -37,7 +38,7 @@ void c_print_results( char   *name,
 
     printf( " Iterations      =             %12d\n", niter );
 
-    printf( " Time in seconds =             %12.2f\n", t );
+    printf( " Time in seconds =             %12.4f\n", t );
 
     printf( " Mop/s total     =             %12.2f\n", mops );
 

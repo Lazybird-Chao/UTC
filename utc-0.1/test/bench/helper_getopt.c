@@ -57,7 +57,7 @@
 # endif
 #endif
 
-#ifndef ELIDE_CODE
+//#ifndef ELIDE_CODE
 
 
 /* This needs to come after some library #include
@@ -298,9 +298,7 @@ static int nonoption_flags_len;
 static void exchange (char **);
 #endif
 
-static void
-exchange (argv)
-     char **argv;
+static void exchange (char**argv)
 {
   int bottom = first_nonopt;
   int middle = last_nonopt;
@@ -383,11 +381,7 @@ exchange (argv)
 #if defined __STDC__ && __STDC__
 static const char *_getopt_initialize (int, char *const *, const char *);
 #endif
-static const char *
-_getopt_initialize (argc, argv, optstring)
-     int argc;
-     char *const *argv;
-     const char *optstring;
+static const char *_getopt_initialize (int argc, char *const *argv, const char*optstring)
 {
   /* Start processing options with ARGV-element 1 (since ARGV-element 0
      is the program name); the sequence of previously skipped
@@ -505,14 +499,9 @@ _getopt_initialize (argc, argv, optstring)
    If LONG_ONLY is nonzero, '-' as well as '--' can introduce
    long-named options.  */
 
-int
-_getopt_internal (argc, argv, optstring, longopts, longind, long_only)
-     int argc;
-     char *const *argv;
-     const char *optstring;
-     const struct option *longopts;
-     int *longind;
-     int long_only;
+int _getopt_internal(int argc, char *const *argv,
+		const char *optstring, const struct option *longopts,
+		int *longind, int long_only)
 {
   int print_errors = opterr;
   if (optstring[0] == ':')
@@ -1166,10 +1155,7 @@ _getopt_internal (argc, argv, optstring, longopts, longind, long_only)
 }
 
 int
-getopt (argc, argv, optstring)
-     int argc;
-     char *const *argv;
-     const char *optstring;
+getopt (int argc, char *const *argv, const char *optstring)
 {
   return _getopt_internal (argc, argv, optstring,
                            (const struct option *) 0,
@@ -1177,7 +1163,7 @@ getopt (argc, argv, optstring)
                            0);
 }
 
-#endif  /* Not ELIDE_CODE.  */
+//#endif  /* Not ELIDE_CODE.  */
 
 
 /* Compile with -DTEST to make an executable for use in testing

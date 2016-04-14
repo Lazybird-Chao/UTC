@@ -3,25 +3,30 @@ BINDIR = ./bin
 PROGRAM_SOURCE:= utc_is.cc
 
 
-PROGRAM = $(BINDIR)/$(BENCHMARK).$(CLASS).utc
+ifndef NPROCS
+NPROCS = 1
+endif
+PROGRAM = $(BINDIR)/$(BENCHMARK).$(CLASS).$(NPROCS).utc
+
+
 default: $(PROGRAM)
 
 config:
 	cd ../sys; $(MAKE) all -f makefile_for_utc
 	../sys/setparams_for_utc $(BENCHMARK) $(CLASS)
 
-include ../../../../for-vm.comm
+include ../../../../for-lab.comm
 
 COMMON = ../common
 INCLUDE += -I$(COMMON)
 
 libutc:
-	cd $(PROJECT_HOMEDIR);$(MAKE) -f for-vm.mk
+	cd $(PROJECT_HOMEDIR);$(MAKE) -f for-lab.mk
 
 ### helper function for test program
 HELPER_OBJ = helper_getopt.o 
 $(HELPER_OBJ): $(PROJECT_HOMEDIR)/test/bench/helper_getopt.c
-	$(G++) -o $(HELPER_OBJ) -c $<
+	$(GCC) -o $(HELPER_OBJ) -c -g $<
 	
 ${COMMON}/c_print_results_utc.o: ${COMMON}/c_print_results_utc.cc
 	cd ${COMMON};  $(G++) -c -g -Wall -O3 -mcmodel=medium c_print_results_utc.cc
@@ -35,12 +40,12 @@ $(PROGRAM): libutc config $(PROGRAM_OBJ)
 	@echo "make target successful !!!" 
 	
 utc_is.o: utc_is.cc npbparams.h
-	$(G++)	-c $< $(CCFLAG) $(INCLUDE)
+	$(G++)	-c $< $(CCFLAG) -DNUM_PROCS=$(NPROCS) $(INCLUDE)
 	
 
 	
 ###################################	
 clean:
-	- rm *.o *~	
-	- rm npbparams.h ${COMMON}/c_print_results_utc.o ${COMMON}/randdp.o
+	- rm -f *.o *~	
+	- rm -f npbparams.h ${COMMON}/c_print_results_utc.o
 	

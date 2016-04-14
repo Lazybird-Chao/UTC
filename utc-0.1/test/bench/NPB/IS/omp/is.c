@@ -172,9 +172,9 @@ int      passed_verification;
 /* These are the three main arrays. */
 /* See SIZE_OF_BUFFERS def above    */
 /************************************/
-INT_TYPE key_array[SIZE_OF_BUFFERS],    
-         key_buff1[MAX_KEY],
-         key_buff2[SIZE_OF_BUFFERS],
+INT_TYPE *key_array,
+         *key_buff1,
+         *key_buff2,
          partial_verify_vals[TEST_ARRAY_SIZE],
          **key_buff1_aptr = NULL;
 
@@ -894,6 +894,9 @@ void rank( int iteration )
 
 int main( int argc, char **argv )
 {
+	key_array = (INT_TYPE)*malloc(SIZE_OF_BUFFERS*sizeof(INT_TYPE));
+	key_buff1 = (INT_TYPE)*malloc(MAX_KEY*sizeof(INT_TYPE));
+	key_buff2= (INT_TYPE)*malloc(SIZE_OF_BUFFERS*sizeof(INT_TYPE));
 
     int             i, iteration, timer_on;
 
@@ -1054,6 +1057,9 @@ int main( int argc, char **argv )
        printf(" Sorting        : %8.3f (%5.2f%%)\n", timecounter, t_percent);
     }
 
+    free(key_array);
+    free(key_buff1);
+    free(key_buff2);
     return 0;
          /**************************/
 }        /*  E N D  P R O G R A M  */

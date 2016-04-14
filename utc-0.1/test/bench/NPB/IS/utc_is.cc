@@ -16,7 +16,9 @@ using namespace iUtc;
 #ifndef CLASS
 #define CLASS 'S'
 #endif
+#ifndef NUM_PROCS
 #define NUM_PROCS            1
+#endif
 #define MIN_PROCS            1
 
 
@@ -135,8 +137,8 @@ INT_TYPE *key_buff_ptr_global,         /* used by full_verify to get */
 
 int      passed_verification;
 
-INT_TYPE key_array[SIZE_OF_BUFFERS];
-INT_TYPE key_buff2[SIZE_OF_BUFFERS];
+INT_TYPE *key_array;
+INT_TYPE *key_buff2;
 
 
 /**********************/
@@ -374,14 +376,17 @@ void full_verify( void )
     is not greater than my least key value       */
     j = 0;
     if( my_rank > 0 && total_local_keys > 0 )
-        if( k > key_array[0] )
+        if( k > key_array[0] ){
             j++;
-
+            std::cout<<"rank"<<my_rank<<" "<<"at 0 out of order"<<std::endl;
+        }
 
 /*  Confirm keys correctly sorted: count incorrectly sorted keys, if any */
     for( i=1; i<total_local_keys; i++ )
-        if( key_array[i-1] > key_array[i] )
+        if( key_array[i-1] > key_array[i] ){
             j++;
+            std::cout<<"rank"<<my_rank<<" "<<"at "<<i<<" out of order"<<std::endl;
+        }
 
 
     if( j != 0 )
@@ -418,7 +423,7 @@ public:
 					(INT_TYPE*)malloc((NUM_BUCKETS+TEST_ARRAY_SIZE)*sizeof(INT_TYPE));
 			this->process_bucket_distrib_ptr2 =
 					(INT_TYPE*)malloc((NUM_BUCKETS+TEST_ARRAY_SIZE)*sizeof(INT_TYPE));
-			this->bucket_size_array = (INT_TYPE*)malloc(NUM_BUCKETS*sizeof(INT_TYPE));
+			this->bucket_size_array = (INT_TYPE*)malloc(NUM_BUCKETS*sizeof(INT_TYPE)*getLsize());
 			sbarrier.set(getLsize());
 		}
 	}
@@ -473,6 +478,7 @@ public:
 			for( i=0; i<NUM_BUCKETS+TEST_ARRAY_SIZE; i++ )
 				process_bucket_distrib_ptr2[i] = 0;
 		}
+		sbarrier.wait();
 		if(getUniqueExecution()){
 			/*  Determine where the partial verify test keys are, load into  */
 			/*  top of array bucket_size                                     */
@@ -482,15 +488,19 @@ public:
 								  key_array[test_index_array[i] % NUM_KEYS];
 		}
 
+		for(i=0; i<NUM_BUCKETS; i++)
+			bucket_size_array[myLrank*NUM_BUCKETS + i]=0;
 		/*  Determine the number of keys in each bucket */
 		// compute by each thread for its local keys
 		for(i= local_start; i<= local_end; i++){
 			bucket_size_array[myLrank*NUM_BUCKETS + (key_array[i]>>shift)]++;
 		}
 		sbarrier.wait();
+		//std::cout<<"here1"<<std::endl;
 		/*  Accumulative bucket sizes are the bucket pointers.
 		    These are global sizes accumulated upon to each bucket */
 		INT_TYPE *bucket_ptrs_local = (INT_TYPE*)malloc(NUM_BUCKETS*sizeof(INT_TYPE));
+		//std::cout<<"here2"<<std::endl;
 		bucket_ptrs_local[0] = 0;
 		for( k=0; k< myLrank; k++ )
 			bucket_ptrs_local[0] += bucket_size_array[k*NUM_BUCKETS + 0];
@@ -509,15 +519,15 @@ public:
 		}
 		// get bucket_size for current proc
 		if(getUniqueExecution()){
-			for(j =0; j<getLsize(); j++){
+			for(k =0; k<getLsize(); k++){
 				for(i=0; i<NUM_BUCKETS; i++){
-					bucket_size[i] += bucket_size_array[j*NUM_BUCKETS +i];
+					bucket_size[i] += bucket_size_array[k*NUM_BUCKETS +i];
 				}
 			}
 		}
 		sbarrier.wait();
 		local_timeVal[1]=timer2.stop();  // compute time
-
+		std::cout<<"here3"<<std::endl;
 		if(myLrank==0){
 			timer2.start();
 			MPI_Allreduce( bucket_size,
@@ -527,7 +537,6 @@ public:
 			                   MPI_SUM,
 			                   MPI_COMM_WORLD );
 
-			intra_Barrier();
 			local_timeVal[2] = timer2.stop();   // communicate time
 
 		/*  Determine Redistibution of keys: accumulate the bucket size totals
@@ -634,6 +643,7 @@ public:
 					 i<=process_bucket_distrib_ptr2[k];
 					 i++ )
 					m += bucket_size_totals[i]; /*  m has total # of lesser keys */
+			lesskeys=m;
 		}
 		if(getUniqueExecution()){
 		/*  Determine total number of keys on this processor */
@@ -642,9 +652,11 @@ public:
 				 i<=process_bucket_distrib_ptr2[getPrank()];
 				 i++ )
 				j += bucket_size_totals[i];     /* j has total # of local keys   */
+			totalkeys = j;
 		}
+		std::cout<<"my buckets:"<<buckets_forcompute<<std::endl;
 		sbarrier.wait();
-		while(true){
+		/*while(true){
 			int tmp = buckets_forcompute.fetch_sub(1);
 			if(tmp>0){
 				// get a bucket
@@ -659,7 +671,10 @@ public:
 			}
 			else
 				break;
-		}
+		}*/
+		key_buff_ptr=key_buff1 - min_key_val;
+		for( i=0; i<j; i++ )
+		       key_buff_ptr[key_buff2[i]]++;
 		intra_Barrier();
 		if(myLrank==0){
 			for( i=min_key_val; i<max_key_val; i++ )
@@ -675,7 +690,7 @@ public:
 				if( min_key_val <= k  &&  k <= max_key_val )
 				{
 					/* Add the total of lesser keys, m, here */
-					INT_TYPE2 key_rank = key_buff_ptr[k-1] + m;
+					INT_TYPE2 key_rank = key_buff_ptr[k-1] + lesskeys;
 					int failed = 0;
 
 					switch( CLASS )
@@ -796,7 +811,7 @@ public:
 		if( myLrank==0 && iteration == MAX_ITERATIONS )
 		{
 			key_buff_ptr_global = key_buff_ptr;
-			total_local_keys    = j;
+			total_local_keys    = totalkeys;
 			total_lesser_keys   = 0;  /* no longer set to 'm', see note above */
 		}
 
@@ -832,6 +847,7 @@ private:
 
 	INT_TYPE *bucket_size_array;
 	std::atomic<int> buckets_forcompute;
+	INT_TYPE lesskeys, totalkeys;
 
 	double *timeVal;
 
@@ -849,7 +865,7 @@ thread_local int rank_kernel::myLrank;
 /*****************************************************************/
 void usage() {
     std::string help =
-        "use option: -t nthreads\n   :threads per node of Task\n"
+        "use option: -t nthreads   :threads per node of Task\n"
 		"            -p nprocs       :number of nodes running on \n";
     std::cerr<<help.c_str();
     exit(-1);
@@ -857,17 +873,25 @@ void usage() {
 
 
 int main(int argc, char* argv[]){
+	key_array = (INT_TYPE*)malloc(SIZE_OF_BUFFERS*sizeof(INT_TYPE));
+	key_buff2 = (INT_TYPE*)malloc(SIZE_OF_BUFFERS*sizeof(INT_TYPE));
 	int iteration, itemp;
 
 	UtcContext ctx(argc, argv);
-	int nthreads, nprocs;
+	int nthreads=0;
+	int nprocs=0;
 	int opt;
 	extern char *optarg;
 	extern int optind;
 	opt=getopt(argc, argv, "t:p:");
+	//std::cout<<"opt="<<(char)opt<<std::endl;
+	if(opt ==EOF)
+		usage();
 	while( opt!=EOF ){
+		//std::cout<<"opt="<<(char)opt<<std::endl;
 		switch (opt){
 			case 't':
+				//std::cout<<"optarg="<<optarg<<std::endl;
 				nthreads = atoi(optarg);
 				break;
 			case 'p':
@@ -882,7 +906,13 @@ int main(int argc, char* argv[]){
 		}
 		opt=getopt(argc, argv, "t:p:");
 	}
-
+	if(nthreads<1 || nprocs<1){
+		usage();
+	}
+	else{
+		if(ctx.getProcRank()==0)
+			std::cout<<"Threads: "<<nthreads<<"    Procs: "<<nprocs<<std::endl;
+	}
 	/*  Initialize the verification arrays if a valid class */
 	for( int i=0; i<TEST_ARRAY_SIZE; i++ ){
 		switch( CLASS )
@@ -952,9 +982,11 @@ int main(int argc, char* argv[]){
 	Task<rank_kernel> is_rank_instance("is-rank-compute", rlist);
 
 	double timeVal[3]={0, 0, 0};
+	double timeVal2[3]={0,0,0};
 	is_rank_instance.init(key_array, key_buff2, timeVal);
 	is_rank_instance.run(1);
 	is_rank_instance.wait();
+	ctx.Barrier();
 
 	passed_verification =0;
 	if( ctx.getProcRank() == 0 && CLASS != 'S' )
@@ -963,17 +995,21 @@ int main(int argc, char* argv[]){
 	Timer timer;
 	double totaltime=0;
 	timer.start();
-	for(int i=1; i<= MAX_ITERATIONS; iteration++){
+	for(int iteration=1; iteration<= MAX_ITERATIONS; iteration++){
 		if( ctx.getProcRank() == 0 && CLASS != 'S' )
-			printf( "        %d\n", i );
-		is_rank_instance.run(i);
+			printf( "        %d\n", iteration );
+		is_rank_instance.run(iteration);
 		is_rank_instance.wait();
+		timeVal2[0]+=timeVal[0];
+		timeVal2[1]+=timeVal[1];
+		timeVal2[2]+=timeVal[2];
 	}
 	totaltime = timer.stop();
 	double max_totaltime=0;
+	ctx.Barrier();
 	MPI_Reduce( &totaltime,&max_totaltime,1,MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD );
 	double timeValgather[3];
-	MPI_Reduce(timeVal, timeValgather, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	MPI_Reduce(timeVal2, timeValgather, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	is_rank_instance.finish();
 
 	full_verify();
@@ -1002,9 +1038,10 @@ int main(int argc, char* argv[]){
 		/* print timing information */
 		for(int i=0; i<3; i++)
 			timeVal[i] = timeValgather[i]/ctx.numProcs();
-		printf("\nTotal time:     %10.4lf \n", max_totaltime);
-		printf("\ncompute time:     %10.4lf \n", timeVal[1]);
-		printf("\ncomm time:     %10.4lf \n", timeVal[2]);
+		printf("\nTotal time:         %10.4lf \n", max_totaltime);
+		printf("\nTotal run time:     %10.4lf \n", timeVal[0]);
+		printf("\ncompute time:       %10.4lf \n", timeVal[1]);
+		printf("\ncomm time:          %10.4lf \n", timeVal[2]);
 		printf( "\n" );
 	}
 
