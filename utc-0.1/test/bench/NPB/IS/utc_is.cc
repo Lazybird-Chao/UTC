@@ -385,7 +385,8 @@ void full_verify( void )
     for( i=1; i<total_local_keys; i++ )
         if( key_array[i-1] > key_array[i] ){
             j++;
-            std::cout<<"rank"<<my_rank<<" "<<"at "<<i<<" out of order"<<std::endl;
+            std::cout<<"rank"<<my_rank<<" "<<"at "<<i<<" out of order.."
+            		<< key_array[i-1]<<":"<<key_array[i]<<std::endl;
         }
 
 
@@ -461,10 +462,16 @@ public:
 			key_array[iteration] = iteration;
 			key_array[iteration+MAX_ITERATIONS] = MAX_KEY - iteration;
 		}
-		/*  Initialize */
-		if(getUniqueExecution()){
+		if(myLrank ==0){
+			/*  Initialize */
 			for( i=0; i<NUM_BUCKETS+TEST_ARRAY_SIZE; i++ )
 				bucket_size[i] = 0;
+			/*  Determine where the partial verify test keys are, load into  */
+			/*  top of array bucket_size                                     */
+			for( i=0; i<TEST_ARRAY_SIZE; i++ )
+				if( (test_index_array[i]/NUM_KEYS) == getPrank() )
+					bucket_size[NUM_BUCKETS+i] =
+								  key_array[test_index_array[i] % NUM_KEYS];
 		}
 		if(getUniqueExecution()){
 			for( i=0; i<NUM_BUCKETS+TEST_ARRAY_SIZE; i++ )
@@ -478,18 +485,9 @@ public:
 			for( i=0; i<NUM_BUCKETS+TEST_ARRAY_SIZE; i++ )
 				process_bucket_distrib_ptr2[i] = 0;
 		}
-		sbarrier.wait();
-		if(getUniqueExecution()){
-			/*  Determine where the partial verify test keys are, load into  */
-			/*  top of array bucket_size                                     */
-			for( i=0; i<TEST_ARRAY_SIZE; i++ )
-				if( (test_index_array[i]/NUM_KEYS) == getPrank() )
-					bucket_size[NUM_BUCKETS+i] =
-								  key_array[test_index_array[i] % NUM_KEYS];
-		}
-
 		for(i=0; i<NUM_BUCKETS; i++)
 			bucket_size_array[myLrank*NUM_BUCKETS + i]=0;
+
 		/*  Determine the number of keys in each bucket */
 		// compute by each thread for its local keys
 		for(i= local_start; i<= local_end; i++){
@@ -527,7 +525,7 @@ public:
 		}
 		sbarrier.wait();
 		local_timeVal[1]=timer2.stop();  // compute time
-		std::cout<<"here3"<<std::endl;
+		//std::cout<<"here3"<<std::endl;
 		if(myLrank==0){
 			timer2.start();
 			MPI_Allreduce( bucket_size,
@@ -628,7 +626,7 @@ public:
 		key on each processor                                          */
 		min_key_val = process_bucket_distrib_ptr1[getPrank()] << shift;
 		max_key_val = ((process_bucket_distrib_ptr2[getPrank()] + 1) << shift)-1;
-
+		//std::cout<<"min"<<min_key_val<<" max"<<max_key_val<<std::endl;
 		if(getUniqueExecution()){
 		/*  Clear the work array */
 			for( i=0; i<max_key_val-min_key_val+1; i++ )
@@ -654,9 +652,9 @@ public:
 				j += bucket_size_totals[i];     /* j has total # of local keys   */
 			totalkeys = j;
 		}
-		std::cout<<"my buckets:"<<buckets_forcompute<<std::endl;
+		//std::cout<<"my buckets:"<<buckets_forcompute<<std::endl;
 		sbarrier.wait();
-		/*while(true){
+		while(true){
 			int tmp = buckets_forcompute.fetch_sub(1);
 			if(tmp>0){
 				// get a bucket
@@ -671,10 +669,10 @@ public:
 			}
 			else
 				break;
-		}*/
-		key_buff_ptr=key_buff1 - min_key_val;
+		}
+		/*key_buff_ptr=key_buff1 - min_key_val;
 		for( i=0; i<j; i++ )
-		       key_buff_ptr[key_buff2[i]]++;
+		       key_buff_ptr[key_buff2[i]]++;*/
 		intra_Barrier();
 		if(myLrank==0){
 			for( i=min_key_val; i<max_key_val; i++ )
@@ -799,14 +797,13 @@ public:
 				}
 			}
 		}
-		intra_Barrier();
+		sbarrier.wait();
 		local_timeVal[1]+=timer2.stop();
 		local_timeVal[0]+=timer1.stop();
 		if(myLrank ==0){
 			timeVal[0]= local_timeVal[0];
 			timeVal[1]= local_timeVal[1];
 			timeVal[2]= local_timeVal[2];
-			iteration++;
 		}
 		if( myLrank==0 && iteration == MAX_ITERATIONS )
 		{
@@ -984,8 +981,8 @@ int main(int argc, char* argv[]){
 	double timeVal[3]={0, 0, 0};
 	double timeVal2[3]={0,0,0};
 	is_rank_instance.init(key_array, key_buff2, timeVal);
-	is_rank_instance.run(1);
-	is_rank_instance.wait();
+	//is_rank_instance.run(1);
+	//is_rank_instance.wait();
 	ctx.Barrier();
 
 	passed_verification =0;

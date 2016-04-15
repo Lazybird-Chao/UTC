@@ -56,10 +56,10 @@
 #define FINDENT  "        "
 #define CONTINUE "     > "
 
-void get_info(char *argv[], int *typep, char *classp);
+void get_info(int argc, char *argv[], int *typep, int *nprocs, char *classp);
 void check_info(int type, char class);
-void read_info(int type, char *classp);
-void write_info(int type, char class);
+void read_info(int type, int *nprocssp, char *classp);
+void write_info(int type, int nprocs, char class);
 void write_sp_info(FILE *fp, char class);
 void write_bt_info(FILE *fp, char class);
 void write_lu_info(FILE *fp, char class);
@@ -86,16 +86,17 @@ int main(int argc, char *argv[])
 {
   int type;
   char _class, class_old;
+  int nprocs, nprocs_old;
   
-  if (argc != 3) {
+  if (argc <3 && argc >4) {
 	printf("***************************************************\n");
-    printf("Usage: %s benchmark-name class\n", argv[0]);
+    printf("Usage: %s benchmark-name [nprocs] class\n", argv[0]);
     printf("***************************************************\n");
     exit(1);
   }
 
   /* Get command line arguments. Make sure they're ok. */
-  get_info(argv, &type, &_class);
+  get_info(argc, argv, &type, &nprocs, &_class);
   if (_class != 'U') {
 #ifdef VERBOSE
     printf("setparams: For benchmark %s: class = %c\n", 
@@ -105,7 +106,7 @@ int main(int argc, char *argv[])
   }
 
   /* Get old information. */
-  read_info(type, &class_old);
+  read_info(type, &nprocs_old, &class_old);
   if (_class != 'U') {
     if (class_old != 'X') {
 #ifdef VERBOSE
@@ -118,7 +119,7 @@ int main(int argc, char *argv[])
   *********************************************************************\n\
   * You must specify CLASS to build this benchmark                    *\n\
   * For example, to build a class A benchmark, type                   *\n\
-  *       make {benchmark-name} CLASS=A                               *\n\
+  *       make {benchmark-name} CLASS=A NPROCS=n                       *\n\
   *********************************************************************\n\n"); 
 
     if (class_old != 'X') {
@@ -130,11 +131,11 @@ int main(int argc, char *argv[])
   }
 
   /* Write out new information if it's different. */
-  if (_class != class_old) {
+  if (_class != class_old || nprocs!=nprocs_old) {
 #ifdef VERBOSE
     printf("setparams: Writing %s\n", FILENAME); 
 #endif
-    write_info(type, _class);
+    write_info(type, nprocs, _class);
   } else {
 #ifdef VERBOSE
     printf("setparams: Settings unchanged. %s unmodified\n", FILENAME); 
@@ -149,10 +150,17 @@ int main(int argc, char *argv[])
  *  get_info(): Get parameters from command line 
  */
 
-void get_info(char *argv[], int *typep, char *classp) 
+void get_info(int argc, char *argv[], int *typep, int *nprocssp, char *classp)
 {
+	if(argc >3){
+		*nprocssp = atoi(argv[2]);
+		*classp = *argv[3];
+	}
+	else{
+		*nprocssp = 0;
+		*classp = *argv[2];
+	}
 
-  *classp = *argv[2];
 
   if      (!strcmp(argv[1], "sp") || !strcmp(argv[1], "SP")) *typep = SP;
   else if (!strcmp(argv[1], "bt") || !strcmp(argv[1], "BT")) *typep = BT;
@@ -210,7 +218,7 @@ void check_info(int type, char _class)
  *              format that we understand (since we wrote it). 
  */
 
-void read_info(int type, char *classp)
+void read_info(int type, int *nprocsp, char *classp)
 {
   int nread;
   FILE *fp;
@@ -242,7 +250,8 @@ void read_info(int type, char *classp)
       case IS:
       case DC:
           nread = fscanf(fp, DEF_CLASS_LINE, classp);
-          if (nread != 1) {
+          nread += fscanf(fp, "#define NUM_PROCS %d\n", nprocsp);
+          if (nread != 2) {
             printf("setparams: Error parsing config file %s. Ignoring previous settings\n", FILENAME);
             goto abort;
           }
@@ -271,7 +280,7 @@ void read_info(int type, char *classp)
  *               specific to a particular benchmark. 
  */
 
-void write_info(int type, char _class)
+void write_info(int type, int nprocs, char _class)
 {
   FILE *fp;
   fp = fopen(FILENAME, "w");
@@ -301,6 +310,8 @@ void write_info(int type, char _class)
           break;
       case IS:
           fprintf(fp, DEF_CLASS_LINE, _class);
+          if(nprocs>0)
+        	  fprintf(fp, "#define NUM_PROCS %d\n", nprocs);
           fprintf(fp, "\
 /*\n\
    This file is generated automatically by the setparams utility.\n\

@@ -13,15 +13,15 @@ default: $(PROGRAM)
 
 config:
 	cd ../sys; $(MAKE) all -f makefile_for_utc
-	../sys/setparams_for_utc $(BENCHMARK) $(CLASS)
+	../sys/setparams_for_utc $(BENCHMARK) $(NPROCS) $(CLASS)
 
-include ../../../../for-lab.comm
+include ../../../../for-vm.comm
 
 COMMON = ../common
 INCLUDE += -I$(COMMON)
 
 libutc:
-	cd $(PROJECT_HOMEDIR);$(MAKE) -f for-lab.mk
+	cd $(PROJECT_HOMEDIR);$(MAKE) -f for-vm.mk
 
 ### helper function for test program
 HELPER_OBJ = helper_getopt.o 
@@ -40,7 +40,7 @@ $(PROGRAM): libutc config $(PROGRAM_OBJ)
 	@echo "make target successful !!!" 
 	
 utc_is.o: utc_is.cc npbparams.h
-	$(G++)	-c $< $(CCFLAG) -DNUM_PROCS=$(NPROCS) $(INCLUDE)
+	$(G++)	-c $< $(CCFLAG) $(INCLUDE)
 	
 
 	
