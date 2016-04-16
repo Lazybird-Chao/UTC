@@ -426,6 +426,7 @@ public:
 					(INT_TYPE*)malloc((NUM_BUCKETS+TEST_ARRAY_SIZE)*sizeof(INT_TYPE));
 			this->bucket_size_array = (INT_TYPE*)malloc(NUM_BUCKETS*sizeof(INT_TYPE)*getLsize());
 			sbarrier.set(getLsize());
+			tmp_key_size_array = (INT_TYPE**)malloc(sizeof(INT_TYPE*)*getLsize());
 		}
 	}
 
@@ -487,7 +488,7 @@ public:
 		}
 		for(i=0; i<NUM_BUCKETS; i++)
 			bucket_size_array[myLrank*NUM_BUCKETS + i]=0;
-
+		//sbarrier.wait();
 		/*  Determine the number of keys in each bucket */
 		// compute by each thread for its local keys
 		for(i= local_start; i<= local_end; i++){
@@ -613,9 +614,6 @@ public:
 						   MPI_INT,
 						   MPI_COMM_WORLD );
 			local_timeVal[2]+= timer2.stop(); // communicate time
-
-			buckets_forcompute = process_bucket_distrib_ptr2[getPrank()]-
-					process_bucket_distrib_ptr1[getPrank()]+1;
 		}
 		intra_Barrier();
 
@@ -654,30 +652,58 @@ public:
 		}
 		//std::cout<<"my buckets:"<<buckets_forcompute<<std::endl;
 		sbarrier.wait();
-		while(true){
-			int tmp = buckets_forcompute.fetch_sub(1);
-			if(tmp>0){
-				// get a bucket
-				int start_pos =0;
-				for(i=process_bucket_distrib_ptr1[getPrank()];
-						i< process_bucket_distrib_ptr1[getPrank()] + tmp-1; i++)
-					start_pos += bucket_size_totals[i];
-				int end_pos = start_pos + bucket_size_totals[i];
-				key_buff_ptr = key_buff1 - min_key_val;
-				for( i=start_pos; i<end_pos; i++ )
-						key_buff_ptr[key_buff2[i]]++;
-			}
-			else
-				break;
+		//key_buff_ptr = key_buff1 - min_key_val;
+
+		key_perthread = totalkeys / getLsize();
+		key_residue = totalkeys % getLsize();
+		if(myLrank < key_residue){
+			local_start = (key_perthread+1)*myLrank;
+			local_end = local_start + key_perthread;
+			key_perthread++;
 		}
-		/*key_buff_ptr=key_buff1 - min_key_val;
-		for( i=0; i<j; i++ )
-		       key_buff_ptr[key_buff2[i]]++;*/
+		else{
+			local_start = (key_perthread+1)*key_residue + key_perthread*(myLrank-key_residue);
+			local_end = local_start + key_perthread -1;
+		}
+
+		tmp_key_size_array[myLrank] = (INT_TYPE*)malloc(sizeof(INT_TYPE)*(max_key_val-min_key_val+1));
+		for(i=0; i<max_key_val-min_key_val+1; i++)
+			tmp_key_size_array[myLrank][i]=0;
+		key_buff_ptr = tmp_key_size_array[myLrank]-min_key_val;
+		for(i= local_start; i<=local_end; i++)
+			key_buff_ptr[key_buff2[i]]++;
+		key_perthread = (max_key_val-min_key_val+1) / getLsize();
+		key_residue = (max_key_val-min_key_val+1) % getLsize();
+		if(myLrank < key_residue){
+			local_start = (key_perthread+1)*myLrank;
+			local_end = local_start + key_perthread;
+			key_perthread++;
+		}
+		else{
+			local_start = (key_perthread+1)*key_residue + key_perthread*(myLrank-key_residue);
+			local_end = local_start + key_perthread -1;
+		}
+		sbarrier.wait();
+		for(i= local_start; i<=local_end; i++){
+			for(k=0; k<getLsize(); k++)
+				key_buff1[i]+=tmp_key_size_array[k][i];
+
+		}
+		key_buff_ptr = key_buff1 - min_key_val;
+
 		intra_Barrier();
 		if(myLrank==0){
 			for( i=min_key_val; i<max_key_val; i++ )
 				key_buff_ptr[i+1] += key_buff_ptr[i];
 
+			/*key_buff1[0]=0;
+			for(k=0; k< getLsize();k++)
+				key_buff1[0]+=tmp_key_size_array[k][0];
+			for(i=1; i<max_key_val-min_key_val+1;i++){
+				key_buff1[i]=key_buff1[i-1];
+				for(k=0; k< getLsize();k++)
+					key_buff1[i]+=tmp_key_size_array[k][i];
+			}*/
 
 			/* This is the partial verify test section */
 			/* Observe that test_rank_array vals are   */
@@ -813,6 +839,7 @@ public:
 		}
 
 		free(bucket_ptrs_local);
+		free(tmp_key_size_array[myLrank]);
 	}
 
 	~rank_kernel(){
@@ -822,6 +849,7 @@ public:
 		free(bucket_ptrs);
 		free(process_bucket_distrib_ptr1);
 		free(process_bucket_distrib_ptr2);
+		free(tmp_key_size_array);
 	}
 
 private:
@@ -843,8 +871,8 @@ private:
 
 
 	INT_TYPE *bucket_size_array;
-	std::atomic<int> buckets_forcompute;
 	INT_TYPE lesskeys, totalkeys;
+	INT_TYPE** tmp_key_size_array;
 
 	double *timeVal;
 

@@ -257,7 +257,7 @@ void SpinBarrier::wait(){
 	int threadsForSync = m_numThreadsForSync;
 	//
 	m_barrierCounter.fetch_add(1);
-	if(m_barrierCounter.compare_exchange_strong(threadsForSync, 0)){
+	if(m_barrierCounter.compare_exchange_strong(threadsForSync, 0, std::memory_order_release)){
 		m_generation.fetch_add(1);
 		return;
 	}
