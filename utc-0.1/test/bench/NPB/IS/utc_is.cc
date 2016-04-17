@@ -1,4 +1,5 @@
 #include "../../helper_getopt.h"
+#include "../../helper_printtime.h"
 #include "npbparams.h"
 #include "c_print_results.h"
 
@@ -415,15 +416,21 @@ public:
 			this->key_array = key_array;
 			this->key_buff2 = key_buff2;
 			this->timeVal = timeVal;
-
-			this->key_buff1 = (INT_TYPE*)malloc(SIZE_OF_BUFFERS*sizeof(INT_TYPE));
-			this->bucket_size = (INT_TYPE*)malloc((NUM_BUCKETS+TEST_ARRAY_SIZE)*sizeof(INT_TYPE));
-			this->bucket_size_totals = (INT_TYPE*)malloc((NUM_BUCKETS+TEST_ARRAY_SIZE)*sizeof(INT_TYPE));
-			this->bucket_ptrs = (INT_TYPE*)malloc(NUM_BUCKETS*sizeof(INT_TYPE));
-			this->process_bucket_distrib_ptr1 =
-					(INT_TYPE*)malloc((NUM_BUCKETS+TEST_ARRAY_SIZE)*sizeof(INT_TYPE));
-			this->process_bucket_distrib_ptr2 =
-					(INT_TYPE*)malloc((NUM_BUCKETS+TEST_ARRAY_SIZE)*sizeof(INT_TYPE));
+			if(getPsize()>1){
+				this->key_buff1 = (INT_TYPE*)malloc(SIZE_OF_BUFFERS*sizeof(INT_TYPE));
+				this->bucket_size = (INT_TYPE*)malloc((NUM_BUCKETS+TEST_ARRAY_SIZE)*sizeof(INT_TYPE));
+				this->bucket_size_totals = (INT_TYPE*)malloc((NUM_BUCKETS+TEST_ARRAY_SIZE)*sizeof(INT_TYPE));
+				this->bucket_ptrs = (INT_TYPE*)malloc(NUM_BUCKETS*sizeof(INT_TYPE));
+				this->process_bucket_distrib_ptr1 =
+						(INT_TYPE*)malloc((NUM_BUCKETS+TEST_ARRAY_SIZE)*sizeof(INT_TYPE));
+				this->process_bucket_distrib_ptr2 =
+						(INT_TYPE*)malloc((NUM_BUCKETS+TEST_ARRAY_SIZE)*sizeof(INT_TYPE));
+			}
+			else{
+				this->key_buff1 = (INT_TYPE*)malloc(NUM_KEYS*sizeof(INT_TYPE));
+				this->bucket_size = (INT_TYPE*)malloc((NUM_BUCKETS+TEST_ARRAY_SIZE)*sizeof(INT_TYPE));
+				this->key_buff1_bucket = (INT_TYPE*)malloc(MAX_KEY*sizeof(INT_TYPE));
+			}
 			this->bucket_size_array = (INT_TYPE*)malloc(NUM_BUCKETS*sizeof(INT_TYPE)*getLsize());
 			sbarrier.set(getLsize());
 			tmp_key_size_array = (INT_TYPE**)malloc(sizeof(INT_TYPE*)*getLsize());
@@ -441,7 +448,7 @@ public:
 		INT_TYPE    *key_buff_ptr;
 
 		Timer timer1, timer2;
-		double local_timeVal[4];
+		double local_timeVal[3]={0,0,0};
 		INT_TYPE local_start;
 		INT_TYPE local_end;
 		int key_perthread = NUM_KEYS / getLsize();
@@ -462,6 +469,7 @@ public:
 		if(myTrank ==0){
 			key_array[iteration] = iteration;
 			key_array[iteration+MAX_ITERATIONS] = MAX_KEY - iteration;
+			bucketId=0;
 		}
 		if(myLrank ==0){
 			/*  Initialize */
@@ -474,18 +482,22 @@ public:
 					bucket_size[NUM_BUCKETS+i] =
 								  key_array[test_index_array[i] % NUM_KEYS];
 		}
-		if(getUniqueExecution()){
-			for( i=0; i<NUM_BUCKETS+TEST_ARRAY_SIZE; i++ )
-				bucket_size_totals[i] = 0;
+		if(getPsize()>1){
+			// when task spans to multiple procs
+			if(getUniqueExecution()){
+				for( i=0; i<NUM_BUCKETS+TEST_ARRAY_SIZE; i++ )
+					bucket_size_totals[i] = 0;
+			}
+			if(getUniqueExecution()){
+				for( i=0; i<NUM_BUCKETS+TEST_ARRAY_SIZE; i++ )
+					process_bucket_distrib_ptr1[i] = 0;
+			}
+			if(getUniqueExecution()){
+				for( i=0; i<NUM_BUCKETS+TEST_ARRAY_SIZE; i++ )
+					process_bucket_distrib_ptr2[i] = 0;
+			}
 		}
-		if(getUniqueExecution()){
-			for( i=0; i<NUM_BUCKETS+TEST_ARRAY_SIZE; i++ )
-				process_bucket_distrib_ptr1[i] = 0;
-		}
-		if(getUniqueExecution()){
-			for( i=0; i<NUM_BUCKETS+TEST_ARRAY_SIZE; i++ )
-				process_bucket_distrib_ptr2[i] = 0;
-		}
+		// clear thread's local bucket_size
 		for(i=0; i<NUM_BUCKETS; i++)
 			bucket_size_array[myLrank*NUM_BUCKETS + i]=0;
 		//sbarrier.wait();
@@ -517,184 +529,229 @@ public:
 			key_buff1[bucket_ptrs_local[k>>shift]++] = k;
 		}
 		// get bucket_size for current proc
-		if(getUniqueExecution()){
-			for(k =0; k<getLsize(); k++){
-				for(i=0; i<NUM_BUCKETS; i++){
-					bucket_size[i] += bucket_size_array[k*NUM_BUCKETS +i];
+		if(getPsize()>1){
+			if(getUniqueExecution()){
+				for(k =0; k<getLsize(); k++){
+					for(i=0; i<NUM_BUCKETS; i++){
+						bucket_size[i] += bucket_size_array[k*NUM_BUCKETS +i];
+					}
 				}
+			}
+		}
+		else{
+			if(myLrank < getLsize()){
+				for(k= myLrank+1; k<getLsize(); k++)
+					for(i=0; i< NUM_BUCKETS; i++)
+						bucket_ptrs_local[i]+=bucket_size_array[k*NUM_BUCKETS+i];
 			}
 		}
 		sbarrier.wait();
 		local_timeVal[1]=timer2.stop();  // compute time
 		//std::cout<<"here3"<<std::endl;
-		if(myLrank==0){
-			timer2.start();
-			MPI_Allreduce( bucket_size,
-			                   bucket_size_totals,
-			                   NUM_BUCKETS+TEST_ARRAY_SIZE,
-			                   MPI_INT,
-			                   MPI_SUM,
-			                   MPI_COMM_WORLD );
+		if(getPsize()>1){
+			if(myLrank==0){
+				timer2.start();
+				MPI_Allreduce( bucket_size,
+								   bucket_size_totals,
+								   NUM_BUCKETS+TEST_ARRAY_SIZE,
+								   MPI_INT,
+								   MPI_SUM,
+								   MPI_COMM_WORLD );
 
-			local_timeVal[2] = timer2.stop();   // communicate time
+				local_timeVal[2] = timer2.stop();   // communicate time
 
-		/*  Determine Redistibution of keys: accumulate the bucket size totals
-		    till this number surpasses NUM_KEYS (which the average number of keys
-		    per processor).  Then all keys in these buckets go to processor 0.
-		    Continue accumulating again until supassing 2*NUM_KEYS. All keys
-		    in these buckets go to processor 1, etc.  This algorithm guarantees
-		    that all processors have work ranking; no processors are left idle.
-		    The optimum number of buckets, however, does not result in as high
-		    a degree of load balancing (as even a distribution of keys as is
-		    possible) as is obtained from increasing the number of buckets, but
-		    more buckets results in more computation per processor so that the
-		    optimum number of buckets turns out to be 1024 for machines tested.
-		    Note that process_bucket_distrib_ptr1 and ..._ptr2 hold the bucket
-		    number of first and last bucket which each processor will have after
-		    the redistribution is done.                                          */
-			timer2.start();
-			bucket_sum_accumulator = 0;
-			local_bucket_sum_accumulator = 0;
-			send_displ[0] = 0;
-			process_bucket_distrib_ptr1[0] = 0;
-			for( i=0, j=0; i<NUM_BUCKETS; i++ )
-			{
-				bucket_sum_accumulator       += bucket_size_totals[i];
-				local_bucket_sum_accumulator += bucket_size[i];
-				if( bucket_sum_accumulator >= (j+1)*NUM_KEYS )
+			/*  Determine Redistibution of keys: accumulate the bucket size totals
+				till this number surpasses NUM_KEYS (which the average number of keys
+				per processor).  Then all keys in these buckets go to processor 0.
+				Continue accumulating again until supassing 2*NUM_KEYS. All keys
+				in these buckets go to processor 1, etc.  This algorithm guarantees
+				that all processors have work ranking; no processors are left idle.
+				The optimum number of buckets, however, does not result in as high
+				a degree of load balancing (as even a distribution of keys as is
+				possible) as is obtained from increasing the number of buckets, but
+				more buckets results in more computation per processor so that the
+				optimum number of buckets turns out to be 1024 for machines tested.
+				Note that process_bucket_distrib_ptr1 and ..._ptr2 hold the bucket
+				number of first and last bucket which each processor will have after
+				the redistribution is done.                                          */
+				timer2.start();
+				bucket_sum_accumulator = 0;
+				local_bucket_sum_accumulator = 0;
+				send_displ[0] = 0;
+				process_bucket_distrib_ptr1[0] = 0;
+				for( i=0, j=0; i<NUM_BUCKETS; i++ )
 				{
-					send_count[j] = local_bucket_sum_accumulator;
-					if( j != 0 )
+					bucket_sum_accumulator       += bucket_size_totals[i];
+					local_bucket_sum_accumulator += bucket_size[i];
+					if( bucket_sum_accumulator >= (j+1)*NUM_KEYS )
 					{
-						send_displ[j] = send_displ[j-1] + send_count[j-1];
-						process_bucket_distrib_ptr1[j] =
-												process_bucket_distrib_ptr2[j-1]+1;
+						send_count[j] = local_bucket_sum_accumulator;
+						if( j != 0 )
+						{
+							send_displ[j] = send_displ[j-1] + send_count[j-1];
+							process_bucket_distrib_ptr1[j] =
+													process_bucket_distrib_ptr2[j-1]+1;
+						}
+						process_bucket_distrib_ptr2[j++] = i;
+						local_bucket_sum_accumulator = 0;
 					}
-					process_bucket_distrib_ptr2[j++] = i;
-					local_bucket_sum_accumulator = 0;
+				}
+
+			/*  When NUM_PROCS approaching NUM_BUCKETS, it is highly possible
+				that the last few processors don't get any buckets.  So, we
+				need to set counts properly in this case to avoid any fallouts.    */
+				while( j < getPsize() )
+				{
+					send_count[j] = 0;
+					process_bucket_distrib_ptr1[j] = 1;
+					j++;
+				}
+				local_timeVal[1]+=timer2.stop(); // compute time
+
+				timer2.start();
+			/*  This is the redistribution section:  first find out how many keys
+				each processor will send to every other processor:                 */
+				MPI_Alltoall( send_count,
+							  1,
+							  MPI_INT,
+							  recv_count,
+							  1,
+							  MPI_INT,
+							  MPI_COMM_WORLD );
+
+			/*  Determine the receive array displacements for the buckets */
+				recv_displ[0] = 0;
+				for( i=1; i<getPsize(); i++ )
+					recv_displ[i] = recv_displ[i-1] + recv_count[i-1];
+
+
+			/*  Now send the keys to respective processors  */
+				MPI_Alltoallv( key_buff1,
+							   send_count,
+							   send_displ,
+							   MPI_INT,
+							   key_buff2,
+							   recv_count,
+							   recv_displ,
+							   MPI_INT,
+							   MPI_COMM_WORLD );
+				local_timeVal[2]+= timer2.stop(); // communicate time
+			}
+			intra_Barrier();
+
+			timer2.start();
+		/*  The starting and ending bucket numbers on each processor are
+			multiplied by the interval size of the buckets to obtain the
+			smallest possible min and greatest possible max value of any
+			key on each processor                                          */
+			min_key_val = process_bucket_distrib_ptr1[getPrank()] << shift;
+			max_key_val = ((process_bucket_distrib_ptr2[getPrank()] + 1) << shift)-1;
+			//std::cout<<"min"<<min_key_val<<" max"<<max_key_val<<std::endl;
+			if(getUniqueExecution()){
+			/*  Clear the work array */
+				for( i=0; i<max_key_val-min_key_val+1; i++ )
+					key_buff1[i] = 0;
+			}
+			if(getUniqueExecution()){
+			/*  Determine the total number of keys on all other
+				processors holding keys of lesser value         */
+				m = 0;
+				for( k=0; k<getPrank(); k++ )
+					for( i= process_bucket_distrib_ptr1[k];
+						 i<=process_bucket_distrib_ptr2[k];
+						 i++ )
+						m += bucket_size_totals[i]; /*  m has total # of lesser keys */
+				lesskeys=m;
+			}
+			if(getUniqueExecution()){
+			/*  Determine total number of keys on this processor */
+				j = 0;
+				for( i= process_bucket_distrib_ptr1[getPrank()];
+					 i<=process_bucket_distrib_ptr2[getPrank()];
+					 i++ )
+					j += bucket_size_totals[i];     /* j has total # of local keys   */
+				totalkeys = j;
+			}
+			//std::cout<<"my buckets:"<<buckets_forcompute<<std::endl;
+			sbarrier.wait();
+			//key_buff_ptr = key_buff1 - min_key_val;
+
+			key_perthread = totalkeys / getLsize();
+			key_residue = totalkeys % getLsize();
+			if(myLrank < key_residue){
+				local_start = (key_perthread+1)*myLrank;
+				local_end = local_start + key_perthread;
+				key_perthread++;
+			}
+			else{
+				local_start = (key_perthread+1)*key_residue + key_perthread*(myLrank-key_residue);
+				local_end = local_start + key_perthread -1;
+			}
+
+			tmp_key_size_array[myLrank] = (INT_TYPE*)malloc(sizeof(INT_TYPE)*(max_key_val-min_key_val+1));
+			for(i=0; i<max_key_val-min_key_val+1; i++)
+				tmp_key_size_array[myLrank][i]=0;
+			key_buff_ptr = tmp_key_size_array[myLrank]-min_key_val;
+			for(i= local_start; i<=local_end; i++)
+				key_buff_ptr[key_buff2[i]]++;
+			key_perthread = (max_key_val-min_key_val+1) / getLsize();
+			key_residue = (max_key_val-min_key_val+1) % getLsize();
+			if(myLrank < key_residue){
+				local_start = (key_perthread+1)*myLrank;
+				local_end = local_start + key_perthread;
+				key_perthread++;
+			}
+			else{
+				local_start = (key_perthread+1)*key_residue + key_perthread*(myLrank-key_residue);
+				local_end = local_start + key_perthread -1;
+			}
+			sbarrier.wait();
+			for(i= local_start; i<=local_end; i++){
+				for(k=0; k<getLsize(); k++)
+					key_buff1[i]+=tmp_key_size_array[k][i];
+
+			}
+			key_buff_ptr = key_buff1 - min_key_val;
+		}
+		else{
+			timer2.start();
+			// only one proc, use shared mem algorithm
+			while(true){
+				int tmp = bucketId.fetch_add(1);
+				INT_TYPE k1, k2;
+				INT_TYPE num_bucket_keys = (1L << shift);
+				if(tmp<NUM_BUCKETS){
+					k1 = tmp*num_bucket_keys;
+					k2 = k1+num_bucket_keys;
+					for(k=k1; k<k2; k++)
+						key_buff1_bucket[k]=0;
+					m = (tmp > 0)? bucket_ptrs_local[tmp-1] : 0;
+					for(k=m; k<bucket_ptrs_local[tmp];k++)
+						key_buff1_bucket[key_buff1[k]]++;
+					key_buff1_bucket[k1]+=m;
+					for ( k = k1+1; k < k2; k++ )
+						key_buff1_bucket[k] += key_buff1_bucket[k-1];
+				}
+				else{
+					break;
 				}
 			}
-
-		/*  When NUM_PROCS approaching NUM_BUCKETS, it is highly possible
-			that the last few processors don't get any buckets.  So, we
-			need to set counts properly in this case to avoid any fallouts.    */
-			while( j < getPsize() )
-			{
-				send_count[j] = 0;
-				process_bucket_distrib_ptr1[j] = 1;
-				j++;
-			}
-			local_timeVal[1]+=timer2.stop(); // compute time
-
-			timer2.start();
-		/*  This is the redistribution section:  first find out how many keys
-			each processor will send to every other processor:                 */
-			MPI_Alltoall( send_count,
-						  1,
-						  MPI_INT,
-						  recv_count,
-						  1,
-						  MPI_INT,
-						  MPI_COMM_WORLD );
-
-		/*  Determine the receive array displacements for the buckets */
-			recv_displ[0] = 0;
-			for( i=1; i<getPsize(); i++ )
-				recv_displ[i] = recv_displ[i-1] + recv_count[i-1];
-
-
-		/*  Now send the keys to respective processors  */
-			MPI_Alltoallv( key_buff1,
-						   send_count,
-						   send_displ,
-						   MPI_INT,
-						   key_buff2,
-						   recv_count,
-						   recv_displ,
-						   MPI_INT,
-						   MPI_COMM_WORLD );
-			local_timeVal[2]+= timer2.stop(); // communicate time
 		}
 		intra_Barrier();
-
-		timer2.start();
-	/*  The starting and ending bucket numbers on each processor are
-		multiplied by the interval size of the buckets to obtain the
-		smallest possible min and greatest possible max value of any
-		key on each processor                                          */
-		min_key_val = process_bucket_distrib_ptr1[getPrank()] << shift;
-		max_key_val = ((process_bucket_distrib_ptr2[getPrank()] + 1) << shift)-1;
-		//std::cout<<"min"<<min_key_val<<" max"<<max_key_val<<std::endl;
-		if(getUniqueExecution()){
-		/*  Clear the work array */
-			for( i=0; i<max_key_val-min_key_val+1; i++ )
-				key_buff1[i] = 0;
-		}
-		if(getUniqueExecution()){
-		/*  Determine the total number of keys on all other
-			processors holding keys of lesser value         */
-			m = 0;
-			for( k=0; k<getPrank(); k++ )
-				for( i= process_bucket_distrib_ptr1[k];
-					 i<=process_bucket_distrib_ptr2[k];
-					 i++ )
-					m += bucket_size_totals[i]; /*  m has total # of lesser keys */
-			lesskeys=m;
-		}
-		if(getUniqueExecution()){
-		/*  Determine total number of keys on this processor */
-			j = 0;
-			for( i= process_bucket_distrib_ptr1[getPrank()];
-				 i<=process_bucket_distrib_ptr2[getPrank()];
-				 i++ )
-				j += bucket_size_totals[i];     /* j has total # of local keys   */
-			totalkeys = j;
-		}
-		//std::cout<<"my buckets:"<<buckets_forcompute<<std::endl;
-		sbarrier.wait();
-		//key_buff_ptr = key_buff1 - min_key_val;
-
-		key_perthread = totalkeys / getLsize();
-		key_residue = totalkeys % getLsize();
-		if(myLrank < key_residue){
-			local_start = (key_perthread+1)*myLrank;
-			local_end = local_start + key_perthread;
-			key_perthread++;
-		}
-		else{
-			local_start = (key_perthread+1)*key_residue + key_perthread*(myLrank-key_residue);
-			local_end = local_start + key_perthread -1;
-		}
-
-		tmp_key_size_array[myLrank] = (INT_TYPE*)malloc(sizeof(INT_TYPE)*(max_key_val-min_key_val+1));
-		for(i=0; i<max_key_val-min_key_val+1; i++)
-			tmp_key_size_array[myLrank][i]=0;
-		key_buff_ptr = tmp_key_size_array[myLrank]-min_key_val;
-		for(i= local_start; i<=local_end; i++)
-			key_buff_ptr[key_buff2[i]]++;
-		key_perthread = (max_key_val-min_key_val+1) / getLsize();
-		key_residue = (max_key_val-min_key_val+1) % getLsize();
-		if(myLrank < key_residue){
-			local_start = (key_perthread+1)*myLrank;
-			local_end = local_start + key_perthread;
-			key_perthread++;
-		}
-		else{
-			local_start = (key_perthread+1)*key_residue + key_perthread*(myLrank-key_residue);
-			local_end = local_start + key_perthread -1;
-		}
-		sbarrier.wait();
-		for(i= local_start; i<=local_end; i++){
-			for(k=0; k<getLsize(); k++)
-				key_buff1[i]+=tmp_key_size_array[k][i];
-
-		}
-		key_buff_ptr = key_buff1 - min_key_val;
-
-		intra_Barrier();
+		//std::cout<<"here\n";
 		if(myLrank==0){
-			for( i=min_key_val; i<max_key_val; i++ )
-				key_buff_ptr[i+1] += key_buff_ptr[i];
+			if(getPsize()>1){
+				for( i=min_key_val; i<max_key_val; i++ )
+					key_buff_ptr[i+1] += key_buff_ptr[i];
+			}
+			else{
+				key_buff_ptr = key_buff1_bucket;
+				min_key_val=0;
+				max_key_val=MAX_KEY-1;
+				lesskeys =0;
+				totalkeys = NUM_KEYS;
+				bucket_size_totals= bucket_size;
+			}
 
 			/*key_buff1[0]=0;
 			for(k=0; k< getLsize();k++)
@@ -711,6 +768,7 @@ public:
 			for( i=0; i<TEST_ARRAY_SIZE; i++ )
 			{
 				k = bucket_size_totals[i+NUM_BUCKETS];    /* Keys were hidden here */
+
 				if( min_key_val <= k  &&  k <= max_key_val )
 				{
 					/* Add the total of lesser keys, m, here */
@@ -833,23 +891,30 @@ public:
 		}
 		if( myLrank==0 && iteration == MAX_ITERATIONS )
 		{
+			if(getPsize()==1)
+				memcpy(key_buff2, key_buff1, NUM_KEYS*sizeof(INT_TYPE));
 			key_buff_ptr_global = key_buff_ptr;
 			total_local_keys    = totalkeys;
 			total_lesser_keys   = 0;  /* no longer set to 'm', see note above */
 		}
 
 		free(bucket_ptrs_local);
-		free(tmp_key_size_array[myLrank]);
+		if(getPsize()>1)
+			free(tmp_key_size_array[myLrank]);
 	}
 
 	~rank_kernel(){
 		free(key_buff1);
 		free(bucket_size);
-		free(bucket_size_totals);
-		free(bucket_ptrs);
-		free(process_bucket_distrib_ptr1);
-		free(process_bucket_distrib_ptr2);
+		if(getPsize()>1){
+			free(bucket_size_totals);
+			free(bucket_ptrs);
+			free(process_bucket_distrib_ptr1);
+			free(process_bucket_distrib_ptr2);
+		}
 		free(tmp_key_size_array);
+		if(getPsize()==1)
+			free(key_buff1_bucket);
 	}
 
 private:
@@ -869,10 +934,11 @@ private:
 	int      send_count[MAX_PROCS], recv_count[MAX_PROCS],
 	         send_displ[MAX_PROCS], recv_displ[MAX_PROCS];
 
-
+	INT_TYPE *key_buff1_bucket;
 	INT_TYPE *bucket_size_array;
 	INT_TYPE lesskeys, totalkeys;
 	INT_TYPE** tmp_key_size_array;
+	std::atomic<int> bucketId;
 
 	double *timeVal;
 
@@ -1069,7 +1135,14 @@ int main(int argc, char* argv[]){
 		printf("\ncomm time:          %10.4lf \n", timeVal[2]);
 		printf( "\n" );
 	}
-
+	if(ctx.getProcRank()==0){
+		double timerecord[4];
+		timerecord[0]=max_totaltime;
+		timerecord[1]=timeVal[0];
+		timerecord[2]=timeVal[1];
+		timerecord[3]=timeVal[2];
+		print_time(4, timerecord);
+	}
 
 	return 0;
 }

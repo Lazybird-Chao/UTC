@@ -894,9 +894,9 @@ void rank( int iteration )
 
 int main( int argc, char **argv )
 {
-	key_array = (INT_TYPE)*malloc(SIZE_OF_BUFFERS*sizeof(INT_TYPE));
-	key_buff1 = (INT_TYPE)*malloc(MAX_KEY*sizeof(INT_TYPE));
-	key_buff2= (INT_TYPE)*malloc(SIZE_OF_BUFFERS*sizeof(INT_TYPE));
+	key_array = (INT_TYPE*)malloc(SIZE_OF_BUFFERS*sizeof(INT_TYPE));
+	key_buff1 = (INT_TYPE*)malloc(MAX_KEY*sizeof(INT_TYPE));
+	key_buff2= (INT_TYPE*)malloc(SIZE_OF_BUFFERS*sizeof(INT_TYPE));
 
     int             i, iteration, timer_on;
 
