@@ -141,6 +141,19 @@ int main(int argc, char *argv[])
                 NPBVERSION, COMPILETIME, CS1, CS2, CS3, CS4, 
                 CS5, CS6, CS7);
 
+  free(plane);
+  free(scr[0]);
+  free(scr);
+  free(twiddle[0][0]);
+  free(twiddle[0]);
+  free(twiddle);
+  free(xnt[0][0]);
+  free(xnt[0]);
+  free(xnt);
+  fee(y[0][0]);
+  free(y[0]);
+  free(y);
+
   return 0;
 }
 
