@@ -5,6 +5,7 @@
  *  one dimensional definite integral
  */
 
+#include "../helper_printtime.h"
 
 /* main UTC header file */
 #include "Utc.h"
@@ -46,8 +47,8 @@ public:
 			m_range_upper = range_upper;
 			int total_nthreads = getGsize();
 			int local_nthreads = getLsize();
-			m_loopN = loopN/total_nthreads;
-			m_res = (double*)malloc(sizeof(double)*local_nthreads);
+			m_loopN = loopN;
+			//m_res = (double*)malloc(sizeof(double)*local_nthreads);
 			time_run_cost = time;
 		}
 
@@ -71,10 +72,11 @@ public:
 		for(long i=0; i<m_loopN;i++)
 		{
 			tmp_x = tmp_lower+((double)rand_r(&tmp_seed)/RAND_MAX)*(tmp_upper-tmp_lower);
+			//tmp_x = (tmp_upper-tmp_lower)/m_loopN * i;
 			tmp_sum+=f(tmp_x);
 		}
 		m_res[my_thread]=tmp_sum*(m_range_upper-m_range_lower)/m_loopN;
-		intra_Barrier();
+		/*intra_Barrier();
 		//sleep(1);
 		if(my_thread==0)
 		{
@@ -85,13 +87,17 @@ public:
 			m_res[0]/=local_nthreads;
 			*time_run_cost=timer.stop();
 			//*time_run_cost = timer.getThreadCpuTime();
+		}*/
+		timer.stop();
+		if(my_thread==0){
+			*time_run_cost=timer.getRealTime();
 		}
 
 	}
 
 private:
 	long m_loopN;
-	double *m_res;
+	double m_res[12];
 	unsigned m_seed;
 	double m_range_lower;
 	double m_range_upper;
@@ -119,14 +125,14 @@ int main(int argc, char*argv[])
 	/* create nthreads*numproc tasks, each task run with one thread
 	 *
 	 */
+	ctx.Barrier();
+	Timer.start();
 	for(int i=0; i<numproc; i++){
 		for(int j=0; j<nthreads; j++){
 			ProcList rlist(i);
 			taskArray.push_back(new Task<IntegralCaculator>(rlist));
 		}
 	}
-	ctx.Barrier();
-	Timer.start();
 	for(int i=0; i<numproc; i++){
 		for(int j=0; j<nthreads; j++){
 			taskArray[j+i*nthreads]->init(j, loopN, 1, 1.0, 10.0, &runtime[j]);
@@ -138,6 +144,11 @@ int main(int argc, char*argv[])
 				taskArray[j+i*nthreads]->wait();
 			}
 	}
+	for(int i=0; i<numproc; i++){
+			for(int j=0; j<nthreads; j++){
+				taskArray[j+i*nthreads]->finish();
+			}
+	}
 	ctx.Barrier();
 	double totaltime = Timer.stop();
 
@@ -145,16 +156,58 @@ int main(int argc, char*argv[])
 		delete i;
 	}
 	taskArray.clear();
+	double avg_runtime=0;
 	for(int i=0; i<numproc; i++){
+
 		if(ctx.getProcRank()==i){
 			std::cout<<"Total time on proc "<<i<<": "<<totaltime<<std::endl;
 			std::cout<<"run() time: "<<std::endl;
 			for(int j=0; j<nthreads; j++){
-				std::cout<<"\tTask "<<j+i*nthreads<<":"<<runtime[j]<<std::endl;
+				//std::cout<<"\tTask "<<j+i*nthreads<<":"<<runtime[j]<<std::endl;
+				avg_runtime+=runtime[j];
 			}
+			avg_runtime = avg_runtime/nthreads;
+			std::cout<<"\t"<<avg_runtime<<std::endl;
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
 	}
+
+	if(ctx.getProcRank()==0){
+		double timerecord[2];
+		timerecord[0]=totaltime;
+		timerecord[1]=avg_runtime;
+
+		print_time(2, timerecord);
+	}
+
+	/*
+	 * create one task, but has nthreads on each proc
+	 */
+	/*std::vector<int> r;
+	for(int i=0; i<numproc; i++){
+		for(int j=0; j<nthreads; j++){
+			r.push_back(i);
+		}
+	}
+	ProcList rlist(r);
+	double rtime;
+	ctx.Barrier();
+	Timer.start();
+	Task<IntegralCaculator> task_ins(rlist);
+	task_ins.init(0, loopN, 1, 1.0, 10.0, &rtime);
+	task_ins.run();
+	task_ins.wait();
+	task_ins.finish();
+	ctx.Barrier();
+	totaltime = Timer.stop();
+	for(int i=0; i<numproc; i++){
+		if(ctx.getProcRank()==i){
+			std::cout<<"Total time on proc "<<i<<": "<<totaltime<<std::endl;
+			std::cout<<"run() time: "<<rtime<<std::endl;
+		}
+		MPI_Barrier(MPI_COMM_WORLD);
+	}*/
+
 	return 0;
 }
 
