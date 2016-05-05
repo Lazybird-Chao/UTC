@@ -116,7 +116,7 @@ void InprocConduit::initInprocConduit(){
         m_dstUsingPtrFinishFlag[i].store(0);
     }
 
-
+    // for opbyfirst
     m_srcOpFirstIdx = new int[m_numSrcLocalThreads];
     for(int i=0; i<m_numSrcLocalThreads; i++)
     	m_srcOpFirstIdx[i]=0;

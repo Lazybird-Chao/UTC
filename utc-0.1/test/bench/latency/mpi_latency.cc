@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
 				loop = LOOP_LARGE;
 				skip = SKIP_LARGE;
 			}
-			else if(size > LLARGE_MESSAGE_SIZE)
+			if(size > LLARGE_MESSAGE_SIZE)
 			{
 				loop = LOOP_LLARGE;
 				skip = SKIP_LLARGE;
@@ -112,6 +112,11 @@ int main(int argc, char* argv[])
 			{
 				loop = LOOP_LARGE;
 				skip = SKIP_LARGE;
+			}
+			if(size > LLARGE_MESSAGE_SIZE)
+			{
+				loop = LOOP_LLARGE;
+				skip = SKIP_LLARGE;
 			}
 			int i =0;
 			for(i=0; i<loop+skip; i++)

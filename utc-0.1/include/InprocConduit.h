@@ -149,13 +149,13 @@ private:
 	std::vector<std::atomic<int>*> m_dstOpThreadAvailable;
 	std::vector<std::atomic<int>*> m_dstOpThreadFinish;
 	std::vector<boost::latch*> m_dstOpThreadFinishLatch;
-	int m_nOps2=32;
+	int m_nOps2=65;
 
 	std::atomic<int> *m_srcOpThreadIsFirst;
 	int *m_srcOpFirstIdx;
 	std::atomic<int> *m_dstOpThreadIsFirst;
 	int *m_dstOpFirstIdx;
-	int m_nOps=32;
+	int m_nOps=33;
 
 	/*
 	 * dst side buffer pool

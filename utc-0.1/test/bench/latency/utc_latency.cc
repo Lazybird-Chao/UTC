@@ -18,7 +18,7 @@
 using namespace iUtc;
 
 #define MESSAGE_ALIGNMENT 64
-#define MAX_MSG_SIZE (1<<27)
+#define MAX_MSG_SIZE (1<<22)
 #define MYBUFSIZE (MAX_MSG_SIZE + MESSAGE_ALIGNMENT)
 #define SKIP_LARGE  10
 #define LOOP_LARGE  100
@@ -97,7 +97,8 @@ void SendRecvWorker::run()
 
 	if(worker_type == 0)
 	{
-		std::cout<<"Byte"<<"\t\t"<<"us"<<std::endl;
+		if(getTrank()==0)
+			std::cout<<"Byte"<<"\t\t"<<"us"<<std::endl;
 		for(size = 0; size <= MAX_MSG_SIZE; size = (size?size*2:1))
 		{
 			if(size > LARGE_MESSAGE_SIZE)
@@ -105,7 +106,7 @@ void SendRecvWorker::run()
 				loop = LOOP_LARGE;
 				skip = SKIP_LARGE;
 			}
-			else if(size > LLARGE_MESSAGE_SIZE)
+			if(size > LLARGE_MESSAGE_SIZE)
 			{
 				loop = LOOP_LLARGE;
 				skip = SKIP_LLARGE;
@@ -117,12 +118,15 @@ void SendRecvWorker::run()
 					timer.start();
 				m_cdt->Write(s_buf, size, i);
 				m_cdt->Read(r_buf, size, i);
+				if((i+1)%32==0)
+					intra_Barrier();
 			}
 			//m_cdt->Read(&end_data, 1 , i);
 			cost_time = timer.stop();
-
 			double latency = cost_time*1e6/(2*loop);
-			std::cout<<size<<"\t\t"<<latency<<std::endl;
+			if(getTrank()==0)
+				std::cout<<size<<"\t\t"<<latency<<std::endl;
+			intra_Barrier();
 
 		}
 	}
@@ -136,7 +140,7 @@ void SendRecvWorker::run()
 				loop = LOOP_LARGE;
 				skip = SKIP_LARGE;
 			}
-			else if(size > LLARGE_MESSAGE_SIZE)
+			if(size > LLARGE_MESSAGE_SIZE)
 			{
 				loop = LOOP_LLARGE;
 				skip = SKIP_LLARGE;
@@ -146,8 +150,11 @@ void SendRecvWorker::run()
 			{
 				m_cdt->Read(r_buf, size, i);
 				m_cdt->Write(s_buf, size, i);
+				if((i+1)%32==0)
+					intra_Barrier();
 			}
 			//m_cdt->Write(&end_data, 1, i);
+			intra_Barrier();
 		}
 	}
 
@@ -168,10 +175,12 @@ int main(int argc, char* argv[])
 	/* get current process rank */
 	int myProc = ctx.getProcRank();
 
+	int nthreads = atoi(argv[1]);
+
 	/* define sender and receiver task obj */
-	ProcList rl1(1, 0);
+	ProcList rl1(nthreads, 0);
 	Task<SendRecvWorker> sender(rl1);
-	ProcList rl2(1, 0);
+	ProcList rl2(nthreads, 0);
 	Task<SendRecvWorker> receiver(rl2);
 
 	/* define conduit obj */
