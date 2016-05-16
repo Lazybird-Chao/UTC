@@ -3,6 +3,8 @@
 
 #ifndef __cplusplus
 typedef enum {false, true} logical;
+#else
+typedef bool logical;
 #endif
 typedef struct { 
   double real;

@@ -53,6 +53,7 @@
 #include "randdp.h"
 #include "timers.h"
 #include "print_results.h"
+#include "../../../helper_printtime.h"
 
 #define MAX(X,Y)  (((X) > (Y)) ? (X) : (Y))
 
@@ -279,6 +280,12 @@ int main()
     tt = timer_read(2);
     printf("Random numbers: %9.3lf (%6.2lf)\n", tt, tt*100.0/tm);
   }
+
+  double timerecord[3];
+  timerecord[0]=timer_read(0);
+  timerecord[1]=timer_read(1);
+  timerecord[2]=timer_read(2);
+  print_time(3, timerecord);
 
   return 0;
 }

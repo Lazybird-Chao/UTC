@@ -3,6 +3,7 @@
  */
 
 #include "../../helper_getopt.h"
+
 #include "type.h"
 #include "npbparams.h"
 #include "randdp.h"
@@ -10,7 +11,7 @@
 #include "print_results.h"
 
 #include "Utc.h"
-
+#include "../../helper_printtime.h"
 #include <iostream>
 #include <string>
 
@@ -367,6 +368,10 @@ int main(int argc, char* argv[]){
 		printf("Random numbers: %9.3lf (%6.2lf)\n", tt, tt*100.0/tm);
 		tt = timeVal[3];
 		printf("Communications: %9.3lf (%6.2lf)\n", tt, tt*100.0/tm);
+
+
+		// record timeinfo to file
+		print_time(4, timeVal);
 
 	}
 

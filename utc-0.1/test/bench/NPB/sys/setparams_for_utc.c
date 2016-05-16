@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
   char _class, class_old;
   int nprocs, nprocs_old;
   
-  if (argc <3 && argc >4) {
+  if (argc <3 || argc >4) {
 	printf("***************************************************\n");
     printf("Usage: %s benchmark-name [nprocs] class\n", argv[0]);
     printf("***************************************************\n");

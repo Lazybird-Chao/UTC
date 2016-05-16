@@ -5,21 +5,21 @@
  * functions and data members.
  */
 
-class UserTaskBase
+class UserTaskTMP
 {
 public:
 
-	UserTaskBase(){}
+	UserTaskTMP(){}
 		// you can define or overload a meaning full constructor in derived class
-	~UserTaskBase(){}
+	virtual ~UserTaskTMP(){}
 		// you should clean the used data and free allocated memory
 
 	/* necessary member functions */
-	void init(){std::cerr<<"Using the template User task class!\n";}
+	virtual void initImpl(){std::cerr<<"Using the template User task class!\n";}
 		// usually initialize data members and prepare for computation,
 		// you should implement this method and can overload with arguments
 		// in derived class
-	void run(){std::cerr<<"Using the template User task class!\n";}
+	virtual void runImpl(){std::cerr<<"Using the template User task class!\n";}
 		// usually implement the main algorithm, doing computation and communication,
 		// you should implement this method in derived class
 
