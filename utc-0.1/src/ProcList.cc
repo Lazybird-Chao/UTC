@@ -15,6 +15,7 @@ namespace iUtc{
 	// Construct a ProcList that only has one member which is proc
 	ProcList::ProcList(ProcRank_t proc)
     {
+		m_procList.clear();
         m_procList.push_back(proc);
 
     }
@@ -22,6 +23,7 @@ namespace iUtc{
 	// Construct a ProcList that contains size copys of proc
 	ProcList::ProcList(int size, ProcRank_t proc)
 	{
+		m_procList.clear();
 		for(int i = 0; i < size; i++)
 		{
 			m_procList.push_back(proc);
@@ -32,12 +34,18 @@ namespace iUtc{
     // Construct a RankList, given a size and C-style array of RankIds.
 	ProcList::ProcList(int size, const int * ranks)
     {
+		m_procList.clear();
 		ProcRank_t * tmpPtr = const_cast<ProcRank_t *>(ranks);
         for(int i = 0; i < size; i++)
         {
             m_procList.push_back(*(tmpPtr++));
         }
     }
+
+	void ProcList::push_back(int rank){
+		m_procList.push_back(rank);
+	}
+
 
     // \brief Constructor
     // Construct a RankList, given an STL vector of ranks.

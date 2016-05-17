@@ -10,6 +10,7 @@
 
 /* main UTC header file */
 #include "Utc.h"
+#include "../helper_getopt.h"
 
 /* other standard header file */
 #include <iostream>
@@ -455,26 +456,63 @@ private:
 	int *loops;
 };
 
+void usage(char *argv0) {
+    std::string help =
+        "Usage: %s [switches] -i filename\n"
+        "       -i filename     :  file containing data to be clustered\n"
+        "       -t nthreads     :threads per node of Task\n"
+		"       -p nprocs       :number of nodes running on \n"
+        "       -n clusters     :number of clusters\n"
+    	"       -l nloops       :number of loops to run the test\n";
+    fprintf(stderr, help.c_str(), argv0);
+    exit(-1);
+}
 
 int main(int argc, char*argv[]){
 	int numClusters, numCoords, numObjs;
-	char* filename;
+	char* filename = nullptr;
 	float **objects;
 	float **clusters;
 	int *membership;
 	int nthreads;
 	int nslaves;
 	int N;
-	if(argc<6){
-		std::cout<<"run like: ./a.out 'nthread' 'nslaves'  'num-cluster' 'inputfile' 'N' "<<std::endl;
-	}
-	else{
-		nthreads = atoi(argv[1]);
-		nslaves = atoi(argv[2]);
-		numClusters = atoi(argv[3]);
-		filename = argv[4];
-		N = atoi(argv[5]);
-	}
+
+		int opt;
+		extern char *optarg;
+		extern int optind;
+		opt=getopt(argc, argv, "i:t:p:n:l:");
+
+		while( opt!=EOF ){
+			switch (opt){
+				case 'i':
+					filename = optarg;
+					break;
+				case 't':
+					nthreads = atoi(optarg);
+					break;
+				case 'p':
+					nslaves = atoi(optarg);
+					break;
+				case 'n':
+					numClusters = atoi(optarg);
+					break;
+				case 'l':
+					N = atoi(optarg);
+					break;
+				case '?':
+					usage(argv[0]);
+					break;
+				default:
+					usage(argv[0]);
+					break;
+			}
+			//std::cout<<opt;
+			opt=getopt(argc, argv, "i:t:p:n:l:");
+		}
+		if(filename == nullptr)
+			usage(argv[0]);
+
 	/* startup utc contex*/
 	UtcContext ctx(argc, argv);
 
@@ -582,12 +620,20 @@ int main(int argc, char*argv[]){
 		std::cout<<"Master task run() time: "<<master_runtimeTotal/N<<std::endl;
 		std::cout<<"Slave tasks run() time: "<<std::endl;
 	}
+
 	for(int i=0; i< nslaves; i++){
-		if(ctx.getProcRank()==i)
+		if(ctx.getProcRank()==i){
 			std::cout<<"\t"<<slaves_runtimeTotal[i][0]/N<<" "<<slaves_runtimeTotal[i][1]/N<<" "
 				<<slaves_runtimeTotal[i][2]/N<<std::endl;
+		}
 		ctx.Barrier();
 	}
+	double avgtime[3];
+	MPI_Reduce(slaves_runtimeTotal[ctx.getProcRank()], avgtime, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	if(ctx.getProcRank()==0)
+		std::cout<<"average: "<<avgtime[0]/(nslaves*N) <<" "<<avgtime[1]/(nslaves*N)<<
+			" "<<avgtime[2]/(nslaves*N)<<std::endl;
+
 	return 0;
 }
 

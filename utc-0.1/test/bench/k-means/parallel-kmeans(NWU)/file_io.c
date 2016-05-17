@@ -112,7 +112,7 @@ float** file_read(int   isBinaryFile,  /* flag: 0 or 1 */
         /* find the no. coordinates of each object */
         (*numCoords) = 0;
         while (fgets(line, lineLen, infile) != NULL) {
-            if (strtok(line, " \t\n") != 0) {
+            if (strtok(line, " ,\t\n") != 0) {
                 /* ignore the id (first coordiinate): numCoords = 1; */
                 while (strtok(NULL, " ,\t\n") != NULL) (*numCoords)++;
                 break; /* this makes read from 1st object */

@@ -1,11 +1,11 @@
 #################################
-BENCHMARK = utc_kmeans
+BENCHMARK = utc_kmeans_mtask_v2
 BINDIR = .
-PROGRAM_SOURCE:= utc_kmeans_stask_v2.cc
+PROGRAM_SOURCE:= utc_kmeans_mtask_v2.cc
 
 
 #################################
-PROGRAM = $(BINDIR)/$(BENCHMARK).out
+PROGRAM = $(BINDIR)/$(BENCHMARK).utc
 default: $(PROGRAM)
 
 include ../../../for-lab.comm

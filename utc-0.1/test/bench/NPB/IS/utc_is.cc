@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <string>
+#include <cmath>
 
 using namespace iUtc;
 
@@ -1004,6 +1005,12 @@ int main(int argc, char* argv[]){
 		if(ctx.getProcRank()==0)
 			std::cout<<"Threads: "<<nthreads<<"    Procs: "<<nprocs<<std::endl;
 	}
+
+	if(log2(nprocs) <0){
+		if(ctx.getProcRank()==0)
+			std::cout<<"Num of proc should be power of 2"<<std::endl;
+	}
+
 	/*  Initialize the verification arrays if a valid class */
 	for( int i=0; i<TEST_ARRAY_SIZE; i++ ){
 		switch( CLASS )

@@ -27,6 +27,9 @@ namespace iUtc{
         /// Construct a ThreadRankList, given a size and C-style array of RankIds.
     	ProcList(int size, const int * ranks);
 
+    	///
+    	void push_back(int rank);
+
         /// \brief Copy constructor
         /// Create a RankList, given another RankList.
     	ProcList(const ProcList &);
