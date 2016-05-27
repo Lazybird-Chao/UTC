@@ -1,5 +1,6 @@
 #include "../include/ProcList.h"
 #include "UtcException.h"
+#include <iostream>
 
 namespace iUtc{
 
@@ -23,6 +24,10 @@ namespace iUtc{
 	// Construct a ProcList that contains size copys of proc
 	ProcList::ProcList(int size, ProcRank_t proc)
 	{
+		if(size <1){
+			std::cerr<<"ERROR: number of threads must > 0!"<<std::endl;
+			exit(1);
+		}
 		m_procList.clear();
 		for(int i = 0; i < size; i++)
 		{

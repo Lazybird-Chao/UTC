@@ -21,11 +21,11 @@ namespace iUtc{
 
             int numProcs();
 
-            int numProcs(MPI::Comm &comm);
+            int numProcs(MPI_Comm &comm);
 
             int rank();
 
-            int rank(MPI::Comm &comm);
+            int rank(MPI_Comm &comm);
 
             void getProcessorName(std::string& name);
 

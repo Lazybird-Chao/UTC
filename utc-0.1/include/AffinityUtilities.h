@@ -19,6 +19,7 @@
 #endif
 #include <vector>
 #include <thread>
+#include <iostream>
 
 namespace iUtc{
 

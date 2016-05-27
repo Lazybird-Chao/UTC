@@ -4,6 +4,7 @@
 #include <cstring>
 #include <sys/types.h>
 #include <unistd.h>
+#include <iostream>
 
 namespace iUtc{
     namespace UtcMpi{
@@ -38,13 +39,13 @@ namespace iUtc{
 
             int mpi_mode;
 #ifdef  MULTIPLE_THREAD_MPI
-            mpi_mode=MPI::THREAD_MULTIPLE;
+            mpi_mode=MPI_THREAD_MULTIPLE;
 #else
-            mpi_mode=MPI::THREAD_SERIALIZED;
+            mpi_mode=MPI_THREAD_SERIALIZED;
 #endif
             int provided=0;
             MPI_Init_thread(&argc, &argv, mpi_mode, &provided);
-            //provided=MPI::Init_thread(argc, argv, mpi_mode);
+            std::cout<< "MPI ThreadMode="<<m_mode[provided]<<std::endl;
             m_rank= this->rank();
             m_size = this->numProcs();
             int length;
@@ -77,28 +78,28 @@ namespace iUtc{
         int Utc::rank()
         {
             int rank=0;
-            rank = MPI::COMM_WORLD.Get_rank();
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
             return rank;
         }
 
-        int Utc::rank(MPI::Comm& comm)
+        int Utc::rank(MPI_Comm& comm)
         {
             int rank=0;
-            rank = comm.Get_rank();
+            MPI_Comm_rank(comm, &rank);
             return rank;
         }
 
         int Utc::numProcs()
         {
             int procs=0;
-            procs = MPI::COMM_WORLD.Get_size();
+            MPI_Comm_size(MPI_COMM_WORLD, &procs);
             return procs;
         }
 
-        int Utc::numProcs(MPI::Comm& comm)
+        int Utc::numProcs(MPI_Comm& comm)
         {
             int procs=0;
-            procs = comm.Get_size();
+            MPI_Comm_size(comm, &procs);
             return procs;
         }
 

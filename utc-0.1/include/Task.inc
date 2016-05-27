@@ -467,6 +467,15 @@ void Task<T>::threadImpl(ThreadRank_t trank, ThreadRank_t lrank,
 	setAffinity(cpus);
 #endif
 
+//#define SET_CPU_BIND_TO_ALL
+#ifdef SET_CPU_BIND_TO_ALL
+	std::cout<<"harcore total: "<<UtcContext::HARDCORES_TOTAL_CURRENT_NODE<<std::endl;
+	std::vector<int> cpus;
+	for(int i=0; i<UtcContext::HARDCORES_TOTAL_CURRENT_NODE; i++)
+		cpus.push_back(i);
+	setAffinity(cpus);
+#endif
+
 	// create task info in this thread TSS
 	TaskInfo* taskInfoPtr = new TaskInfo();
 	taskInfoPtr->pRank = m_processRank;
@@ -690,6 +699,7 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList)
 		if(m_TaskRankList[i]>nProcWorld-1)
 		{
 			std::cerr<<"\n*****Error, Task ["<<m_Name<<"] mapped to non-existed processes!*****\n"<<std::endl;
+			std::cerr<<"nProcWorld: "<<nProcWorld<<"  but want: "<<m_TaskRankList[i]<<std::endl;
 			std::exit(1);
 		}
 		plist[m_TaskRankList[i]].push_back(i);

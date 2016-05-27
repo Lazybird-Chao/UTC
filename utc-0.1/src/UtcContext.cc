@@ -81,6 +81,8 @@ void UtcContext::initialize(int& argc, char** argv)
     int nProcs= Utcbase_provider->numProcs();
     int pRank = Utcbase_provider->rank();
 
+    //std::cout<<"In UtcContext.cc(l84): "<<nProcs<<std::endl;
+
     root= new RootTask(nProcs, pRank);          // The very first time and only this time to create a
                                                 // RootTask instance in current process.
 
