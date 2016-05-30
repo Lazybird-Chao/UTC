@@ -871,7 +871,11 @@ int InprocConduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSiz
 	{
 		if(thread >= TaskManager::getCurrentTask()->getNumTotalThreads())
 		{
-			std::cerr<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
+			std::cerr<<"Error, readby thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
+			exit(1);
+		}
+		else if(TaskManager::getCurrentTask()->isLocal(thread) == false){
+			std::cerr<<"Error, readby thread rank "<<myThreadRank<<" is not on main process!"<<std::endl;
 			exit(1);
 		}
 

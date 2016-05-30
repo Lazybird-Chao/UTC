@@ -39,8 +39,10 @@ public:
 
 	Task();
 	Task(ProcList rList);
+	Task(ProcList rList, TaskType tType);
 	Task(std::string name);
 	Task( std::string name , ProcList rList);
+	Task(std::string name, ProcList rList, TaskType tType);
 
 	~Task();
 
@@ -111,7 +113,8 @@ private:
 	void threadExit(ThreadRank_t trank);
 
 	void CreateTask(const std::string name,
-			const ProcList rList);
+			const ProcList rList,
+			const TaskType tType);
 
 	void LaunchThreads(std::vector<ThreadRank_t> &tRankList);
 

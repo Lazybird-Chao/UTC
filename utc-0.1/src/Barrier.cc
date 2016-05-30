@@ -20,9 +20,8 @@ Barrier::Barrier()
 	m_taskCommPtr =nullptr;
 	m_threadSyncBarrier = nullptr;
 	m_generation = m_counter =0;
-
-
 }
+
 Barrier::Barrier(int numLocalThreads, int taskid)
 {
 	m_numLocalThreads = numLocalThreads;
@@ -249,8 +248,19 @@ void SpinBarrier::set(int nthreads){
 
 void SpinBarrier::wait(){
 	// wait set() finish
+	long _counter=0;
 	while(m_barrierReady.load() != m_numThreadsForSync){
-		_mm_pause();
+		_counter++;
+		if(_counter<USE_PAUSE)
+			_mm_pause();
+		else if(_counter<USE_SHORT_SLEEP){
+			__asm__ __volatile__ ("pause" ::: "memory");
+			std::this_thread::yield();
+		}
+		else if(_counter<USE_LONG_SLEEP)
+			nanosleep(&SHORT_PERIOD, nullptr);
+		else
+			nanosleep(&LONG_PERIOD, nullptr);
 	}
 
 	int generation = m_generation.load();

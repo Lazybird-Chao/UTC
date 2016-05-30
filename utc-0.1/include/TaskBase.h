@@ -17,6 +17,11 @@
 
 namespace iUtc{
 
+enum TaskType{
+	unknown =0,
+	cpu_task,
+	gpu_task
+};
 
 class TaskBase{
 public:
@@ -26,6 +31,8 @@ public:
 
     TaskBase* getParentTask();
     TaskId_t getParentTaskId();
+
+    TaskType getTaskType();
 
     //
     std::vector<ProcRank_t> getTaskRankList();
@@ -68,6 +75,8 @@ public:
 
 protected:
     std::string m_Name;
+
+    TaskType m_TaskType;
 
     TaskId_t m_TaskId;
 

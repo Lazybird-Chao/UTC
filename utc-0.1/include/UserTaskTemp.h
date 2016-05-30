@@ -5,11 +5,18 @@
  * functions and data members.
  */
 
+#include "TaskUtilities.h"
+
 class UserTaskTMP
 {
 public:
 
-	UserTaskTMP(){}
+	UserTaskTMP(){
+		__localThreadId = iUtc::getTrank();
+		__globalThreadId = iUtc::getPrank();
+		__numLocalThreads = iUtc::getLsize();
+		__numGlobalThreads = iUtc::getGsize();
+	}
 		// you can define or overload a meaning full constructor in derived class
 	virtual ~UserTaskTMP(){}
 		// you should clean the used data and free allocated memory
@@ -39,6 +46,10 @@ private:
 	/* other useful data members */
 		// e.g. Conduit* cdt;
 		//      initialize cdt in init() and use it for communication in run()
+	static thread_local int __localThreadId=-1;
+	static thread_local int __globalThreadId=-1;
+	int __numLocalThreads=0;
+	int __numGlobalThreads=0;
 
 protected:
 	/* other useful member functions */
@@ -48,3 +59,5 @@ protected:
 
 
 };
+//static thread_local int __localThreadId;
+//static thread_local int __globalThreadId;

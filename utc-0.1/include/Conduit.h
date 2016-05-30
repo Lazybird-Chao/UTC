@@ -10,12 +10,19 @@
 
 namespace iUtc{
 
-enum OpType{
+enum ConduitType{
+	unknown =0,
+	c2c				//cputask to cputask
+};
+
+enum ConduitOpType{
 	unknown =0,
 	read,
 	write,
 	readby,
-	writeby
+	writeby,
+	readbyfirst,
+	writbyfirst
 };
 
 // forward declaration
@@ -80,8 +87,9 @@ public:
 	~Conduit();
 
 private:
-	int initConduit(TaskBase* srctask, TaskBase* dsttask, int capacity);
+	int initConduit_C2C(TaskBase* srctask, TaskBase* dsttask, int capacity);
 
+	ConduitType		m_cdtType;
 	ConduitManager* m_cdtMgr;
 
 	TaskBase* m_srcTask;

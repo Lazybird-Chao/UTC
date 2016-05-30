@@ -15,6 +15,11 @@ std::string TaskBase::getName()
     return m_Name;
 }
 
+TaskType TaskBase::getTaskType(){
+
+	return m_TaskType;
+}
+
 TaskId_t TaskBase::getTaskId()
 {
     return m_TaskId;
@@ -119,6 +124,7 @@ ProcRank_t TaskBase::getMainResideProcess()
 TaskBase::TaskBase()
 :m_Name(""),
 m_TaskId(-1),
+m_TaskType(TaskType::unknown),
 m_ParentTaskId(-1),
 m_numProcesses(0),
 m_numLocalThreads(0),

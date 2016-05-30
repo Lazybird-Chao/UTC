@@ -32,11 +32,15 @@ Conduit::Conduit()
 
 Conduit::Conduit(TaskBase* srctask, TaskBase* dsttask)
 {
-	initConduit(srctask, dsttask, INPROC_CONDUIT_CAPACITY_DEFAULT);
+	if(srctask->getTaskType()==TaskType::cpu_task &&
+	    		dsttask->getTaskType()==TaskType::cpu_task){
+		initConduit_C2C(srctask, dsttask, INPROC_CONDUIT_CAPACITY_DEFAULT);
+	}
 }
 
 
-int Conduit::initConduit(TaskBase* srctask, TaskBase* dsttask, int capacity){
+int Conduit::initConduit_C2C(TaskBase* srctask, TaskBase* dsttask, int capacity){
+	m_cdtType = ConduitType::c2c;
 	m_srcTask = srctask;
 	m_dstTask = dsttask;
 	m_srcId = m_srcTask->getTaskId();
@@ -63,7 +67,7 @@ int Conduit::initConduit(TaskBase* srctask, TaskBase* dsttask, int capacity){
 	 * we just now only allow simple conduit between two tasks.
 	 * This requires that each task only active on one process.
 	 */
-	if(srctask->getNumProcesses() == 1 && dsttask->getNumProcesses() == 1){
+	/*if(srctask->getNumProcesses() == 1 && dsttask->getNumProcesses() == 1){
 	 	if(srctask->isActiveOnCurrentProcess()==true &&
 				dsttask->isActiveOnCurrentProcess()==true)
 		{
@@ -97,6 +101,28 @@ int Conduit::initConduit(TaskBase* srctask, TaskBase* dsttask, int capacity){
 	else{
 		std::cerr<<"ERROR, simple conduit only allow task rnning on one process"<<std::endl;
 		return 1;
+	}
+	*/
+	if(srctask->getMainResideProcess() == dsttask->getMainResideProcess()){
+		if(srctask->getMainResideProcess() == srctask->getCurrentProcRank()){
+			m_realConduitPtr = new InprocConduit(srctask, dsttask, m_conduitId, m_Name);
+#ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*procOstream)
+		*procOstream<<"InprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
+						<<"] constructed..."<<std::endl;
+#endif
+		}
+	}
+	else{
+		if(srctask->getMainResideProcess() == srctask->getCurrentProcRank() ||
+				dsttask->getMainResideProcess() == dsttask->getCurrentProcRank()){
+			m_realConduitPtr = new XprocConduit(srctask, dsttask, m_conduitId, m_Name);
+#ifdef USE_DEBUG_LOG
+		PRINT_TIME_NOW(*procOstream)
+		*procOstream<<"XprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
+						<<"] constructed..."<<std::endl;
+#endif
+		}
 	}
 
 	return 0;	
@@ -154,8 +180,11 @@ void Conduit::Connect(TaskBase* srctask, TaskBase* dsttask)
         exit(1);
     }
     
-    initConduit(srctask, dsttask, INPROC_CONDUIT_CAPACITY_DEFAULT);
-    
+    if(srctask->getTaskType()==TaskType::cpu_task &&
+    		dsttask->getTaskType()==TaskType::cpu_task){
+    	initConduit_C2C(srctask, dsttask, INPROC_CONDUIT_CAPACITY_DEFAULT);
+    }
+
     return;
 }
 

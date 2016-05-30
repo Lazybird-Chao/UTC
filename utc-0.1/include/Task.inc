@@ -17,7 +17,7 @@ Task<T>::Task()
 	std::vector<int> rlist;
 	for(int i=0;i<numProcess;i++)
 		rlist.push_back(i);
-	CreateTask(name, ProcList(rlist));
+	CreateTask(name, ProcList(rlist), TaskType::cpu_task);
  }
 
 template<class T>
@@ -32,7 +32,22 @@ Task<T>::Task(ProcList rList)
 	int ntasks = TaskManager::getNumTasks();
 	std::string name = "Task";
 	name.append(std::to_string(ntasks));
-	CreateTask(name, rList);
+	CreateTask(name, rList, TaskType::cpu_task);
+ }
+
+template<class T>
+Task<T>::Task(ProcList rList, TaskType tType)
+:TaskBase()
+ {
+	m_taskThreads.clear();
+	m_userTaskObjPtr = nullptr;
+	m_procOstream = nullptr;
+	m_taskBarrierObjPtr = nullptr;
+
+	int ntasks = TaskManager::getNumTasks();
+	std::string name = "Task";
+	name.append(std::to_string(ntasks));
+	CreateTask(name, rList, tType);
  }
 
 template<class T>
@@ -48,7 +63,7 @@ Task<T>::Task(std::string name)
 	std::vector<int> rlist;
 	for(int i=0;i<numProcess;i++)
 		rlist.push_back(i);
-	CreateTask(name, rlist);
+	CreateTask(name, rlist, TaskType::cpu_task);
  }
 
 template<class T>
@@ -60,7 +75,19 @@ Task<T>::Task( std::string name,  ProcList rList)
 	m_procOstream = nullptr;
 	m_taskBarrierObjPtr = nullptr;
 
-	CreateTask(name, rList);
+	CreateTask(name, rList, TaskType::cpu_task);
+ }
+
+template<class T>
+Task<T>::Task(std::string name, ProcList rList, TaskType tType)
+:TaskBase()
+ {
+	m_taskThreads.clear();
+	m_userTaskObjPtr = nullptr;
+	m_procOstream = nullptr;
+	m_taskBarrierObjPtr = nullptr;
+
+	CreateTask(name, rList, tType);
  }
 
 template<class T>

@@ -378,7 +378,11 @@ int InprocConduit::PWriteBy(ThreadRank_t thread, void *DataPtr, DataSize_t DataS
     if(myThreadRank != thread){
     	if(thread >= TaskManager::getCurrentTask()->getNumTotalThreads())
 		{
-			std::cerr<<"Error, thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
+			std::cerr<<"Error, pwriteby thread rank "<<myThreadRank<<" out of range in task!"<<std::endl;
+			exit(1);
+		}
+    	else if(TaskManager::getCurrentTask()->isLocal(thread) == false){
+			std::cerr<<"Error, pwriteby thread rank "<<myThreadRank<<" is not on main process!"<<std::endl;
 			exit(1);
 		}
 		// not the writing thread, just return, we will not wait for the real write
