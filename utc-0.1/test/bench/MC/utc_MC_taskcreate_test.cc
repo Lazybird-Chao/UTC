@@ -76,18 +76,6 @@ public:
 			tmp_sum+=f(tmp_x);
 		}
 		m_res[my_thread]=tmp_sum*(m_range_upper-m_range_lower)/m_loopN;
-		/*intra_Barrier();
-		//sleep(1);
-		if(my_thread==0)
-		{
-			for(int i=1; i<local_nthreads;i++)
-			{
-				m_res[0]+=m_res[i];
-			}
-			m_res[0]/=local_nthreads;
-			*time_run_cost=timer.stop();
-			//*time_run_cost = timer.getThreadCpuTime();
-		}*/
 		timer.stop();
 		if(my_thread==0){
 			*time_run_cost=timer.getRealTime();
@@ -180,33 +168,6 @@ int main(int argc, char*argv[])
 		print_time(2, timerecord);
 	}
 
-	/*
-	 * create one task, but has nthreads on each proc
-	 */
-	/*std::vector<int> r;
-	for(int i=0; i<numproc; i++){
-		for(int j=0; j<nthreads; j++){
-			r.push_back(i);
-		}
-	}
-	ProcList rlist(r);
-	double rtime;
-	ctx.Barrier();
-	Timer.start();
-	Task<IntegralCaculator> task_ins(rlist);
-	task_ins.init(0, loopN, 1, 1.0, 10.0, &rtime);
-	task_ins.run();
-	task_ins.wait();
-	task_ins.finish();
-	ctx.Barrier();
-	totaltime = Timer.stop();
-	for(int i=0; i<numproc; i++){
-		if(ctx.getProcRank()==i){
-			std::cout<<"Total time on proc "<<i<<": "<<totaltime<<std::endl;
-			std::cout<<"run() time: "<<rtime<<std::endl;
-		}
-		MPI_Barrier(MPI_COMM_WORLD);
-	}*/
 
 	return 0;
 }
