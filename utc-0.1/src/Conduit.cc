@@ -112,6 +112,9 @@ int Conduit::initConduit_C2C(TaskBase* srctask, TaskBase* dsttask, int capacity)
 						<<"] constructed..."<<std::endl;
 #endif
 		}
+		else{
+			m_realConduitPtr = nullptr;
+		}
 	}
 	else{
 		if(srctask->getMainResideProcess() == srctask->getCurrentProcRank() ||
@@ -122,6 +125,9 @@ int Conduit::initConduit_C2C(TaskBase* srctask, TaskBase* dsttask, int capacity)
 		*procOstream<<"XprocConduit: ["<<m_srcTask->getName()<<"<=>"<<m_dstTask->getName()
 						<<"] constructed..."<<std::endl;
 #endif
+		}
+		else{
+			m_realConduitPtr = nullptr;
 		}
 	}
 
