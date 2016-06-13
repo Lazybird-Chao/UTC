@@ -13,6 +13,26 @@ int UtcContext::m_nCount = 0;
 RootTask* UtcContext::root = nullptr;
 int UtcContext::HARDCORES_TOTAL_CURRENT_NODE=getConcurrency();
 int UtcContext::HARDCORES_ID_FOR_USING = 0;
+UtcContext UtcContext::m_ContextInstance = nullptr;
+
+/* This singleton implementation is not thread safe.
+ * However, the first time using it is at start of program,
+ * usually happens only in main thread, so it's fine to use
+ * this simple style.
+ */
+UtcContext& UtcContext::getContext(){
+	if(m_ContextInstance == nullptr){
+		m_ContextInstance = new UtcContext();
+	}
+	return *m_ContextInstance;
+}
+
+UtcContext& UtcContext::getContext(int& argc, char**& argv){
+	if(m_ContextInstance==nullptr){
+		m_ContextInstance = new UtcContext(argc, argv);
+	}
+	return *m_ContextInstance;
+}
 
 UtcContext::UtcContext()
 {

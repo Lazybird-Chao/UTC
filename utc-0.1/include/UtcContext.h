@@ -14,11 +14,11 @@ namespace iUtc{
 class UtcContext{
 
     public:
-        UtcContext();
-
-        UtcContext(int &argc, char** &argv);
 
         ~UtcContext();
+
+        static UtcContext& getContext();
+        static UtcContext& getContext(int &argc, char**&argv);
 
         int getProcRank();
 
@@ -37,6 +37,9 @@ class UtcContext{
     protected:
 
     private:
+        UtcContext();
+
+        UtcContext(int &argc, char** &argv);
 
         static void initialize(int &argc, char**argv);
 
@@ -48,7 +51,7 @@ class UtcContext{
         static RootTask* root;
 
         static int m_nCount;    // may not be useful!
-
+        static UtcContext *m_ContextInstance;
         //
         UtcContext(const UtcContext& other);
         UtcContext& operator=(const UtcContext& other);

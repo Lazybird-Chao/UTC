@@ -79,34 +79,36 @@ public:
 
 	template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9, typename T10>
 	void init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10);
+
 	//
 	void run();
 
 	template<typename T1>
 	void run(T1 arg1);
+
 	//
 	void wait();
+
 	//
 	void finish();
+
 	//
 	void exec(void (T::*user_fun)());
+
 	template<typename T1>
 	void exec(void (T::*user_fun)(T1), T1 arg1);
 
 
+
+
+private:
 	//
-
-
-protected:
 	int initImpl();
 
 	int runImpl();
 
 	int execImpl();
 
-
-private:
-	//
 	void threadImpl(ThreadRank_t trank, ThreadRank_t lrank,
 			std::ofstream* output, int hardcoreId = -1);
 
@@ -157,7 +159,7 @@ private:
 	 * handle. the nullhandle is used to fill queue when push 'finish'
 	 * 'wait' jobs, as they do not need creat a function handle, we just
 	 * need a nullhandle to fill its position.
-	 * Sse this queue to deal with if several task.job() call goes queickly,
+	 * Use this queue to deal with if several task.job() call goes queickly,
 	 * before thread use the handle to exec for an early call, next call may
 	 * already change the handle, if we just use one handle var for same type
 	 * of job.

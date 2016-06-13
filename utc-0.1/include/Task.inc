@@ -8,6 +8,7 @@ Task<T>::Task()
 	m_userTaskObjPtr = nullptr;
 	m_procOstream = nullptr;
 	m_taskBarrierObjPtr = nullptr;
+	m_TaskType = TaskType::cpu_task;
 
 	int ntasks = TaskManager::getNumTasks();
 	std::string name = "Task";
@@ -28,6 +29,7 @@ Task<T>::Task(ProcList rList)
 	m_userTaskObjPtr = nullptr;
 	m_procOstream = nullptr;
 	m_taskBarrierObjPtr = nullptr;
+	m_TaskType = TaskType::cpu_task;
 
 	int ntasks = TaskManager::getNumTasks();
 	std::string name = "Task";
@@ -43,6 +45,7 @@ Task<T>::Task(ProcList rList, TaskType tType)
 	m_userTaskObjPtr = nullptr;
 	m_procOstream = nullptr;
 	m_taskBarrierObjPtr = nullptr;
+	m_TaskType = tType;
 
 	int ntasks = TaskManager::getNumTasks();
 	std::string name = "Task";
@@ -58,6 +61,7 @@ Task<T>::Task(std::string name)
 	m_userTaskObjPtr = nullptr;
 	m_procOstream = nullptr;
 	m_taskBarrierObjPtr = nullptr;
+	m_TaskType = TaskType::cpu_task;
 
 	int numProcess = TaskManager::getRootTask()->getNumProcesses();
 	std::vector<int> rlist;
@@ -74,6 +78,7 @@ Task<T>::Task( std::string name,  ProcList rList)
 	m_userTaskObjPtr = nullptr;
 	m_procOstream = nullptr;
 	m_taskBarrierObjPtr = nullptr;
+	m_TaskType = TaskType::cpu_task;
 
 	CreateTask(name, rList, TaskType::cpu_task);
  }
@@ -86,6 +91,7 @@ Task<T>::Task(std::string name, ProcList rList, TaskType tType)
 	m_userTaskObjPtr = nullptr;
 	m_procOstream = nullptr;
 	m_taskBarrierObjPtr = nullptr;
+	m_TaskType = tType;
 
 	CreateTask(name, rList, tType);
  }
@@ -171,7 +177,7 @@ void Task<T>::init()
     }
 
 	//set up user task's init function
-	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr);
+	m_userTaskInitFunctionHandle = std::bind(&T::initImpl, m_userTaskObjPtr);
 	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
 	// ask all threads to do task.init
 	initImpl();
@@ -190,7 +196,7 @@ void Task<T>::init(T1 arg1)
     }
 
 	//set up user task's init function
-	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1);
+	m_userTaskInitFunctionHandle = std::bind(&T::initImpl, m_userTaskObjPtr, arg1);
 	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
 	// ask all threads to do task.init
 	initImpl();
@@ -209,7 +215,7 @@ void Task<T>::init(T1 arg1, T2 arg2)
     }
 
 	//set up user task's init function
-	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2);
+	m_userTaskInitFunctionHandle = std::bind(&T::initImpl, m_userTaskObjPtr, arg1, arg2);
 	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
 	// ask all threads to do task.init
 	initImpl();
@@ -228,7 +234,7 @@ void Task<T>::init(T1 arg1, T2 arg2, T3 arg3)
     }
 
 	//set up user task's init function
-	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3);
+	m_userTaskInitFunctionHandle = std::bind(&T::initImpl, m_userTaskObjPtr, arg1, arg2, arg3);
 	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
 	// ask all threads to do task.init
 	initImpl();
@@ -242,7 +248,7 @@ void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4)
     if(m_numLocalThreads ==0)
     	return;
 	//set up user task's init function
-	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3, arg4);
+	m_userTaskInitFunctionHandle = std::bind(&T::initImpl, m_userTaskObjPtr, arg1, arg2, arg3, arg4);
 	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
 	// ask all threads to do task.init
 	initImpl();
@@ -255,7 +261,7 @@ void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5)
     if(m_numLocalThreads ==0)
     	return;
 	//set up user task's init function
-	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5);
+	m_userTaskInitFunctionHandle = std::bind(&T::initImpl, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5);
 	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
 	// ask all threads to do task.init
 	initImpl();
@@ -268,7 +274,7 @@ void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6)
     if(m_numLocalThreads ==0)
     	return;
 	//set up user task's init function
-	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5, arg6);
+	m_userTaskInitFunctionHandle = std::bind(&T::initImpl, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5, arg6);
 	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
 	// ask all threads to do task.init
 	initImpl();
@@ -281,7 +287,7 @@ void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7
     if(m_numLocalThreads ==0)
     	return;
 	//set up user task's init function
-	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+	m_userTaskInitFunctionHandle = std::bind(&T::initImpl, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
 	// ask all threads to do task.init
 	initImpl();
@@ -294,7 +300,7 @@ void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7
     if(m_numLocalThreads ==0)
     	return;
 	//set up user task's init function
-	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
+	m_userTaskInitFunctionHandle = std::bind(&T::initImpl, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
 	// ask all threads to do task.init
 	initImpl();
@@ -307,7 +313,7 @@ void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7
     if(m_numLocalThreads ==0)
     	return;
 	//set up user task's init function
-	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+	m_userTaskInitFunctionHandle = std::bind(&T::initImpl, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
 	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
 	// ask all threads to do task.init
 	initImpl();
@@ -320,7 +326,7 @@ void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7
     if(m_numLocalThreads ==0)
     	return;
 	//set up user task's init function
-	m_userTaskInitFunctionHandle = std::bind(&T::init, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
+	m_userTaskInitFunctionHandle = std::bind(&T::initImpl, m_userTaskObjPtr, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
 	m_jobHandleQueue.push_back(m_userTaskInitFunctionHandle);
 	// ask all threads to do task.init
 	initImpl();
@@ -338,7 +344,7 @@ void Task<T>::run()
     {
         return;
     }
-    m_userTaskRunFunctionHandle = std::bind(&T::run, m_userTaskObjPtr);
+    m_userTaskRunFunctionHandle = std::bind(&T::runImpl, m_userTaskObjPtr);
     m_jobHandleQueue.push_back(m_userTaskRunFunctionHandle);
     runImpl();
     return;
@@ -354,7 +360,7 @@ void Task<T>::run(T1 arg1)
     {
         return;
     }
-    m_userTaskRunFunctionHandle = std::bind(&T::run, m_userTaskObjPtr, arg1);
+    m_userTaskRunFunctionHandle = std::bind(&T::runImpl, m_userTaskObjPtr, arg1);
     m_jobHandleQueue.push_back(m_userTaskRunFunctionHandle);
     runImpl();
     return;
@@ -702,7 +708,7 @@ void Task<T>::threadExit(ThreadRank_t trank)
 }
 
 template<class T>
-void Task<T>::CreateTask(const std::string name, const ProcList rList)
+void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType tType)
 {
 	RootTask *root = TaskManager::getRootTask();
 	m_procOstream = root->getProcOstream();
