@@ -271,7 +271,7 @@ void SpinBarrier::wait(){
 		m_generation.fetch_add(1);
 		return;
 	}
-	long _counter=0;
+	_counter=0;
 	while(m_generation.load()==generation){
 		_counter++;
 		if(_counter<USE_PAUSE)

@@ -18,7 +18,7 @@ class UtcContext{
         ~UtcContext();
 
         static UtcContext& getContext();
-        static UtcContext& getContext(int &argc, char**&argv);
+        static UtcContext& getContext(int &argc, char** &argv);
 
         int getProcRank();
 

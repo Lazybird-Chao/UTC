@@ -1,6 +1,8 @@
 #ifndef UTC_TASK_UTILITIES_H_
 #define UTC_TASK_UTILITIES_H_
 
+#include "TaskBase.h"
+
 namespace iUtc{
 
 
@@ -20,7 +22,7 @@ int getTaskId();
 int getParentTaskId();
 
 // return the current thread rank in the task
-int getTrank();
+int getGrank();
 
 // return the current process rank
 int getPrank();

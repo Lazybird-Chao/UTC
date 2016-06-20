@@ -7,6 +7,7 @@
 
 
 #include <pthread.h>
+#include <atomic>
 #include <iostream>
 
 #ifdef USE_MPI_BASE

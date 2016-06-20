@@ -120,6 +120,14 @@ ProcRank_t TaskBase::getMainResideProcess()
 	return m_mainResideProcess;
 }
 
+bool TaskBase::hasActiveLocalThread(){
+	return false;
+}
+
+void TaskBase::waitLocalThreadFinish(){
+	return;
+}
+
 ///
 TaskBase::TaskBase()
 :m_Name(""),
@@ -131,7 +139,6 @@ m_numLocalThreads(0),
 m_numTotalThreads(0),
 m_processRank(-1),
 m_procOstream(nullptr),
-m_activeLocalThreadCount(0),
 m_mainResideProcess(-1),
 m_uniqueExeObjPtr(nullptr)
 {
@@ -161,24 +168,6 @@ void TaskBase::RegisterTask()
     //TaskId id = mgr->registerTask(this);
     mgr->registerTask(this, m_TaskId);
     return;
-}
-
-bool TaskBase::hasActiveLocalThread()
-{
-    std::lock_guard<std::mutex> lock(m_activeLocalThreadMutex);
-    if(m_activeLocalThreadCount > 0)
-        return true;
-    else
-        return false;
-}
-
-void TaskBase::waitLocalThreadFinish()
-{
-    std::unique_lock<std::mutex> LCK(m_activeLocalThreadMutex);
-    while(m_activeLocalThreadCount!=0)
-    {
-        m_activeLocalThreadCond.wait(LCK);
-    }
 }
 
 

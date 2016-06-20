@@ -4,20 +4,22 @@
 #include "UtcBasics.h"
 #include "TaskInfo.h"
 #include "UniqueExeTag.h"
-
+#include "ProcList.h"
 
 #include <map>
 #include <vector>
 #include <string>
-#include "boost/thread/tss.hpp"
-#include "boost/thread/thread.hpp"
+#include <atomic>
 #include <mutex>
 #include <condition_variable>
-#include "ProcList.h"
+#include "boost/thread/tss.hpp"
+#include "boost/thread/thread.hpp"
+
+
 
 namespace iUtc{
 
-enum TaskType{
+enum class TaskType{
 	unknown =0,
 	cpu_task,
 	gpu_task
@@ -64,11 +66,11 @@ public:
 
     bool isActiveOnCurrentProcess();
 
-    bool hasActiveLocalThread();
-    void waitLocalThreadFinish();
-
-
     void display();
+
+    //
+	virtual bool hasActiveLocalThread();
+	virtual void waitLocalThreadFinish();
 
     //
     virtual ~TaskBase();
@@ -108,12 +110,6 @@ protected:
 
     //
     void RegisterTask();
-
-    // used for conduit to check all running threads of a task are finish,
-    // and can destroy the conduit
-    int m_activeLocalThreadCount;
-    std::mutex m_activeLocalThreadMutex;
-    std::condition_variable m_activeLocalThreadCond;
 
     // used for unique execution control
     UniqueExeTag *m_uniqueExeObjPtr;

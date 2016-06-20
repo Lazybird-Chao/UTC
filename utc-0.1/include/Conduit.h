@@ -10,12 +10,12 @@
 
 namespace iUtc{
 
-enum ConduitType{
+enum class ConduitType{
 	unknown =0,
 	c2c				//cputask to cputask
 };
 
-enum ConduitOpType{
+enum class ConduitOpType{
 	unknown =0,
 	read,
 	write,

@@ -22,6 +22,10 @@
 #include "LockFreeRingbufferQueue.h"
 #include "ProcList.h"
 
+//P
+#include "PrivateScopedDataBase.h"
+#include "PrivateScopedData.h"
+
 //R
 #include "RootTask.h"
 
@@ -33,9 +37,12 @@
 #include "TaskInfo.h"
 #include "TaskManager.h"
 #include "Task.h"
+#include "TaskArtifact.h"
+#include "TaskCPU.h"
 #include "TaskUtilities.h"
 #include "Timer.h"
 #include "TimerUtilities.h"
+
 
 //U
 #include "UtcBase.h"
@@ -43,11 +50,7 @@
 #include "UtcContext.h"
 #include "UtcException.h"
 #include "UtcMpi.h"
-#include "UserTaskTemp.h"
-
-//V
-
-//W
+#include "UserTaskBase.h"
 
 //X
 #include "XprocConduit.h"

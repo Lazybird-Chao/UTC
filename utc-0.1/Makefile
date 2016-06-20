@@ -5,12 +5,14 @@ include ./comm.mk
 
 ###################
 vpath %.h  $(PROJECT_INCLUDEDIR)
+vpath %.inc $(PROJECT_INCLUDEDIR)
 vpath %.cc $(PROJECT_SRCDIR)
 
 ###################
-OBJS:= 	UtcContext.o UtcMpi.o ProcList.o UniqueExeTag.o\
-    		RootTask.o  TaskBase.o TaskManager.o Task.o  \
-    		ConduitManager.o Conduit.o InprocConduit.o XprocConduit.o\
+OBJS:= 	UtcContext.o UtcMpi.o ProcList.o UniqueExeTag.o \
+    		RootTask.o  TaskBase.o TaskManager.o Task.o  TaskCPU.o TaskUtilities.o UserTaskBase.o \
+    		PrivateScopedData.o \
+    		ConduitManager.o Conduit.o InprocConduit.o XprocConduit.o \
     		InprocConduit_Write.o InprocConduit_BWrite.o InprocConduit_PWrite.o	InprocConduit_Read.o \
     		InprocConduit_Async.o XprocConduit_Async.o \
     		Timer.o  Barrier.o SharedDataLock.o
@@ -34,7 +36,15 @@ libutc.a: $(OBJ_UTC)
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 ./lib/UtcMpi.o: UtcMpi.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)  
-./lib/Task.o: Task.cc
+./lib/Task.o: Task.cc Task.inc
+	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+./lib/TaskCPU.o: TaskCPU.cc
+	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+./lib/TaskUtilities.o: TaskUtilities.cc
+	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+./lib/UserTaskBase.o: UserTaskBase.cc
+	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+./lib/PrivateScopedData.o: PrivateScopedData.cc PrivateScopedData.inc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 ./lib/ConduitManager.o: ConduitManager.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)

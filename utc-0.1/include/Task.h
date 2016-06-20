@@ -2,7 +2,6 @@
 #define UTC_TASK_H_
 
 #include "UtcBasics.h"
-#include "UtcContext.h"
 #include "TaskManager.h"
 #include "TaskInfo.h"
 #include "TaskBase.h"
@@ -10,6 +9,8 @@
 #include "ProcList.h"
 #include "Barrier.h"
 #include "AffinityUtilities.h"
+#include "TaskArtifact.h"
+#include "TaskCPU.h"
 
 #include <thread>
 #include <mutex>
@@ -98,36 +99,16 @@ public:
 	template<typename T1>
 	void exec(void (T::*user_fun)(T1), T1 arg1);
 
-
+	//
+	bool hasActiveLocalThread();
+	void waitLocalThreadFinish();
 
 
 private:
 	//
-	int initImpl();
-
-	int runImpl();
-
-	int execImpl();
-
-	void threadImpl(ThreadRank_t trank, ThreadRank_t lrank,
-			std::ofstream* output, int hardcoreId = -1);
-
-	void threadExit(ThreadRank_t trank);
-
 	void CreateTask(const std::string name,
 			const ProcList rList,
 			const TaskType tType);
-
-	void LaunchThreads(std::vector<ThreadRank_t> &tRankList);
-
-	void threadSync();
-	void threadSync(ThreadRank_t lrank);
-
-	void threadWait();
-
-
-	//
-	std::vector<std::thread> m_taskThreads;
 
 	// barrier obj, shared by all threads in one task
 	Barrier *m_taskBarrierObjPtr;
@@ -147,41 +128,18 @@ private:
 	bool callTaskFinish;
 
 	//
-	boost::barrier *m_threadSync;
-
-	//
 	std::function<void()> m_userTaskInitFunctionHandle;
 
 	std::function<void()> m_userTaskRunFunctionHandle;
 
 	std::function<void()> m_userTaskExecHandle;
-	/* use a funtion handle queue to store every job's related function
-	 * handle. the nullhandle is used to fill queue when push 'finish'
-	 * 'wait' jobs, as they do not need creat a function handle, we just
-	 * need a nullhandle to fill its position.
-	 * Use this queue to deal with if several task.job() call goes queickly,
-	 * before thread use the handle to exec for an early call, next call may
-	 * already change the handle, if we just use one handle var for same type
-	 * of job.
-	 *
-	 */
-	std::vector<std::function<void()>> m_jobHandleQueue;
-	std::function<void()> m_nullJobHandle;
 
 	//
-	enum threadJobType{
-		job_init = 0,
-		job_run,
-		job_finish,
-		job_wait,
-		job_user_defined
-	};
-	std::vector<threadJobType> m_jobQueue;
-	std::mutex m_jobExecMutex;
-	std::condition_variable m_jobExecCond;
-	int *m_threadJobIdx;
+	ThreadPrivateData m_commonThreadPrivateData;
+	TaskInfo m_commonTaskInfo;
 
-	boost::latch *m_jobDoneWait;
+	//
+	TaskArtifact *m_realTaskInstance;
 
 	//
 	Task& operator=(const Task& other)=delete;
