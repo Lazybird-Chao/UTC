@@ -96,6 +96,21 @@ void PrivateScopedData<T>::store(T value, int index){
 }
 
 template<typename T>
+int PrivateScopedData<T>::loadblock(T* dst, int startIdx, int blocks){
+	T* data = m_dataPtr.get();
+	memcpy(dst, &data[startIdx], blocks*m_typesize);
+	return 0;
+}
+
+template<typename T>
+int PrivateScopedData<T>::storeblock(T* src, int startIdx, int blocks){
+	T* data = m_dataPtr.get();
+	memcpy(&data[startIdx], src, blocks*m_typesize);
+	return 0;
+}
+
+
+template<typename T>
 PrivateScopedData<T>::operator T() const{
 	T* data = m_dataPtr.get();
 	return data[0];

@@ -15,9 +15,9 @@ namespace iUtc{
 class SharedDataLock
 {
 public:
-	SharedDataLock();
+	//SharedDataLock();
 
-	~SharedDataLock();
+	//~SharedDataLock();
 
 	// standard unique lock, one thread get lock at one time
 	void lock();
@@ -36,8 +36,6 @@ private:
 	boost::shared_mutex m_SharedMutex;
 	//boost::unique_lock<boost::shared_mutex> m_Wlock{m_SharedMutex, boost::defer_lock};
 	//boost::shared_lock<boost::shared_mutex> m_Rlock{m_SharedMutex, boost::defer_lock};
-	boost::unique_lock<boost::shared_mutex> m_Wlock;
-	boost::shared_lock<boost::shared_mutex> m_Rlock;
 };
 
 

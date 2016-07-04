@@ -40,6 +40,9 @@ public:
 	T load(int index=0);
 	void store(T value, int index=0);
 
+	int loadblock(T* dst, int startIdx, int blocks);
+	int storeblock(T* src, int startIdx, int blocks);
+
 	// these only support when m_size = 1;
 	operator T() const;
 	T& operator =(T value);

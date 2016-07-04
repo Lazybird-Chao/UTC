@@ -38,8 +38,10 @@ public:
 	/* useful data members */
 	static thread_local int __localThreadId;
 	static thread_local int __globalThreadId;
+	static thread_local int __processId;
 	int __numLocalThreads=0;
 	int __numGlobalThreads=0;
+	int __numProcesses=0;
 
 private:
 	/* other useful member functions */

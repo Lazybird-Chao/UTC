@@ -6,6 +6,7 @@
 #include "TaskManager.h"
 #include "UtcMpi.h"
 #include "RootTask.h"
+#include "SharedDataLock.h"
 
 #include <vector>
 #include <string>
@@ -27,6 +28,9 @@ class UtcContext{
         void getProcessorName(std::string& name);
 
         void Barrier();
+
+        std::mutex* getCtxMutex();
+        SpinLock* getCtxSpinMutex();
 
         //
         static TaskManager* getTaskManager();
@@ -52,6 +56,9 @@ class UtcContext{
 
         static int m_nCount;    // may not be useful!
         static UtcContext *m_ContextInstance;
+
+        std::mutex m_ctxMutex;
+        SpinLock m_ctxSpinMutex;
         //
         UtcContext(const UtcContext& other);
         UtcContext& operator=(const UtcContext& other);

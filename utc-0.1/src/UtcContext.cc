@@ -82,6 +82,14 @@ TaskManager* UtcContext::getTaskManager()
     return taskManager;
 }
 
+std::mutex* UtcContext::getCtxMutex(){
+	return &m_ctxMutex;
+}
+
+SpinLock* UtcContext::getCtxSpinMutex(){
+	return &m_ctxSpinMutex;
+}
+
 
 ////
 void UtcContext::initialize(int& argc, char** argv)

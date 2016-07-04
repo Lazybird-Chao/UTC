@@ -15,6 +15,10 @@
 #include "ConduitBase.h"
 #include "Conduit.h"
 
+//G
+#include "GlobalScopedData.h"
+#include "GlobalScopedDataBase.h"
+
 //I
 #include "InprocConduit.h"
 

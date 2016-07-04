@@ -11,7 +11,7 @@ vpath %.cc $(PROJECT_SRCDIR)
 ###################
 OBJS:= 	UtcContext.o UtcMpi.o ProcList.o UniqueExeTag.o \
     		RootTask.o  TaskBase.o TaskManager.o Task.o  TaskCPU.o TaskUtilities.o UserTaskBase.o \
-    		PrivateScopedData.o \
+    		PrivateScopedData.o GlobalScopedData.o\
     		ConduitManager.o Conduit.o InprocConduit.o XprocConduit.o \
     		InprocConduit_Write.o InprocConduit_BWrite.o InprocConduit_PWrite.o	InprocConduit_Read.o \
     		InprocConduit_Async.o XprocConduit_Async.o \
@@ -45,6 +45,8 @@ libutc.a: $(OBJ_UTC)
 ./lib/UserTaskBase.o: UserTaskBase.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 ./lib/PrivateScopedData.o: PrivateScopedData.cc PrivateScopedData.inc
+	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+./lib/GlobalScopedData.o: GlobalScopedData.cc GlobalScopedData.inc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 ./lib/ConduitManager.o: ConduitManager.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)

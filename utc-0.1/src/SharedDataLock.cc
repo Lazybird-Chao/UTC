@@ -3,7 +3,7 @@
 
 namespace iUtc{
 
-SharedDataLock::SharedDataLock()
+/*SharedDataLock::SharedDataLock()
 :m_Wlock(m_SharedMutex, boost::defer_lock),
  m_Rlock(m_SharedMutex, boost::defer_lock)
 {
@@ -15,6 +15,7 @@ SharedDataLock::~SharedDataLock()
 {
 
 }
+*/
 
 void SharedDataLock::lock()
 {
