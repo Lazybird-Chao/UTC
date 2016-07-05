@@ -53,7 +53,7 @@ extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
 
 
 /*
- *
+ * MPI environment
  */
 #define USE_MPI_BASE
 #ifdef USE_MPI_BASE
@@ -62,6 +62,14 @@ extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
 #define MULTIPLE_THREAD_MPI   //  MPI_THREAD_SINGLE,
                               //  MPI_THREAD_FUNNELED,
                               //  MPI_THREAD_SERIALIZED,
+
+/*
+ * openSHMEM environment
+ */
+#define USE_OPENSHMEM
+#ifdef USE_OPENSHMEM
+	#include "shmem.h"
+#endif
 
 /*
  *

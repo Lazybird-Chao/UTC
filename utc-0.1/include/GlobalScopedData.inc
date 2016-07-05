@@ -139,14 +139,16 @@ void GlobalScopedData<T>::init(){
 	m_ctxMutex = ctx.getCtxMutex();
 	m_ctxSpinMutex = ctx.getCtxSpinMutex();
 	//m_currentPE = shmem_my_pe();
-	m_dataPtr = (T*)shmem_malloc(m_size*m_typesize);
+	//m_dataPtr = (T*)shmem_malloc(m_size*m_typesize);
+	m_dataPtr = (T*)shmalloc(m_size*m_typesize);
 
 }
 
 template<typename T>
 void GlobalScopedData<T>::destroy(){
 	if(m_dataPtr)
-		shmem_free((void*)m_dataPtr);
+		//shmem_free((void*)m_dataPtr);
+		shfree((void*)m_dataPtr);
 	m_ctxMutex = nullptr;
 	m_ctxSpinMutex = nullptr;
 }
@@ -189,22 +191,22 @@ T GlobalScopedData<T>::rload(int remotePE, int index){
 	m_ctxSpinMutex->lock();
 	switch(m_datatype){
 		case metaDataType::_char:
-			tmpdata = shmem_char_g(&m_dataPtr[index], remotePE);
+			tmpdata = shmem_char_g((char*)&m_dataPtr[index], remotePE);
 			break;
 		case metaDataType::_short:
-			tmpdata = shmem_short_g(&m_dataPtr[index], remotePE);
+			tmpdata = shmem_short_g((short*)&m_dataPtr[index], remotePE);
 			break;
 		case metaDataType::_int:
-			tmpdata = shmem_int_g(&m_dataPtr[index], remotePE);
+			tmpdata = shmem_int_g((int*)&m_dataPtr[index], remotePE);
 			break;
 		case metaDataType::_long:
-			tmpdata = shmem_long_g(&m_dataPtr[index], remotePE);
+			tmpdata = shmem_long_g((long*)&m_dataPtr[index], remotePE);
 			break;
 		case metaDataType::_float:
-			tmpdata = shmem_float_g(&m_dataPtr[index], remotePE);
+			tmpdata = shmem_float_g((float*)&m_dataPtr[index], remotePE);
 			break;
 		case metaDataType::_double:
-			tmpdata = shmem_double_g(&m_dataPtr[index], remotePE);
+			tmpdata = shmem_double_g((double*)&m_dataPtr[index], remotePE);
 			break;
 		default:
 			std::cout<<"Error, unsupported datatype in rload()!!!"<<std::endl;
@@ -219,22 +221,22 @@ void GlobalScopedData<T>::rstore(int remotePE, T value, int index){
 	m_ctxSpinMutex->lock();
 	switch(m_datatype){
 		case metaDataType::_char:
-			shmem_char_p(&m_dataPtr[index], value, remotePE);
+			shmem_char_p((char*)&m_dataPtr[index], value, remotePE);
 			break;
 		case metaDataType::_short:
-			shmem_short_p(&m_dataPtr[index], value, remotePE);
+			shmem_short_p((short*)&m_dataPtr[index], value, remotePE);
 			break;
 		case metaDataType::_int:
-			shmem_int_p(&m_dataPtr[index], value, remotePE);
+			shmem_int_p((int*)&m_dataPtr[index], value, remotePE);
 			break;
 		case metaDataType::_long:
-			shmem_long_p(&m_dataPtr[index], value, remotePE);
+			shmem_long_p((long*)&m_dataPtr[index], value, remotePE);
 			break;
 		case metaDataType::_float:
-			 shmem_float_p(&m_dataPtr[index], value, remotePE);
+			 shmem_float_p((float*)&m_dataPtr[index], value, remotePE);
 			break;
 		case metaDataType::_double:
-			shmem_double_p(&m_dataPtr[index], value, remotePE);
+			shmem_double_p((double*)&m_dataPtr[index], value, remotePE);
 			break;
 		default:
 			std::cout<<"Error, unsupported datatype in rstore()!!!"<<std::endl;
@@ -280,7 +282,7 @@ int GlobalScopedData<T>::rloadblock(int remotePE, T* dst, int startIdx, int bloc
 		default:
 			break;
 	}*/
-	shmem_getmem(dst, (void*)&m_dataPtr[startIdx], blocks*m_typesize, remotePE);
+	shmem_getmem((void*)dst, (void*)&m_dataPtr[startIdx], blocks*m_typesize, remotePE);
 	m_ctxMutex->unlock();
 }
 
@@ -309,7 +311,7 @@ int GlobalScopedData<T>::rstoreblock(int remotePE, T* src, int startIdx, int blo
 		default:
 			break;
 	}*/
-	shmem_putmem((void*)m_dataPtr[startIdx], src, blocks*m_typesize, remotePE);
+	shmem_putmem((void*)m_dataPtr[startIdx], (void*)src, blocks*m_typesize, remotePE);
 	m_ctxMutex->unlock();
 }
 

@@ -57,7 +57,16 @@ namespace iUtc{
                     <<"Total processes="<<m_size<<", "
                     <<"Current proc rank="<<m_rank<<"("<<getpid()<<")"<<std::endl;
 #endif
-
+            std::cout<<"here\n";
+#ifdef USE_OPENSHMEM
+            // for openmpi-1.8.3, call this with mpi_init_thread() before will cause dead
+            // lock(bug maybe); shmem_init inside will check if mpi_init called, if not it
+            // will call it, further inside it only call mpi_init(), no consider thread
+            // support, so we need call mpi_init_thread explicitely in advance, and then
+            // call shmem_init
+            shmem_init();
+#endif
+            std::cout<<"here\n";
         }
 
         void Utc::finalize()
@@ -67,7 +76,15 @@ namespace iUtc{
 
             //
             MPI_Barrier(MPI_COMM_WORLD);
+
+#ifdef USE_OPENSHMEM
+            //shmem_finalize should be called first, and inside will finalize mpi
+            // so after this can't call mpi_finalize again
+            shmem_finalize();
+#else
             MPI_Finalize();
+#endif
+
 
 #ifdef USE_DEBUG_LOG
             std::cout<<"[SYSTEM LOG]>>>>>>>>>:";

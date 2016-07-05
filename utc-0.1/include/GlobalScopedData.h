@@ -10,6 +10,7 @@
 
 #include "GlobalScopedDataBase.h"
 #include "SharedDataLock.h"
+#include "UserTaskBase.h"
 
 #include <mutex>
 #include "shmem.h"

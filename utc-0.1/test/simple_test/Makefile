@@ -1,9 +1,9 @@
 #################################
-BENCHMARK = test_psData
+BENCHMARK = test_gsData
 BINDIR = .
-PROGRAM_SOURCE:= test_psData.cc
-COMM_FILE = ../../for-mac.comm
-LIBMK_FILE = for-mac.mk
+PROGRAM_SOURCE:= test_gsData.cc
+COMM_FILE = ../../for-vm.comm
+LIBMK_FILE = for-vm.mk
 
 
 #################################
@@ -28,7 +28,7 @@ $(PROGRAM): $(PROGRAM_OBJ) libutc
 	$(G++)	$(CCFLAG) $(LINKFLAG) -o $(PROGRAM) $(PROGRAM_OBJ) $(LIB)
 	@echo "make target successful !!!" 
 
-test_psData.o:test_psData.cc
+test_gsData.o:test_gsData.cc
 	$(G++)	-c $< $(CCFLAG) $(INCLUDE)
 
 				

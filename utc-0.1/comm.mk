@@ -18,12 +18,14 @@ LINKFLAG =
 ###################
 MPI_DIR = /opt/openmpi-1.10
 BOOST_DIR = /opt/boost-1.60
+OSH_DIR = /opt/openmpi-1.10
 
 MPI_LIB :=	-pthread -Wl,-rpath -Wl,$(MPI_DIR)/lib -Wl,--enable-new-dtags \
-				-L$(MPI_DIR)/lib -lmpi_cxx -lmpi
+				-L$(MPI_DIR)/lib -lmpi_cxx -lmpi -loshmem
 BOOST_LIB := $(BOOST_DIR)/lib/libboost_thread.a \
 				$(BOOST_DIR)/lib/libboost_system.a \
 				$(BOOST_DIR)/lib/libboost_filesystem.a
+OSH_LIB :=
 				
 LIB = $(PROJECT_LIBDIR)/libutc.a
 LIB += -lrt

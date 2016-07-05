@@ -13,6 +13,7 @@
 
 thread_local int UserTaskBase::__localThreadId = -1;
 thread_local int UserTaskBase::__globalThreadId = -1;
+thread_local int UserTaskBase::__processId = -1;
 UserTaskBase::UserTaskBase(){
 
 	__psDataRegistry.clear();
