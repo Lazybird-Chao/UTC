@@ -41,6 +41,7 @@ public:
 	Task();
 	Task(ProcList rList);
 	Task(ProcList rList, TaskType tType);
+	Task(T* userTaskObj, ProcList rList, TaskType tType);
 	Task(std::string name);
 	Task( std::string name , ProcList rList);
 	Task(std::string name, ProcList rList, TaskType tType);

@@ -61,6 +61,24 @@ Task<T>::Task(ProcList rList, TaskType tType)
  }
 
 template<class T>
+Task<T>::Task(T* userTaskObj, ProcList rList, TaskType tType)
+:TaskBase()
+ {
+	m_userTaskObjPtr = userTaskObj;
+	m_procOstream = nullptr;
+	m_taskBarrierObjPtr = nullptr;
+	m_taskSpinBarrierObjPtr = nullptr;
+	callTaskFinish = false;
+	m_realTaskInstance= nullptr;
+	m_TaskType = tType;
+
+	int ntasks = TaskManager::getNumTasks();
+	std::string name = "Task";
+	name.append(std::to_string(ntasks));
+	CreateTask(name, rList, tType);
+ }
+
+template<class T>
 Task<T>::Task(std::string name)
 :TaskBase()
  {
@@ -466,8 +484,10 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 #endif
 	if(m_numLocalThreads !=0)
 	{
-	    // will call user task class's constructor
-	    m_userTaskObjPtr = new T;
+		if(m_userTaskObjPtr == nullptr){
+			// will call user task class's constructor
+			m_userTaskObjPtr = new T;
+		}
 
 	}
 
