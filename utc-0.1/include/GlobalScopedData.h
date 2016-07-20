@@ -56,6 +56,7 @@ public:
 	void destroy();
 
 	T* getPtr();
+	// only for different process on same node, else not work.
 	T* rgetPtr(int remotePE);
 
 	int getSize();
@@ -105,6 +106,14 @@ public:
 	void waitChange(T value);
 	void waitChangeUntil(condCMPType cond, T value);
 
+	/* the caller PE of remote put call setflag(), the remote PE call waitflag()
+	 * then the remote PE knows the data come from rput is ready for use.
+	 * this two ops should be used as pair, else will cause error for success
+	 * using.
+	 */
+	void rstoreSetFinishFlag(int remotePE);
+	void rstoreWaitFinishFlag(int rstoreCaller);
+
 	// for m_size = 1
 	operator T() const;
 	T& operator =(T value);
@@ -117,10 +126,13 @@ private:
 	UserTaskBase* m_userTaskObj;
 	int m_currentPE;
 
+	int *m_flagOldValue;
+	int *m_flagValue;
+
 	std::mutex* m_ctxMutex;
 	SpinLock* m_ctxSpinMutex;
 
-
+	std::mutex m_objMutex;
 
 
 };

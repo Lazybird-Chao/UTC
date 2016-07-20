@@ -78,13 +78,14 @@ public:
 
 		inter_Barrier();
 		if(__localThreadId ==0){
-			std::cout<<"task: "<<getCurrentTask()->getName()<<" finish initImpl.\n";
+			std::cout<<"task: "<<getCurrentTask()->getName()<<" finish initImpl on "
+					<<__processId<<".\n";
 		}
 
 	}
 
 	void runImpl(double *runtime){
-		Timer timer;
+		Timer timer, timer1, timer2;
 		inter_Barrier();
 		timer.start();
 
@@ -97,19 +98,27 @@ public:
 		basef[0]= 0;
 		basef[1]= partmx*my;
 		pf[1] = pf[0] + partmx;
-		std::cout<<pf[0]<<" "<<pf[0]+1<<std::endl;
+		//std::cout<<pf[0]<<" "<<pf[0]+1<<std::endl;
 
 		/* iteration for computing */
+		int linesperthread = (mx-2)/__numLocalThreads;
+		int residue = (mx-2)%__numLocalThreads;
+		int starti, endi;
+		starti = __localThreadId*linesperthread;
+		endi = starti+linesperthread;
+		if(__localThreadId == __numLocalThreads)
+			endi = mx-2;
+		//std::cout<<starti<<" "<<endi<<std::endl;
 		for( int n=0; n< NITER; n++){
 			if(__globalThreadId == 0){
 				if(n%STEPITER == 0)
 					std::cout<<"Iteration "<<n<<std::endl;
 			}
-
+			timer1.start();
 			f = pf[curf];
 			newf = pf[1-curf];
 			/*computing */
-			for (int i = 1; i < mx-1; i++) {
+			for (int i = 1 + starti; i < 1 + endi; i++) {
 				for (int j = 1; j < my-1; j++) {
 					newf[i][j] =
 						((f[i - 1][j] + f[i + 1][j]) * rdx2 +
@@ -117,17 +126,26 @@ public:
 				}
 			}
 			inter_Barrier();
+			runtime[__localThreadId*2] += timer1.stop();
+			timer2.start();
 			/* exchanging bondary data */
+			if(__numProcesses>1){
 			if(getUniqueExecution()){
 				if(__processId>0){
 					doublef->rstoreblock(__processId-1, &(newf[1][1]), basef[1-curf]+(partmx-1)*my+1, my-2);
 					//doublef->rstoreQuiet();
+					doublef->rstoreSetFinishFlag(__processId-1);
 				}
 				if(__processId < __numProcesses -1){
 					doublef->rstoreblock(__processId+1, &(newf[mx-2][1]), basef[1-curf]+1, my-2);
 					//doublef->rstoreQuiet();
+					doublef->rstoreSetFinishFlag(__processId+1);
 				}
-				doublef->rstoreQuiet();
+				//doublef->rstoreQuiet();
+				if(__processId>0)
+					doublef->rstoreWaitFinishFlag(__processId-1);
+				if(__processId<__numProcesses -1)
+					doublef->rstoreWaitFinishFlag(__processId+1);
 
 				/*if(__processId>0)
 					doublef->rloadblock(__processId-1, &(newf[0][1]), basef[1-curf]+(mx-2)*my+1, my-2);
@@ -135,13 +153,15 @@ public:
 					doublef->rloadblock(__processId+1, &(newf[partmx-1][1]), basef[1-curf]+(1*my+1), my-2);
 					*/
 			}
-			curf = 1-curf;
 			intra_Barrier();
+			}
+			curf = 1-curf;
+			runtime[__localThreadId*2+1] += timer2.stop();
 		}
-		runtime[__localThreadId] = timer.stop();
+
 		char outfile[20] = "out.img";
 		if (!__globalThreadId) {
-			printf ("Elapsed time: %4.2f sec\n", runtime[__localThreadId]);
+			printf ("Elapsed time: %4.2f sec\n", timer.stop());
 			printf ("Output image file in current directory\n");
 			FILE*fp = fopen (outfile, "w");
 			fclose (fp);
@@ -162,7 +182,8 @@ public:
 
 		inter_Barrier();
 		if(__localThreadId ==0){
-			std::cout<<"task: "<<getCurrentTask()->getName()<<" finish runImpl.\n";
+			std::cout<<"task: "<<getCurrentTask()->getName()<<" finish runImpl on "<<
+					__processId<<".\n";
 		}
 
 	}
@@ -222,7 +243,9 @@ int main(int argc, char* argv[]){
 	}
 	int myproc = ctx.getProcRank();
 
-	double *runtime = new double[nthreads];
+	double *runtime = new double[2*nthreads];
+	for(int i=0; i<2*nthreads; i++)
+		runtime[i]=0;
 	ProcList plist1;
 	for(int i=0; i<nprocs; i++)
 		for(int j=0; j<nthreads; j++)
@@ -232,15 +255,25 @@ int main(int argc, char* argv[]){
 	heatImageInst.run(runtime);
 	heatImageInst.wait();
 
-	double avg_runtime1=0;
-	double avg_runtime2=0;
-	for(int i =0; i<nthreads; i++)
-		avg_runtime1+= runtime[i];
-	avg_runtime1/=nthreads;
-	MPI_Reduce(&avg_runtime1, &avg_runtime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	avg_runtime2/=nprocs;
+	double avg_comptime1=0;
+	double avg_comptime2=0;
+	double avg_commtime1=0;
+	double avg_commtime2=0;
+	for(int i =0; i<nthreads; i++){
+		avg_comptime1+= runtime[i*2];
+		avg_commtime1+= runtime[i*2+1];
+	}
+	avg_comptime1/=nthreads;
+	avg_commtime1/=nthreads;
+	std::cout<<myproc<<": "<<avg_comptime1<<" "<<avg_commtime1<<std::endl;
+	ctx.Barrier();
+	MPI_Reduce(&avg_comptime1, &avg_comptime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	avg_comptime2/=nprocs;
+	MPI_Reduce(&avg_commtime1, &avg_commtime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	avg_commtime2/=nprocs;
 	if(myproc==0)
-		std::cout<<"average run() time: "<<avg_runtime2<<std::endl;
+		std::cout<<"average run() compute time: "<<avg_comptime2<<std::endl<<
+					"\tcommunicate time: "<<avg_commtime2<<std::endl;
 	delete runtime;
 
 	return 0;

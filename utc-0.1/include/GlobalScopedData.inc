@@ -142,13 +142,24 @@ void GlobalScopedData<T>::init(){
 	//m_dataPtr = (T*)shmem_malloc(m_size*m_typesize);
 	m_dataPtr = (T*)shmalloc(m_size*m_typesize);
 
+	m_flagValue= (int*)shmalloc(sizeof(int)*ctx.numProcs());
+	m_flagOldValue=(int*)shmalloc(sizeof(int)*ctx.numProcs());;
+	for(int i=0; i<ctx.numProcs(); i++){
+		m_flagValue[i]=0;
+		m_flagOldValue[i]=0;
+	}
+
 }
 
 template<typename T>
 void GlobalScopedData<T>::destroy(){
-	if(m_dataPtr)
+	if(m_dataPtr){
 		//shmem_free((void*)m_dataPtr);
 		shfree((void*)m_dataPtr);
+		shfree((void*)m_flagValue);
+		shfree((void*)m_flagOldValue);
+	}
+
 	m_ctxMutex = nullptr;
 	m_ctxSpinMutex = nullptr;
 }
@@ -331,6 +342,7 @@ void GlobalScopedData<T>::rstoreQuiet(){
 
 template<typename T>
 void GlobalScopedData<T>::waitChange(T value){
+	m_objMutex.lock();
 	switch(m_datatype){
 	case metaDataType::_short:
 		shmem_short_wait(m_dataPtr, value);
@@ -345,10 +357,12 @@ void GlobalScopedData<T>::waitChange(T value){
 		std::cout<<"Error, unsupported datatype in waitChange()!!!"<<std::endl;
 		break;
 	}
+	m_objMutex.unlock();
 }
 
 template<typename T>
 void GlobalScopedData<T>::waitChangeUntil(condCMPType cond, T value){
+	m_objMutex.lock();
 	switch(m_datatype){
 	case metaDataType::_short:
 		shmem_short_wait_until(m_dataPtr, cond, value);
@@ -363,6 +377,28 @@ void GlobalScopedData<T>::waitChangeUntil(condCMPType cond, T value){
 		std::cout<<"Error, unsupported datatype in waitChangeUntil()!!!"<<std::endl;
 		break;
 	}
+	m_objMutex.unlock();
+}
+
+template<typename T>
+void GlobalScopedData<T>::rstoreSetFinishFlag(int remotePE){
+	m_ctxSpinMutex->lock();
+	shmem_fence();
+	shmem_int_add(&m_flagValue[m_currentPE], 1, remotePE);
+	m_ctxSpinMutex->unlock();
+}
+
+template<typename T>
+void GlobalScopedData<T>::rstoreWaitFinishFlag(int rstoreCaller){
+	m_objMutex.lock();
+	if(m_flagOldValue[rstoreCaller] == m_flagValue[rstoreCaller])
+		shmem_int_wait(&m_flagValue[rstoreCaller], m_flagOldValue[rstoreCaller]);
+#ifdef USE_DEBUG_ASSERT
+	assert(m_flagValue[rstoreCaller]==m_flagOldValue[rstoreCaller]+1);
+#endif
+	m_flagOldValue[rstoreCaller] = m_flagValue[rstoreCaller];
+	m_objMutex.unlock();
+
 }
 
 
