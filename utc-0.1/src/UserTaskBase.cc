@@ -44,17 +44,24 @@ void UserTaskBase::registerPrivateScopedData(iUtc::PrivateScopedDataBase *psData
 	__psDataRegistry.push_back(psData);
 }
 
-void UserTaskBase::preInit(){
-	__localThreadId = iUtc::getLrank();
-	__globalThreadId = iUtc::getGrank();
-	__processId = iUtc::getPrank();
-	__numLocalThreads = iUtc::getLsize();
-	__numGlobalThreads = iUtc::getGsize();
-	__numProcesses = iUtc::getPsize();
+void UserTaskBase::preInit(int lrank,
+							int trank,
+							int prank,
+							int numLocalThreads,
+							int numProcesses,
+							int numTotalThreads){
+	__localThreadId = lrank;
+	__globalThreadId = trank;
+	__processId = prank;
+	__numLocalThreads = numLocalThreads;
+	__numGlobalThreads = numTotalThreads;
+	__numProcesses = numProcesses;
 
-	for(std::vector<iUtc::PrivateScopedDataBase *>::iterator item = __psDataRegistry.begin();
-			item != __psDataRegistry.end(); item++){
-		(*item)->init();
+	if(__psDataRegistry.size()>0){
+		for(std::vector<iUtc::PrivateScopedDataBase *>::iterator item = __psDataRegistry.begin();
+				item != __psDataRegistry.end(); item++){
+			(*item)->init();
+		}
 	}
 }
 

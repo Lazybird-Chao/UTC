@@ -32,7 +32,8 @@ public:
 	/* other useful member functions */
 	void registerPrivateScopedData(iUtc::PrivateScopedDataBase* psData);
 
-	void preInit();
+	void preInit(int lrank, int trank, int prank, int numLocalThreads,
+			int numProcesses, int numTotalThreads);
 	void preExit();
 
 	/* useful data members */

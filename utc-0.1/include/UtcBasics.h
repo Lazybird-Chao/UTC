@@ -14,6 +14,8 @@
  */
 //#define USE_DEBUG_LOG
 //#define USE_DEBUG_ASSERT
+#define ERROR_LINE "line:"<<__LINE__<<", file:"<<__FILE__
+
 
 //#define SET_CPU_AFFINITY
 

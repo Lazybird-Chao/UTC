@@ -6,6 +6,8 @@ namespace iUtc{
 
 TaskCPU::TaskCPU(int numLocalThreads,
 				 int currentProcessRank,
+				 int numProcesses,
+				 int numTotalThreads,
 				 std::vector<ThreadRank_t> tRankList,
 				 std::vector<ThreadId_t> *LocalThreadList,
 				 std::map<ThreadId_t, ThreadRank_t> *LocalThreadRegistry,
@@ -18,6 +20,8 @@ TaskCPU::TaskCPU(int numLocalThreads,
 
 	m_numLocalThreads = numLocalThreads;
 	m_currentProcessRank = currentProcessRank;
+	m_numProcesses = numProcesses;
+	m_numTotalThreads = numTotalThreads;
 	m_tRankList = tRankList;
 	m_LocalThreadList = LocalThreadList;
 	m_LocalThreadRegistry = LocalThreadRegistry;
@@ -59,6 +63,7 @@ TaskCPU::~TaskCPU(){
 
 	m_numLocalThreads=0;
 	m_currentProcessRank = -1;
+	m_numProcesses = 0;
 	m_tRankList.clear();
 	m_LocalThreadList= nullptr;
 	m_LocalThreadRegistry= nullptr;
@@ -84,7 +89,7 @@ void TaskCPU::launchThreads(){
 	m_threadJobIdx = new int[m_numLocalThreads];
 	for(int i=0;i<m_numLocalThreads;i++)
 		m_threadJobIdx[i]=0;
-
+	//std::cout<<m_numLocalThreads<<" "<<ERROR_LINE<<std::endl;
 	////
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_procOstream)
@@ -131,6 +136,7 @@ void TaskCPU::launchThreads(){
 		id = m_taskThreads.back().get_id();
 		m_LocalThreadList->push_back(id);
 		m_LocalThreadRegistry->insert(std::pair<ThreadId_t, ThreadRank_t>(id, trank));
+		//std::cout<<trank<<" "<<ERROR_LINE<<std::endl;
 	}
 
 #ifdef USE_DEBUG_LOG
@@ -163,7 +169,7 @@ void TaskCPU::threadImpl(ThreadRank_t trank,
 
 //#define SET_CPU_BIND_TO_ALL
 #ifdef SET_CPU_BIND_TO_ALL
-	std::cout<<"harcore total: "<<UtcContext::HARDCORES_TOTAL_CURRENT_NODE<<std::endl;
+	std::cout<<"hardcore total: "<<UtcContext::HARDCORES_TOTAL_CURRENT_NODE<<std::endl;
 	std::vector<int> cpus;
 	for(int i=0; i<UtcContext::HARDCORES_TOTAL_CURRENT_NODE; i++)
 		cpus.push_back(i);
@@ -183,7 +189,7 @@ void TaskCPU::threadImpl(ThreadRank_t trank,
 	taskInfoPtr->commPtr = m_commonTaskInfo->commPtr;
 	taskInfoPtr->mpigroupPtr = m_commonTaskInfo->mpigroupPtr;
 	TaskManager::setTaskInfo(taskInfoPtr);
-
+	//std::cout<<trank<<" "<<ERROR_LINE<<std::endl;
 	// create ThreadPrivateData structure
 	ThreadPrivateData *threadPrivateData = new ThreadPrivateData();
 	threadPrivateData->threadOstream = output;
@@ -191,14 +197,19 @@ void TaskCPU::threadImpl(ThreadRank_t trank,
 	threadPrivateData->bcastAvailable = m_commonThreadPrivateData->bcastAvailable;
 	threadPrivateData->gatherAvailable = m_commonThreadPrivateData->gatherAvailable;
 	m_threadPrivateData->reset(threadPrivateData);
-
+	//std::cout<<trank<<" "<<ERROR_LINE<<std::endl;
 	// do preInit()
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
 	(*m_threadOstream)<<"thread("<<trank<<") "<<std::this_thread::get_id()<<" doing preInit..."<<std::endl;
 #endif
-	m_realUserTaskObj->preInit();
-
+	m_threadSync->count_down_and_wait();
+	m_realUserTaskObj->preInit(lrank,
+							trank,
+							m_commonTaskInfo->pRank,
+							m_numLocalThreads,
+							m_numProcesses,
+							m_numTotalThreads);
 
 	while(1){
 		std::unique_lock<std::mutex> LCK1(m_jobExecMutex);
@@ -317,12 +328,14 @@ void TaskCPU::threadSync(){
 void TaskCPU::threadSync(ThreadRank_t lrank){
 	// here is an synchronization point for task's all threads
 	m_threadSync->count_down_and_wait();
-	if(lrank ==0){
-#ifdef USE_MPI_BASE
-		MPI_Barrier(*m_commonTaskInfo->commPtr);
-#endif
+	if(m_numProcesses>1){
+		if(lrank ==0){
+	#ifdef USE_MPI_BASE
+			MPI_Barrier(*m_commonTaskInfo->commPtr);
+	#endif
+		}
+		m_threadSync->count_down_and_wait();
 	}
-	m_threadSync->count_down_and_wait();
 }
 
 void TaskCPU::threadExit(ThreadRank_t trank){

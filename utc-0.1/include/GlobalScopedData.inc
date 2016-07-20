@@ -282,7 +282,7 @@ int GlobalScopedData<T>::rloadblock(int remotePE, T* dst, int startIdx, int bloc
 		default:
 			break;
 	}*/
-	shmem_getmem((void*)dst, (void*)&m_dataPtr[startIdx], blocks*m_typesize, remotePE);
+	shmem_getmem((void*)dst, (void*)&(m_dataPtr[startIdx]), blocks*m_typesize, remotePE);
 	m_ctxMutex->unlock();
 }
 
@@ -311,7 +311,7 @@ int GlobalScopedData<T>::rstoreblock(int remotePE, T* src, int startIdx, int blo
 		default:
 			break;
 	}*/
-	shmem_putmem((void*)m_dataPtr[startIdx], (void*)src, blocks*m_typesize, remotePE);
+	shmem_putmem((void*)&(m_dataPtr[startIdx]), (void*)src, blocks*m_typesize, remotePE);
 	m_ctxMutex->unlock();
 }
 

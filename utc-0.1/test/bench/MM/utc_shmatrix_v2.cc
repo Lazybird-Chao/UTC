@@ -13,36 +13,47 @@ private:
 	int nBlocks;
 
 	GlobalScopedData<double> *subMatrixA;
-	double *localPtrA;
+	double *localPtrA[2];
 	double *subMatrixB;
 	double *subMatrixC;
 
 
 public:
 	void initImpl(int dimRows, int dimColums, int nBlocks){
-
+		if(__numProcesses>1 && __numLocalThreads <2){
+			std::cerr<<"Error, this task requires at last 2 local threads when run with "
+					"multiple processes.\n";
+			exit(1);
+		}
 		if(__localThreadId==0){
 			this->dimRows = dimRows;
 			this->dimColums = dimColums;
 			this->nBlocks = nBlocks;
 			blockColums = dimColums / nBlocks;
-			blockRows = dimRows / __numLocalThreads;
+			if(__numProcesses>1)
+				blockRows = dimRows / (__numLocalThreads-1);
+			else
+				blockRows = dimRows / __numLocalThreads;
 
 			subMatrixA = new GlobalScopedData<double>(this, dimRows * blockColums);
-			localPtrA = subMatrixA->getPtr();
 			subMatrixB = (double*)malloc(dimRows * blockColums * sizeof(double));
 			subMatrixC = (double*)malloc(dimRows * blockColums * sizeof(double));
+			if(__numProcesses>1){
+				localPtrA[0] = (double*)malloc(dimRows * blockColums * sizeof(double));
+				localPtrA[1] = (double*)malloc(dimRows * blockColums * sizeof(double));
+			}
+
 		}
-		inter_Barrier();
+		intra_Barrier();
 		/* init local submatrx with all threads */
-		for(int i = __localThreadId * blockRows; i< (__localThreadId+1)*blockRows; i++){
+		for(int i = __localThreadId * (dimRows/__numLocalThreads); i< (__localThreadId+1)*(dimRows/__numLocalThreads); i++){
 			for( int j =0; j< blockColums; j++ ){
 				subMatrixA->store(i+ 1*j + 1*__processId +1, i*blockColums+j);
 				subMatrixB[i*blockColums + j] = i+ 2*j + 2*__processId +1;
 				subMatrixC[i*blockColums + j] = 0;
 			}
 		}
-		intra_Barrier();
+		inter_Barrier();
 		if(__localThreadId ==0){
 			std::cout<<"task: "<<getCurrentTask()->getName()<<" finish initImpl.\n";
 		}
@@ -54,47 +65,47 @@ public:
 		timer.start();
 		/* compute local partial C[][] with local A[][] and B[][] */
 		int startRowA = __localThreadId * blockRows;
-		int currentColumIdx = __processId;
-		int startRowB = currentColumIdx * blockColums;
-		for(int i= startRowA; i< startRowA + blockRows; i++){
-			for(int k = 0; k< blockColums; k++){
-			for(int j = 0; j< blockColums; j++){
-				//for(int k = 0; k< blockColums; k++){
-					subMatrixC[i*blockColums + j] += localPtrA[i*blockColums + k] *
-														subMatrixB[(startRowB + k)*blockColums + j];
-				}
-			}
-		}
-
-		/* get remote matrixA to compute */
-		if(__numProcesses>1 && getUniqueExecution()){
-			localPtrA= (double*)malloc(dimRows * blockColums * sizeof(double));
-		}
-		intra_Barrier();
+		int currentColumIdx;
+		int startRowB;
+		double *currentA = subMatrixA->getPtr();
 		int neighbour= __processId;
-		for( int i=1; i< nBlocks; i++){
-			neighbour = (neighbour+1)%__numProcesses;
-			if(getUniqueExecution()){
-				subMatrixA->rloadblock(neighbour, localPtrA, 0, dimRows * blockColums);
-			}
-			intra_Barrier();
-
-			currentColumIdx = (__processId + i) % nBlocks;
-			startRowB = currentColumIdx * blockColums;
-			for(int i= startRowA; i< startRowA + blockRows; i++){
-				for(int j = 0; j< blockColums; j++){
+		int idxA=0;
+		for(int iterBlock = 0; iterBlock <nBlocks; iterBlock++){
+			if((__numProcesses>1 &&__localThreadId < __numLocalThreads-1)
+					|| (__numProcesses==1)){
+				if(iterBlock >0){
+					currentA = localPtrA[idxA];
+					idxA = (idxA+1)%2;
+				}
+				currentColumIdx = (__processId + iterBlock) % nBlocks;
+				startRowB = currentColumIdx * blockColums;
+				// thread 0 to n-1 do computing
+				for(int i= startRowA; i< startRowA + blockRows; i++){
 					for(int k = 0; k< blockColums; k++){
-						subMatrixC[i*blockColums + j] += localPtrA[i*blockColums + k] *
-															subMatrixB[(startRowB + k)*blockColums + j];
+					for(int j = 0; j< blockColums; j++){
+						//for(int k = 0; k< blockColums; k++){
+							subMatrixC[i*blockColums + j] += currentA[i*blockColums + k] *
+																subMatrixB[(startRowB + k)*blockColums + j];
+						}
 					}
 				}
 			}
+			else{
+				// the last thread prefetch data
+				if(__numProcesses > 1 && iterBlock<nBlocks-1){
+					neighbour = (neighbour+1)%__numProcesses;
+					subMatrixA->rloadblock(neighbour, localPtrA[idxA], 0, dimRows * blockColums);
+					idxA = (idxA+1)%2;
+				}
+			}
+			intra_Barrier();
 		}
-
-		intra_Barrier();
+		//std::cout<<ERROR_LINE<<std::endl;
 		runtime[__localThreadId] = timer.stop();
-		if(__numProcesses>1 && getUniqueExecution())
-			free(localPtrA);
+		if(__numProcesses>1 && getUniqueExecution()){
+			free(localPtrA[0]);
+			free(localPtrA[1]);
+		}
 		if(__localThreadId ==0){
 			std::cout<<"task: "<<getCurrentTask()->getName()<<" finish runImpl.\n";
 		}
@@ -146,8 +157,8 @@ int main(int argc, char* argv[]){
 		return 1;
 	}
 	int myproc = ctx.getProcRank();
-
 	double *runtime = new double[nthreads];
+
 	ProcList plist1;
 	for(int i=0; i<nprocs; i++)
 		for(int j=0; j<nthreads; j++)

@@ -19,6 +19,8 @@ class TaskCPU : public TaskArtifact{
 public:
 	TaskCPU(int numLocalThreads,
 				 int currentProcessRank,
+				 int numProcesses,
+				 int numTotalThreads,
 				 std::vector<ThreadRank_t> tRankList,
 				 std::vector<ThreadId_t> *LocalThreadList,
 				 std::map<ThreadId_t, ThreadRank_t> *LocalThreadRegistry,
@@ -63,6 +65,10 @@ private:
 	int m_numLocalThreads;
 
 	int m_currentProcessRank;
+
+	int m_numProcesses;
+
+	int m_numTotalThreads;
 
 	std::vector<ThreadRank_t> m_tRankList;
 

@@ -5,6 +5,7 @@ Task<T>::Task()
 :TaskBase()
  {
 	m_userTaskObjPtr = nullptr;
+	m_userSupplyObj = false;
 	m_procOstream = nullptr;
 	m_taskBarrierObjPtr = nullptr;
 	m_taskSpinBarrierObjPtr = nullptr;
@@ -28,6 +29,7 @@ Task<T>::Task(ProcList rList)
 :TaskBase()
  {
 	m_userTaskObjPtr = nullptr;
+	m_userSupplyObj = false;
 	m_procOstream = nullptr;
 	m_taskBarrierObjPtr = nullptr;
 	m_taskSpinBarrierObjPtr = nullptr;
@@ -47,6 +49,7 @@ Task<T>::Task(ProcList rList, TaskType tType)
  {
 
 	m_userTaskObjPtr = nullptr;
+	m_userSupplyObj = false;
 	m_procOstream = nullptr;
 	m_taskBarrierObjPtr = nullptr;
 	m_taskSpinBarrierObjPtr = nullptr;
@@ -65,6 +68,7 @@ Task<T>::Task(T* userTaskObj, ProcList rList, TaskType tType)
 :TaskBase()
  {
 	m_userTaskObjPtr = userTaskObj;
+	m_userSupplyObj = true;
 	m_procOstream = nullptr;
 	m_taskBarrierObjPtr = nullptr;
 	m_taskSpinBarrierObjPtr = nullptr;
@@ -84,6 +88,7 @@ Task<T>::Task(std::string name)
  {
 
 	m_userTaskObjPtr = nullptr;
+	m_userSupplyObj = false;
 	m_procOstream = nullptr;
 	m_taskBarrierObjPtr = nullptr;
 	m_taskSpinBarrierObjPtr = nullptr;
@@ -104,6 +109,7 @@ Task<T>::Task( std::string name,  ProcList rList)
  {
 
 	m_userTaskObjPtr = nullptr;
+	m_userSupplyObj = false;
 	m_procOstream = nullptr;
 	m_taskBarrierObjPtr = nullptr;
 	m_taskSpinBarrierObjPtr = nullptr;
@@ -120,6 +126,7 @@ Task<T>::Task(std::string name, ProcList rList, TaskType tType)
  {
 
 	m_userTaskObjPtr = nullptr;
+	m_userSupplyObj = false;
 	m_procOstream = nullptr;
 	m_taskBarrierObjPtr = nullptr;
 	m_taskSpinBarrierObjPtr = nullptr;
@@ -135,6 +142,7 @@ Task<T>::~Task()
 {
 	if(m_numLocalThreads !=0)
 	{
+		//std::cout<<ERROR_LINE<<std::endl;
 		if(!callTaskFinish){
 			m_realTaskInstance->finishImpl();
 			callTaskFinish = true;
@@ -159,11 +167,11 @@ Task<T>::~Task()
 		m_taskSpinBarrierObjPtr=nullptr;
 	}
 
-	if(m_userTaskObjPtr!=nullptr)
+	if(m_userSupplyObj == false && m_userTaskObjPtr)
 	{   // will call user task class's destructor
-		delete m_userTaskObjPtr;
-		m_userTaskObjPtr = nullptr;
+			delete m_userTaskObjPtr;
 	}
+	m_userTaskObjPtr = nullptr;
 
 
 	TaskManager::unregisterTask(this, m_TaskId);
@@ -520,12 +528,14 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 		m_commonThreadPrivateData.gatherAvailable = &m_gatherAvailable;
 
 	}
-
+	//std::cout<<ERROR_LINE<<std::endl;
 	if(m_numLocalThreads!=0)  // there are threads need to be created on current process
 	{
 		if(tType==TaskType::cpu_task){
 			m_realTaskInstance = new TaskCPU(m_numLocalThreads,
 											m_processRank,
+											m_numProcesses,
+											m_numTotalThreads,
 											plist[currentProcRank],
 											&m_LocalThreadList,
 											&m_LocalThreadRegistry,
@@ -542,6 +552,7 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 		}
 
 		m_realTaskInstance->launchThreads();
+		//std::cout<<ERROR_LINE<<std::endl;
 	}
 
 	// all task threads have launched, finish task creation

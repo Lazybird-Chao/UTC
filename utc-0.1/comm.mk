@@ -11,7 +11,7 @@ G++ = g++
 MPICXX = mpicxx
 
 CFLAG := -Wall
-CCFLAG := -g -std=c++11 -O2
+CCFLAG := -g -std=c++11 -O
 
 LINKFLAG =
 

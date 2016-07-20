@@ -124,7 +124,7 @@ private:
 
 	// user task obj, shared by all threads in one task
 	T *m_userTaskObjPtr;
-
+	bool m_userSupplyObj;
 	//
 	bool callTaskFinish;
 

@@ -74,7 +74,31 @@ public:
 	int rloadblock(int remotePE, T* dst, int startIdx, int blocks);
 	int rstoreblock(int remotePE, T* src, int startIdx, int blocks);
 
-	// actually not bond to obj instance
+	/* the openSHMEM fence/quiet only ensure the order of remote put ops
+	 * that happend in the calling PE, but not indicate if the data is
+	 * already writ to remote memory, only sh_barrier ensure the completion of
+	 * remote memory update. However, sh_barrier is hard to use in our multithread
+	 * context, especially if there are several multithreads task runnint in one process,
+	 * the sh_barrier of different task may cause problem(pollute the barrier match procedure).
+	 *
+	 * The MPI barrier or other collective communication ops could work, because of
+	 * the MPI communicator. We set different communicator for different task. Noting that
+	 * this kind of communicator use in multithreads environment in our UTC is still not
+	 * full tested. Maybe, there are still problems.
+	 *
+	 * We need a well thread-friend MPI/openSHMEM implementation.
+	 *
+	 * Right now some network middleware is actually thread safe and thread friendly.
+	 * For the best, we should use this network middle ware directly to implement
+	 * data communication. This will need much more work. Redesign and implement Conduit.
+	 *
+	 *
+	 * So when doing a remote put, remote PE don't know when the data are written
+	 * to its memory and can be used. Remote PE can use a flag to do wait operation
+	 * to see if the write is completed.
+	 *
+	 * Be careful of this.
+	 */
 	void rstoreFence();
 	void rstoreQuiet();
 
