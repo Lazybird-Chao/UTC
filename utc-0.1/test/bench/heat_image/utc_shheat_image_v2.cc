@@ -1,6 +1,10 @@
 /*
+ * utc_shheat_image_v2.cc
  *
+ *  Created on: Jul 21, 2016
+ *      Author: chao
  */
+
 
 #include "Utc.h"
 #include "../helper_getopt.h"
@@ -101,13 +105,23 @@ public:
 		//std::cout<<pf[0]<<" "<<pf[0]+1<<std::endl;
 
 		/* iteration for computing */
-		int linesperthread = (mx-2)/__numLocalThreads;
-		int residue = (mx-2)%__numLocalThreads;
+		int SPEC_ThreadId = __numLocalThreads-1; // let the last local thread to be the special thread
+		int NLINES = 10 + 2;  // how many lines the special thread response.
+		int linesperthread;
+		int residue;
 		int starti, endi;
-		starti = __localThreadId*linesperthread;
-		endi = starti+linesperthread;
-		if(__localThreadId == __numLocalThreads-1)
+		if(__numLocalThreads<2){
+			starti = 1;
 			endi = mx-2;
+		}
+		else{
+			linesperthread = (mx-2-NLINES)/__numLocalThreads;
+			residue = (mx-2-NLINES)%__numLocalThreads;
+			starti = __localThreadId*linesperthread + 1 + NLINES-1;
+			endi = starti+linesperthread;
+			if(__localThreadId == __numLocalThreads-2)
+				endi = mx-2 -1;
+		}
 		//std::cout<<starti<<" "<<endi<<std::endl;
 		for( int n=0; n< NITER; n++){
 			if(__globalThreadId == 0){
@@ -118,19 +132,19 @@ public:
 			f = pf[curf];
 			newf = pf[1-curf];
 			/*computing */
-			for (int i = 1 + starti; i < 1 + endi; i++) {
-				for (int j = 1; j < my-1; j++) {
-					newf[i][j] =
-						((f[i - 1][j] + f[i + 1][j]) * rdx2 +
-						 (f[i][j - 1] + f[i][j + 1]) * rdy2 - r[i*my + j]) * beta;
+			if(__numLocalThreads<2){
+				//only one thread in a process
+				for (int i = starti; i <=endi; i++) {
+					for (int j = 1; j < my-1; j++) {
+						newf[i][j] =
+							((f[i - 1][j] + f[i + 1][j]) * rdx2 +
+							 (f[i][j - 1] + f[i][j + 1]) * rdy2 - r[i*my + j]) * beta;
+					}
 				}
-			}
-			inter_Barrier();
+				inter_Barrier();
 
-			timer2.start();
-			/* exchanging bondary data */
-			if(__numProcesses>1){
-				if(getUniqueExecution()){
+				timer2.start();
+				if(__numProcesses>1){
 					if(__processId>0){
 						doublef->rstoreblock(__processId-1, &(newf[1][1]), basef[1-curf]+(partmx-1)*my+1, my-2);
 						//doublef->rstoreQuiet();
@@ -153,11 +167,65 @@ public:
 						doublef->rloadblock(__processId+1, &(newf[partmx-1][1]), basef[1-curf]+(1*my+1), my-2);
 						*/
 				}
-				intra_Barrier();
+				curf = 1-curf;
+				runtime[__localThreadId*2+1] += timer2.stop();
+				runtime[__localThreadId*2] += timer1.stop();
+
 			}
-			curf = 1-curf;
-			runtime[__localThreadId*2+1] += timer2.stop();
-			runtime[__localThreadId*2] += timer1.stop();
+			else{
+				//more than 2 threads, we use one thread for comm and do less compute
+				if(__localThreadId == SPEC_ThreadId){
+					timer2.start();
+					// the special thread (last thread)
+					for (int j = 1; j < my-1; j++) {
+						// i=1;
+						newf[1][j] =
+							((f[0][j] + f[2][j]) * rdx2 +
+							 (f[1][j - 1] + f[1][j + 1]) * rdy2 - r[my + j]) * beta;
+						// i=mx-2
+						newf[1][j] =
+							((f[mx-3][j] + f[mx-1][j]) * rdx2 +
+							 (f[mx-2][j - 1] + f[mx-2][j + 1]) * rdy2 - r[(mx-2)*my + j]) * beta;
+					}
+					if(__processId>0)
+						doublef->rstoreSetFinishFlag(__processId-1);
+					if(__processId<__numProcesses-1)
+						doublef->rstoreSetFinishFlag(__processId+1);
+					for (int i = 2; i <=NLINES-1; i++) {
+						for (int j = 1; j < my-1; j++) {
+							newf[i][j] =
+								((f[i - 1][j] + f[i + 1][j]) * rdx2 +
+								 (f[i][j - 1] + f[i][j + 1]) * rdy2 - r[i*my + j]) * beta;
+						}
+					}
+					if(__processId>0){
+						doublef->rstoreWaitFinishFlag(__processId-1);
+						doublef->rloadblock(__processId-1, &(newf[0][1]), basef[1-curf]+(mx-2)*my+1, my-2);
+					}
+					if(__processId<__numProcesses-1){
+						doublef->rstoreWaitFinishFlag(__processId+1);
+						doublef->rloadblock(__processId+1, &(newf[partmx-1][1]), basef[1-curf]+(1*my+1), my-2);
+					}
+					runtime[__localThreadId*2+1] += timer2.stop();
+
+				}
+				else{
+					// other threads
+					timer2.start();
+					for (int i = starti; i <=endi; i++) {
+						for (int j = 1; j < my-1; j++) {
+							newf[i][j] =
+								((f[i - 1][j] + f[i + 1][j]) * rdx2 +
+								 (f[i][j - 1] + f[i][j + 1]) * rdy2 - r[i*my + j]) * beta;
+						}
+					}
+					runtime[__localThreadId*2+1] += timer2.stop();
+				}
+				curf = 1-curf;
+				intra_Barrier();
+				runtime[__localThreadId*2] += timer1.stop();
+			}
+
 		}
 
 		char outfile[20] = "out.img";
@@ -256,26 +324,50 @@ int main(int argc, char* argv[]){
 	heatImageInst.run(runtime);
 	heatImageInst.wait();
 
-	double avg_comptime1=0;
-	double avg_comptime2=0;
-	double avg_commtime1=0;
-	double avg_commtime2=0;
-	for(int i =0; i<nthreads; i++){
-		avg_comptime1+= runtime[i*2]-runtime[i*2+1];
-		avg_commtime1+= runtime[i*2+1];
+	if(nthreads <2){
+		double avg_comptime1=0;
+		double avg_comptime2=0;
+		double avg_commtime1=0;
+		double avg_commtime2=0;
+
+		avg_comptime1+= runtime[0]-runtime[1];
+		avg_commtime1+= runtime[1];
+		std::cout<<myproc<<": "<<avg_comptime1<<" "<<avg_commtime1<<std::endl;
+		ctx.Barrier();
+		MPI_Reduce(&avg_comptime1, &avg_comptime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		avg_comptime2/=nprocs;
+		MPI_Reduce(&avg_commtime1, &avg_commtime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		avg_commtime2/=nprocs;
+		if(myproc==0)
+			std::cout<<"average run() compute time: "<<avg_comptime2<<std::endl<<
+						"\tcommunicate time: "<<avg_commtime2<<std::endl;
 	}
-	avg_comptime1/=nthreads;
-	avg_commtime1/=nthreads;
-	std::cout<<myproc<<": "<<avg_comptime1<<" "<<avg_commtime1<<std::endl;
-	ctx.Barrier();
-	MPI_Reduce(&avg_comptime1, &avg_comptime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	avg_comptime2/=nprocs;
-	MPI_Reduce(&avg_commtime1, &avg_commtime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	avg_commtime2/=nprocs;
-	if(myproc==0)
-		std::cout<<"average run() compute time: "<<avg_comptime2<<std::endl<<
-					"\tcommunicate time: "<<avg_commtime2<<std::endl;
+	else{
+		double avg_runtime1=0;
+		double avg_runtime2=0;
+		for(int i=0; i<nthreads; i++)
+			avg_runtime1 += runtime[i*2];
+		std::cout<<myproc<<": "<<avg_runtime1<<std::endl;
+		ctx.Barrier();
+		MPI_Reduce(&avg_runtime1, &avg_runtime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		if(myproc==0)
+			std::cout<<"average run() time: "<<avg_runtime2<<std::endl;
+		ctx.Barrier();
+		for(int i=0;i<nprocs; i++){
+			if(myproc == i){
+				std::cout<<"run() time of each thread: \n";
+				for(int j=0; j<nthreads;j++)
+					std::cout<<"\t"<<j<<": "<<runtime[2*j+1]<<std::endl;
+			}
+			ctx.Barrier();
+		}
+
+	}
 	delete runtime;
 
 	return 0;
 }
+
+
+
+
