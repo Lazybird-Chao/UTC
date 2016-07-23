@@ -115,14 +115,24 @@ public:
 			endi = mx-2;
 		}
 		else{
-			linesperthread = (mx-2-NLINES)/__numLocalThreads;
-			residue = (mx-2-NLINES)%__numLocalThreads;
-			starti = __localThreadId*linesperthread + 1 + NLINES-1;
-			endi = starti+linesperthread;
-			if(__localThreadId == __numLocalThreads-2)
-				endi = mx-2 -1;
+			if(__numProcesses <2){
+				linesperthread = (mx-2)/(__numLocalThreads);
+				residue = (mx-2)%(__numLocalThreads);
+				starti = __localThreadId*linesperthread + 1;
+				endi = starti+linesperthread-1;
+				if(__localThreadId == __numLocalThreads-1)
+					endi = mx-2;
+			}
+			else{
+				linesperthread = (mx-2-NLINES)/(__numLocalThreads-1);
+				residue = (mx-2-NLINES)%(__numLocalThreads-1);
+				starti = __localThreadId*linesperthread + 1 + NLINES-1;
+				endi = starti+linesperthread-1;
+				if(__localThreadId == __numLocalThreads-2)
+					endi = mx-2 -1;
+			}
 		}
-		//std::cout<<starti<<" "<<endi<<std::endl;
+
 		for( int n=0; n< NITER; n++){
 			if(__globalThreadId == 0){
 				if(n%STEPITER == 0)
@@ -131,6 +141,7 @@ public:
 			timer1.start();
 			f = pf[curf];
 			newf = pf[1-curf];
+			//std::cout<<ERROR_LINE<<std::endl;
 			/*computing */
 			if(__numLocalThreads<2){
 				//only one thread in a process
@@ -173,8 +184,10 @@ public:
 
 			}
 			else{
+				//std::cout<<"("<<__processId<<" "<<__localThreadId<<" "<<n<<") ";
+				//inter_Barrier();
 				//more than 2 threads, we use one thread for comm and do less compute
-				if(__localThreadId == SPEC_ThreadId){
+				if(__numProcesses>1 && __localThreadId == SPEC_ThreadId){
 					timer2.start();
 					// the special thread (last thread)
 					for (int j = 1; j < my-1; j++) {
@@ -191,6 +204,7 @@ public:
 						doublef->rstoreSetFinishFlag(__processId-1);
 					if(__processId<__numProcesses-1)
 						doublef->rstoreSetFinishFlag(__processId+1);
+					//std::cout<<"("<<__processId<<" "<<__localThreadId<<" "<<n<<") ";
 					for (int i = 2; i <=NLINES-1; i++) {
 						for (int j = 1; j < my-1; j++) {
 							newf[i][j] =
@@ -207,7 +221,7 @@ public:
 						doublef->rloadblock(__processId+1, &(newf[partmx-1][1]), basef[1-curf]+(1*my+1), my-2);
 					}
 					runtime[__localThreadId*2+1] += timer2.stop();
-
+					//std::cout<<"("<<__processId<<" "<<__localThreadId<<" "<<n<<") ";
 				}
 				else{
 					// other threads
@@ -220,9 +234,11 @@ public:
 						}
 					}
 					runtime[__localThreadId*2+1] += timer2.stop();
+					//std::cout<<"("<<__processId<<" "<<__localThreadId<<" "<<n<<") ";
 				}
 				curf = 1-curf;
-				intra_Barrier();
+				//intra_Barrier();
+				inter_Barrier();
 				runtime[__localThreadId*2] += timer1.stop();
 			}
 
@@ -347,15 +363,17 @@ int main(int argc, char* argv[]){
 		double avg_runtime2=0;
 		for(int i=0; i<nthreads; i++)
 			avg_runtime1 += runtime[i*2];
+		avg_runtime1 /= nthreads;
 		std::cout<<myproc<<": "<<avg_runtime1<<std::endl;
 		ctx.Barrier();
 		MPI_Reduce(&avg_runtime1, &avg_runtime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		avg_runtime2 /= nprocs;
 		if(myproc==0)
 			std::cout<<"average run() time: "<<avg_runtime2<<std::endl;
 		ctx.Barrier();
 		for(int i=0;i<nprocs; i++){
 			if(myproc == i){
-				std::cout<<"run() time of each thread: \n";
+				std::cout<<"run() time of each thread on "<<i<<": \n";
 				for(int j=0; j<nthreads;j++)
 					std::cout<<"\t"<<j<<": "<<runtime[2*j+1]<<std::endl;
 			}

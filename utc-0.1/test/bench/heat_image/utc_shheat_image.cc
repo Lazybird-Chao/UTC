@@ -118,6 +118,7 @@ public:
 			f = pf[curf];
 			newf = pf[1-curf];
 			/*computing */
+			timer2.start();
 			for (int i = 1 + starti; i < 1 + endi; i++) {
 				for (int j = 1; j < my-1; j++) {
 					newf[i][j] =
@@ -125,9 +126,9 @@ public:
 						 (f[i][j - 1] + f[i][j + 1]) * rdy2 - r[i*my + j]) * beta;
 				}
 			}
+			runtime[__localThreadId*2+1] += timer2.stop();
 			inter_Barrier();
 
-			timer2.start();
 			/* exchanging bondary data */
 			if(__numProcesses>1){
 				if(getUniqueExecution()){
@@ -156,7 +157,6 @@ public:
 				intra_Barrier();
 			}
 			curf = 1-curf;
-			runtime[__localThreadId*2+1] += timer2.stop();
 			runtime[__localThreadId*2] += timer1.stop();
 		}
 
@@ -200,10 +200,10 @@ public:
 int main(int argc, char* argv[]){
 	UtcContext &ctx = UtcContext::getContext(argc, argv);
 
-	int nthreads;
-	int nprocs;
-	int dimx;
-	int dimy;
+	int nthreads=0;
+	int nprocs=0;
+	int dimx=600;
+	int dimy=800;
 	int iters=0;
 
 	int opt;
@@ -256,24 +256,25 @@ int main(int argc, char* argv[]){
 	heatImageInst.run(runtime);
 	heatImageInst.wait();
 
-	double avg_comptime1=0;
-	double avg_comptime2=0;
+	double avg_runtime1=0;
+	double avg_runtime2=0;
 	double avg_commtime1=0;
 	double avg_commtime2=0;
 	for(int i =0; i<nthreads; i++){
-		avg_comptime1+= runtime[i*2]-runtime[i*2+1];
-		avg_commtime1+= runtime[i*2+1];
+		avg_runtime1+= runtime[i*2];
+		avg_commtime1+= runtime[i*2]-runtime[i*2+1];
 	}
-	avg_comptime1/=nthreads;
+	avg_runtime1/=nthreads;
 	avg_commtime1/=nthreads;
-	std::cout<<myproc<<": "<<avg_comptime1<<" "<<avg_commtime1<<std::endl;
+	std::cout<<myproc<<": "<<avg_runtime1<<" "<<avg_commtime1<<std::endl;
 	ctx.Barrier();
-	MPI_Reduce(&avg_comptime1, &avg_comptime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	avg_comptime2/=nprocs;
+	MPI_Reduce(&avg_runtime1, &avg_runtime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	avg_runtime2/=nprocs;
 	MPI_Reduce(&avg_commtime1, &avg_commtime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	avg_commtime2/=nprocs;
 	if(myproc==0)
-		std::cout<<"average run() compute time: "<<avg_comptime2<<std::endl<<
+		std::cout<<"average run() time: "<<avg_runtime2<<std::endl<<
+					"\tcompute time: "<<avg_runtime2-avg_commtime2<<std::endl<<
 					"\tcommunicate time: "<<avg_commtime2<<std::endl;
 	delete runtime;
 

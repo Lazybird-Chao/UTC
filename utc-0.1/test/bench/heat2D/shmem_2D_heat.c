@@ -62,14 +62,14 @@
 #include <math.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include <shmem.h>
+#include "shmem.h"
 
 /* declare functions */
 int get_start (int rank);
 int get_end (int rank);
 int get_num_rows (int rank);
 void init_domain (float **domain_ptr, int rank);
-void jacobi (float **current_ptr, float **next_ptr);
+void jacobi (float **current_ptr, float **next_ptr, float*, float*);
 void gauss_seidel (float **current_ptr, float **next_ptr);
 void sor (float **current_ptr, float **next_ptr);
 float get_val_par (float *above_ptr, float **domain_ptr, float *below_ptr,
@@ -242,6 +242,10 @@ main (int argc, char **argv)
         U_Next[i] = U_Next[i - 1] + (int) floor (WIDTH / H);
     }
 
+    float *U_Curr_Above = (float *) shmem_malloc ((sizeof (float)) * ((int) floor (WIDTH / H)));
+	float *U_Curr_Below = (float *) shmem_malloc ((sizeof (float)) * ((int) floor (WIDTH / H)));
+	float *U_Send_Buffer = (float *) shmem_malloc ((sizeof (float)) * ((int) floor (WIDTH / H)));
+
     /* initialize global grid */
     init_domain (U_Curr, my_rank);
     init_domain (U_Next, my_rank);
@@ -253,7 +257,9 @@ main (int argc, char **argv)
     }
     k = 1;
     while (1) {
-        method (U_Curr, U_Next);
+    	if(k%100 ==0 && my_rank ==0)
+    		printf("iteration: %d\n", k);
+        method (U_Curr, U_Next, U_Curr_Above, U_Curr_Below);
 
         local_convergence_sqd = get_convergence_sqd (U_Curr, U_Next, my_rank);
 
@@ -343,46 +349,19 @@ get_convergence_sqd (float **current_ptr, float **next_ptr, int rank)
  /* implements parallel jacobi methods */
 
 void
-jacobi (float **current_ptr, float **next_ptr)
+jacobi (float **current_ptr, float **next_ptr,
+		float *U_Curr_Above, float *U_Curr_Below)
 {
     int i, j, my_start, my_end, my_num_rows;
-    float *U_Curr_Above = (float *) shmem_malloc ((sizeof (float)) * ((int) floor (WIDTH / H)));    /* 1d
-                                                                                                       array
-                                                                                                       holding
-                                                                                                       values
-                                                                                                       from
-                                                                                                       bottom
-                                                                                                       row
-                                                                                                       of
-                                                                                                       PE
-                                                                                                       above
-                                                                                                     */
-    float *U_Curr_Below = (float *) shmem_malloc ((sizeof (float)) * ((int) floor (WIDTH / H)));    /* 1d
-                                                                                                       array
-                                                                                                       holding
-                                                                                                       values
-                                                                                                       from
-                                                                                                       top
-                                                                                                       row
-                                                                                                       of
-                                                                                                       PE
-                                                                                                       below
-                                                                                                     */
-    float *U_Send_Buffer = (float *) shmem_malloc ((sizeof (float)) * ((int) floor (WIDTH / H)));   /* 1d
-                                                                                                       array
-                                                                                                       holding
-                                                                                                       values
-                                                                                                       that
-                                                                                                       are
-                                                                                                       currently
-                                                                                                       being
-                                                                                                       sent
-                                                                                                     */
+    /*float *U_Curr_Above = (float *) shmem_malloc ((sizeof (float)) * ((int) floor (WIDTH / H)));
+    float *U_Curr_Below = (float *) shmem_malloc ((sizeof (float)) * ((int) floor (WIDTH / H)));
+    float *U_Send_Buffer = (float *) shmem_malloc ((sizeof (float)) * ((int) floor (WIDTH / H)));
+    */
 
-    if (!U_Curr_Above || !U_Curr_Below || !U_Send_Buffer) {
+    /*if (!U_Curr_Above || !U_Curr_Below || !U_Send_Buffer) {
         printf ("error: shmem_malloc returned NULL (no memory)");
         exit (1);
-    }
+    }*/
     // MPI_Request request;
     // MPI_Status status;
     // MPI_Comm_size(MPI_COMM_WORLD,&p);
@@ -400,12 +379,12 @@ jacobi (float **current_ptr, float **next_ptr)
         /* send/receive bottom rows */
         if (my_rank < (p - 1)) {
             /* populate send buffer with bottow row */
-            for (i = 0; i < (int) floor (WIDTH / H); i++) {
+            /*for (i = 0; i < (int) floor (WIDTH / H); i++) {
                 U_Send_Buffer[i] = current_ptr[my_num_rows - 1][i];
-            }
+            }*/
             /* non blocking send */
             // MPI_Isend(U_Send_Buffer,(int)floor(WIDTH/H),MPI_FLOAT,my_rank+1,0,MPI_COMM_WORLD,&request);
-            shmem_float_put (U_Curr_Above, U_Send_Buffer,
+            shmem_float_put (U_Curr_Above, &current_ptr[my_num_rows - 1][0],
                              (int) floor (WIDTH / H), my_rank + 1);
         }
         // if (my_rank > ROOT) {
@@ -418,12 +397,12 @@ jacobi (float **current_ptr, float **next_ptr)
         /* send/receive top rows */
         if (my_rank > ROOT) {
             /* populate send buffer with top row */
-            for (i = 0; i < (int) floor (WIDTH / H); i++) {
+            /*for (i = 0; i < (int) floor (WIDTH / H); i++) {
                 U_Send_Buffer[i] = current_ptr[0][i];
-            }
+            }*/
             /* non blocking send */
             // MPI_Isend(U_Send_Buffer,(int)floor(WIDTH/H),MPI_FLOAT,my_rank-1,0,MPI_COMM_WORLD,&request);
-            shmem_float_put (U_Curr_Below, U_Send_Buffer,
+            shmem_float_put (U_Curr_Below, &current_ptr[0][0],
                              (int) floor (WIDTH / H), my_rank - 1);
         }
         // if (my_rank < (p-1)) {
@@ -453,7 +432,7 @@ jacobi (float **current_ptr, float **next_ptr)
         }
     }
 
-    if (U_Send_Buffer) {
+    /*if (U_Send_Buffer) {
         shmem_free (U_Send_Buffer);
     }
     if (U_Curr_Above) {
@@ -461,7 +440,7 @@ jacobi (float **current_ptr, float **next_ptr)
     }
     if (U_Curr_Below) {
         shmem_free (U_Curr_Below);
-    }
+    }*/
 }
 
  /* implements parallel g-s method */
