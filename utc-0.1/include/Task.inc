@@ -498,7 +498,7 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 		}
 
 	}
-
+	//std::cout<<ERROR_LINE<<std::endl;
 	if(m_numLocalThreads!=0)
 	{
 		// create the barrier object in a task

@@ -37,7 +37,8 @@ private:
 	float *U_Next;
 	GlobalScopedData<float> *U_Curr_Above;
 	GlobalScopedData<float> *U_Curr_Below;
-	GlobalScopedData<float> *U_Send_Buffer;
+	GlobalScopedData<float> *U_Above_Buffer;
+	GlobalScopedData<float> *U_Below_Buffer;
 
 	int get_start(int rank){
 		/* computer row divisions to each proc */
@@ -113,6 +114,7 @@ private:
 						 c_p[global_to_local (__processId, j)][i], 2);
 			}
 		}
+
 		local_convergence_sqd_array[__localThreadId]= sum;
 		intra_Barrier();
 		if(getUniqueExecution()){
@@ -194,48 +196,119 @@ private:
 	    return 0.0;
 	}
 
-	void jacobi(float *current_ptr, float *next_ptr, double *runtime){
+	void jacobi(float *current_ptr, float *next_ptr, double *runtime, int t_s, int t_e, int NLINES){
 		float(*c_p)[(int) floor (width / H)] = (float(*)[(int) floor (width / H)])current_ptr;
 		float(*n_p)[(int) floor (width / H)] = (float(*)[(int) floor (width / H)])next_ptr;
 		Timer timer;
-		timer.start();
 		/* transfer bondary data*/
-		if(__numProcesses>1){
-			if(getUniqueExecution()){
-				if(__processId < __numProcesses-1){
+		if(__numLocalThreads<2 || __numProcesses <2){
+			timer.start();
+			if(__numProcesses>1){
+				if(getUniqueExecution()){
+					if(__processId < __numProcesses-1){
+						U_Curr_Above->rstoreblock(__processId+1, &c_p[my_num_rows-1][0], 0, (int) floor (width / H));
+						U_Curr_Above->rstoreSetFinishFlag(__processId+1);
+					}
+					if(__processId > 0){
+						U_Curr_Below->rstoreblock(__processId-1, &c_p[0][0], 0, (int) floor (width / H));
+						U_Curr_Below->rstoreSetFinishFlag(__processId-1);
+					}
+					if(__processId<__numProcesses-1)
+						U_Curr_Below->rstoreWaitFinishFlag(__processId+1);
+					if(__processId>0)
+						U_Curr_Above->rstoreWaitFinishFlag(__processId-1);
+				}
+				inter_Barrier();
+			}
+			runtime[3*__localThreadId+2] += timer.stop();
+			timer.start();
+			for (int j = t_start_row; j <= t_end_row; j++) {
+				for (int i = 0; i < (int) floor (width / H); i++) {
+					n_p[j - my_start_row][i] =
+						.25 * (
+						get_val_par(U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(), __processId, i - 1,j)
+					+ get_val_par (U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(),__processId, i + 1, j)
+					+ get_val_par (U_Curr_Above->getPtr(), current_ptr,U_Curr_Below->getPtr(), __processId, i, j - 1)
+					+ get_val_par (U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(), __processId,i, j + 1)
+					- (pow (H, 2) * f (i, j))
+					);
+					enforce_bc_par (next_ptr, __processId, i, j);
+				}
+			}
+			runtime[3*__localThreadId+1] += timer.stop();
+			intra_Barrier();
+		}
+		else{ // more than 1 local threads
+			timer.start();
+			if(__localThreadId == __numLocalThreads-1){
+				// last thread as special
+				if(__processId<__numProcesses -1){
 					U_Curr_Above->rstoreblock(__processId+1, &c_p[my_num_rows-1][0], 0, (int) floor (width / H));
 					U_Curr_Above->rstoreSetFinishFlag(__processId+1);
 				}
-				if(__processId > 0){
+				if(__processId>0){
 					U_Curr_Below->rstoreblock(__processId-1, &c_p[0][0], 0, (int) floor (width / H));
 					U_Curr_Below->rstoreSetFinishFlag(__processId-1);
+				}
+				for(int j=my_start_row+1; j<=my_start_row+NLINES-2; j++){
+					for (int i = 0; i < (int) floor (width / H); i++) {
+						n_p[j - my_start_row][i] =
+							.25 * (
+							get_val_par(U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(), __processId, i - 1,j)
+						+ get_val_par (U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(),__processId, i + 1, j)
+						+ get_val_par (U_Curr_Above->getPtr(), current_ptr,U_Curr_Below->getPtr(), __processId, i, j - 1)
+						+ get_val_par (U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(), __processId,i, j + 1)
+						- (pow (H, 2) * f (i, j))
+						);
+						enforce_bc_par (next_ptr, __processId, i, j);
+					}
 				}
 				if(__processId<__numProcesses-1)
 					U_Curr_Below->rstoreWaitFinishFlag(__processId+1);
 				if(__processId>0)
 					U_Curr_Above->rstoreWaitFinishFlag(__processId-1);
+				for (int i = 0; i < (int) floor (width / H); i++) {
+					n_p[my_start_row - my_start_row][i] =
+							.25 * (
+							get_val_par(U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(), __processId, i - 1,my_start_row)
+						+ get_val_par (U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(),__processId, i + 1, my_start_row)
+						+ get_val_par (U_Curr_Above->getPtr(), current_ptr,U_Curr_Below->getPtr(), __processId, i, my_start_row - 1)
+						+ get_val_par (U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(), __processId,i, my_start_row + 1)
+						- (pow (H, 2) * f (i, my_start_row))
+						);
+					enforce_bc_par (next_ptr, __processId, i, t_start_row);
+					n_p[my_end_row - my_start_row][i] =
+							.25 * (
+							get_val_par(U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(), __processId, i - 1,my_end_row)
+						+ get_val_par (U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(),__processId, i + 1, my_end_row)
+						+ get_val_par (U_Curr_Above->getPtr(), current_ptr,U_Curr_Below->getPtr(), __processId, i, my_end_row - 1)
+						+ get_val_par (U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(), __processId,i, my_end_row + 1)
+						- (pow (H, 2) * f (i, t_end_row))
+						);
+					enforce_bc_par (next_ptr, __processId, i, my_end_row);
+				}
 			}
-			inter_Barrier();
+			else{
+				// other threads
+				for (int j = t_s; j <= t_e; j++) {
+					for (int i = 0; i < (int) floor (width / H); i++) {
+						n_p[j - my_start_row][i] =
+							.25 * (
+							get_val_par(U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(), __processId, i - 1,j)
+						+ get_val_par (U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(),__processId, i + 1, j)
+						+ get_val_par (U_Curr_Above->getPtr(), current_ptr,U_Curr_Below->getPtr(), __processId, i, j - 1)
+						+ get_val_par (U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(), __processId,i, j + 1)
+						- (pow (H, 2) * f (i, j))
+						);
+						enforce_bc_par (next_ptr, __processId, i, j);
+					}
+				}
+			}
+			runtime[3*__localThreadId+2] += timer.stop();
+			intra_Barrier();
+			runtime[3*__localThreadId+1] += timer.stop();
 		}
-		runtime[3*__localThreadId+2] += timer.stop();
-		timer.start();
 
-		/* Jacobi method using global addressing */
-		for (int j = t_start_row; j <= t_end_row; j++) {
-			for (int i = 0; i < (int) floor (width / H); i++) {
-				n_p[j - my_start_row][i] =
-					.25 * (
-					get_val_par(U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(), __processId, i - 1,j)
-				+ get_val_par (U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(),__processId, i + 1, j)
-				+ get_val_par (U_Curr_Above->getPtr(), current_ptr,U_Curr_Below->getPtr(), __processId, i, j - 1)
-				+ get_val_par (U_Curr_Above->getPtr(), current_ptr, U_Curr_Below->getPtr(), __processId,i, j + 1)
-				- (pow (H, 2) * f (i, j))
-				);
-				enforce_bc_par (next_ptr, __processId, i, j);
-			}
-		}
-		runtime[3*__localThreadId+1] += timer.stop();
-		intra_Barrier();
 	}
 
 	void gauss_seidel(float *current_ptr, float *next_ptr){
@@ -266,7 +339,8 @@ public:
 
 			U_Curr_Above = new GlobalScopedData<float>((int) floor (width / H));
 			U_Curr_Below = new GlobalScopedData<float>((int) floor (width / H));
-			U_Send_Buffer = new GlobalScopedData<float>((int) floor (width / H));
+			U_Above_Buffer = new GlobalScopedData<float>((int) floor (width / H));
+			U_Below_Buffer = new GlobalScopedData<float>((int) floor (width / H));
 
 			local_convergence_sqd_array = new float[__numLocalThreads];
 		}
@@ -293,6 +367,16 @@ public:
 		inter_Barrier();
 		timer.start();
 
+		int t_s, t_e, NLINES;
+		if(__numLocalThreads>1 &&__numProcesses>1){
+			NLINES = 10 + 2;
+			int rows_per_thread = (my_num_rows - NLINES) / (__numLocalThreads-1);
+			t_s = __localThreadId * rows_per_thread + my_start_row + NLINES -1;
+			t_e = t_s + rows_per_thread -1;
+			if(__localThreadId == __numLocalThreads-2)
+				t_e = my_end_row -1;
+		}
+
 		float(*c_p)[(int) floor (width / H)] = (float(*)[(int) floor (width / H)])U_Curr;
 		float(*n_p)[(int) floor (width / H)] = (float(*)[(int) floor (width / H)])U_Next;
 		float *gather_local_convergence;
@@ -306,7 +390,7 @@ public:
 			}
 			switch(method){
 			case 1:
-				jacobi(U_Curr, U_Next, runtime);
+				jacobi(U_Curr, U_Next, runtime, t_s, t_e, NLINES);
 				break;
 			case 2:
 				gauss_seidel(U_Curr, U_Next);
@@ -317,6 +401,7 @@ public:
 			}
 			timer1.start();
 			get_convergence_sqd(U_Curr, U_Next);
+			//std::cout<<local_convergence_sqd<<std::endl;
 			runtime[3*__localThreadId +1] += timer1.stop();
 			timer2.start();
 			SharedDataGather(&local_convergence_sqd, sizeof(float), gather_local_convergence, 0);
@@ -339,7 +424,7 @@ public:
 							U_Next[(j - my_start_row)*((int) floor (width / H)) +i];
 				}
 			}
-			runtime[3*__localThreadId +2] += timer2.stop();
+			//runtime[3*__localThreadId +2] += timer2.stop();
 			k++;
 			inter_Barrier();
 		}
@@ -363,7 +448,8 @@ public:
 			free(U_Next);
 			delete U_Curr_Above;
 			delete U_Curr_Below;
-			delete U_Send_Buffer;
+			delete U_Above_Buffer;
+			delete U_Below_Buffer;
 
 			delete local_convergence_sqd_array;
 		}
@@ -432,18 +518,19 @@ int main(int argc, char* argv[]){
 		heat2DInst.run(runtime);
 		heat2DInst.wait();
 
+
 		double avg_runtime1=0;
 		double avg_runtime2=0;
 		double avg_comptime1=0;
-		double avg_commtime1 =0;
+		//double avg_commtime1 =0;
 		for(int i=0; i<nthreads; i++){
 			avg_runtime1 += runtime[3*i];
 			avg_comptime1 += runtime[3*i + 1];
-			avg_commtime1 += runtime[3*i + 2];
+			//avg_commtime1 += runtime[3*i + 2];
 		}
 		avg_runtime1 /= nthreads;
 		avg_comptime1 /= nthreads;
-		avg_commtime1 /= nthreads;
+		//avg_commtime1 /= nthreads;
 		ctx.Barrier();
 		MPI_Reduce(&avg_runtime1, &avg_runtime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		avg_runtime2/=nprocs;
@@ -455,11 +542,14 @@ int main(int argc, char* argv[]){
 				std::cout<<"time info on proc "<<i<<":"<<std::endl;
 				std::cout<<"\trun: "<<avg_runtime1<<
 						" compute: "<<avg_comptime1<<
-						" commu: "<<avg_commtime1<<std::endl;
+						" commu: "<<avg_runtime1-avg_comptime1<<std::endl;
+				if(nthreads>1 && nprocs>1){
+					for(int j=0; j<nthreads; j++)
+						std::cout<<"\t\tthread "<<j<<": "<<runtime[3*j+2]<<std::endl;
+				}
 			}
 			ctx.Barrier();
 		}
-
 		delete runtime;
 
 		return 0;
