@@ -1,5 +1,6 @@
 #include "Utc.h"
 #include "../helper_getopt.h"
+#include "../helper_printtime.h"
 
 #include <iostream>
 
@@ -49,7 +50,7 @@ public:
 	}
 
 	void runImpl(double *runtime){
-		Timer timer;
+		Timer timer, timer1;
 		intra_Barrier();
 		timer.start();
 		/* compute local partial C[][] with local A[][] and B[][] */
@@ -65,7 +66,7 @@ public:
 				}
 			}
 		}
-
+		runtime[__localThreadId*2+1] += timer.stop();
 		/* get remote matrixA to compute */
 		if(__numProcesses>1 && getUniqueExecution()){
 			localPtrA= (double*)malloc(dimRows * blockColums * sizeof(double));
@@ -79,6 +80,7 @@ public:
 			}
 			intra_Barrier();
 
+			timer1.start();
 			currentColumIdx = (__processId + i) % nBlocks;
 			startRowB = currentColumIdx * blockColums;
 			for(int i= startRowA; i< startRowA + blockRows; i++){
@@ -89,10 +91,11 @@ public:
 					}
 				}
 			}
+			runtime[__localThreadId*2+1] += timer1.stop();
 		}
 
 		intra_Barrier();
-		runtime[__localThreadId] = timer.stop();
+		runtime[__localThreadId*2] = timer.stop();
 		if(__numProcesses>1 && getUniqueExecution())
 			free(localPtrA);
 		if(__localThreadId ==0){
@@ -147,7 +150,10 @@ int main(int argc, char* argv[]){
 	}
 	int myproc = ctx.getProcRank();
 
-	double *runtime = new double[nthreads];
+	double *runtime = new double[nthreads*2];
+	for(int i=0; i<nthreads*2; i++){
+		runtime[i]=0;
+	}
 	ProcList plist1;
 	for(int i=0; i<nprocs; i++)
 		for(int j=0; j<nthreads; j++)
@@ -162,13 +168,29 @@ int main(int argc, char* argv[]){
 
 	double avg_runtime1=0;
 	double avg_runtime2=0;
-	for(int i =0; i<nthreads; i++)
-		avg_runtime1+= runtime[i];
+	double avg_comptime1=0;
+	double avg_comptime2=0;
+	for(int i =0; i<nthreads; i++){
+		avg_runtime1+= runtime[i*2];
+		avg_comptime1+= runtime[i*2+1];
+	}
 	avg_runtime1/=nthreads;
+	avg_comptime1/=nthreads;
 	MPI_Reduce(&avg_runtime1, &avg_runtime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	avg_runtime2/=nprocs;
-	if(myproc==0)
+	MPI_Reduce(&avg_comptime1, &avg_comptime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	avg_comptime2/=nprocs;
+	if(myproc==0){
 		std::cout<<"average run() time: "<<avg_runtime2<<std::endl;
+		std::cout<<"\t comp time: "<<avg_comptime2<<std::endl;
+		std::cout<<"\t comm time: "<<avg_runtime2-avg_comptime2<<std::endl;
+
+		double timer[0];
+        timer[0] = avg_runtime2;
+        timer[1] = avg_comptime2;
+        timer[2] = avg_runtime2-avg_comptime2;
+        print_time(3, timer);
+	}
 	delete runtime;
 	//std::cout<<ERROR_LINE<<std::endl;
 	return 0;

@@ -20,5 +20,12 @@ do
 done
 
 # collect time record info
-cat time_record.txt >> total_time_record.txt
-rm  -f time_record.txt
+if [ -f time_record.txt ]
+then
+    echo "-----------------------------------------" >> total_time_record.txt
+    cat time_record.txt >> total_time_record.txt
+    echo "-----------------------------------------" >> total_time_record.txt
+    rm  -f time_record.txt
+else
+    echo "time_record.txt not found"
+fi

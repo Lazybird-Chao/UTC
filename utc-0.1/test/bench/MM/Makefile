@@ -1,9 +1,9 @@
 #################################
-BENCHMARK = utc_shmatrix_v2
+BENCHMARK = utc_shmatrix
 BINDIR = .
-PROGRAM_SOURCE:= utc_shmatrix_v2.cc
-COMM_FILE = ../../../for-vm.comm
-LIBMK_FILE = for-vm.mk
+PROGRAM_SOURCE:= utc_shmatrix.cc
+COMM_FILE = ../../../for-nodes.comm
+LIBMK_FILE = for-nodes.mk
 
 
 #################################
@@ -28,7 +28,7 @@ $(PROGRAM): $(PROGRAM_OBJ) libutc
 	$(G++)	$(CCFLAG) $(LINKFLAG) -o $(PROGRAM) $(PROGRAM_OBJ) $(LIB)
 	@echo "make target successful !!!" 
 
-utc_shmatrix_v2.o:utc_shmatrix_v2.cc
+utc_shmatrix.o:utc_shmatrix.cc
 	$(G++)	-c $< $(CCFLAG) $(INCLUDE)
 
 				
