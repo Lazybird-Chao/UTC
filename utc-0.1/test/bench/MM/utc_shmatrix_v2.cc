@@ -1,5 +1,6 @@
 #include "Utc.h"
 #include "../helper_getopt.h"
+#include "../helper_printtime.h"
 
 #include <iostream>
 
@@ -30,10 +31,6 @@ public:
 			this->dimColums = dimColums;
 			this->nBlocks = nBlocks;
 			blockColums = dimColums / nBlocks;
-			if(__numProcesses>1)
-				blockRows = dimRows / (__numLocalThreads-1);
-			else
-				blockRows = dimRows / __numLocalThreads;
 
 			subMatrixA = new GlobalScopedData<double>(this, dimRows * blockColums);
 			subMatrixB = (double*)malloc(dimRows * blockColums * sizeof(double));
@@ -60,27 +57,38 @@ public:
 	}
 
 	void runImpl(double *runtime){
-		Timer timer;
-		intra_Barrier();
-		timer.start();
+		Timer timer, timer1;
+
 		/* compute local partial C[][] with local A[][] and B[][] */
+		int NLINES = 50;
+		if(__numProcesses>1)
+			blockRows = (dimRows-NLINES) / (__numLocalThreads-1);
+		else
+			blockRows = dimRows / __numLocalThreads;
+
 		int startRowA = __localThreadId * blockRows;
+		int endRowA = startRowA + blockRows;
+		if(__localThreadId == __numLocalThreads -2)
+			endRowA = dimRows - NLINES;
 		int currentColumIdx;
 		int startRowB;
 		double *currentA = subMatrixA->getPtr();
 		int neighbour= __processId;
 		int idxA=0;
+		inter_Barrier();
+		timer.start();
 		for(int iterBlock = 0; iterBlock <nBlocks; iterBlock++){
+			timer1.start();
+			currentColumIdx = (__processId + iterBlock) % nBlocks;
+			startRowB = currentColumIdx * blockColums;
 			if((__numProcesses>1 &&__localThreadId < __numLocalThreads-1)
 					|| (__numProcesses==1)){
 				if(iterBlock >0){
 					currentA = localPtrA[idxA];
 					idxA = (idxA+1)%2;
 				}
-				currentColumIdx = (__processId + iterBlock) % nBlocks;
-				startRowB = currentColumIdx * blockColums;
 				// thread 0 to n-1 do computing
-				for(int i= startRowA; i< startRowA + blockRows; i++){
+				for(int i= startRowA; i< endRowA; i++){
 					for(int k = 0; k< blockColums; k++){
 					for(int j = 0; j< blockColums; j++){
 						//for(int k = 0; k< blockColums; k++){
@@ -91,17 +99,31 @@ public:
 				}
 			}
 			else{
+				if(iterBlock > 0){
+					currentA = localPtrA[(idxA+1)%2];
+				}
+				for(int i= dimRows-NLINES; i< dimRows; i++){
+					for(int k = 0; k< blockColums; k++){
+					for(int j = 0; j< blockColums; j++){
+						//for(int k = 0; k< blockColums; k++){
+							subMatrixC[i*blockColums + j] += currentA[i*blockColums + k] *
+																subMatrixB[(startRowB + k)*blockColums + j];
+						}
+					}
+				}
 				// the last thread prefetch data
 				if(__numProcesses > 1 && iterBlock<nBlocks-1){
 					neighbour = (neighbour+1)%__numProcesses;
 					subMatrixA->rloadblock(neighbour, localPtrA[idxA], 0, dimRows * blockColums);
-					idxA = (idxA+1)%2;
 				}
+				idxA = (idxA+1)%2;
 			}
-			intra_Barrier();
+			runtime[__localThreadId*2+1] += timer1.stop();
+			inter_Barrier();
 		}
 		//std::cout<<ERROR_LINE<<std::endl;
-		runtime[__localThreadId] = timer.stop();
+		//inter_Barrier();
+		runtime[__localThreadId*2] = timer.stop();
 		if(__numProcesses>1 && getUniqueExecution()){
 			free(localPtrA[0]);
 			free(localPtrA[1]);
@@ -157,7 +179,9 @@ int main(int argc, char* argv[]){
 		return 1;
 	}
 	int myproc = ctx.getProcRank();
-	double *runtime = new double[nthreads];
+	double *runtime = new double[2*nthreads];
+	for(int i=0; i<2*nthreads;i++)
+		runtime[i]=0;
 
 	ProcList plist1;
 	for(int i=0; i<nprocs; i++)
@@ -174,12 +198,25 @@ int main(int argc, char* argv[]){
 	double avg_runtime1=0;
 	double avg_runtime2=0;
 	for(int i =0; i<nthreads; i++)
-		avg_runtime1+= runtime[i];
+		avg_runtime1+= runtime[i*2];
+	double first_runtime=0;
+	for(int i=0; i<nthreads-1; i++)
+		first_runtime += runtime[i*2+1];
+	first_runtime /= (nthreads-1);
 	avg_runtime1/=nthreads;
 	MPI_Reduce(&avg_runtime1, &avg_runtime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	avg_runtime2/=nprocs;
-	if(myproc==0)
-		std::cout<<"average run() time: "<<avg_runtime2<<std::endl;
+	if(myproc==0){
+		std::cout<<"average run() time: "<<avg_runtime1<<std::endl;
+		std::cout<<"last thread run() time: "<<runtime[(nthreads-1)*2+1]<<std::endl;
+		std::cout<<"first thread run() time: "<<first_runtime<<std::endl;
+
+		double timer[3];
+		timer[0] = avg_runtime2;
+		timer[1] = runtime[(nthreads-1)*2+1];
+		timer[2] = first_runtime;
+		print_time(3, timer);
+	}
 	delete runtime;
 	//std::cout<<ERROR_LINE<<std::endl;
 	return 0;

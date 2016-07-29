@@ -4,15 +4,15 @@
 MPI_RUN='mpirun -report-bindings -bind-to none' #socket:overload-allowed'
 MPI_PROCS=1
 #MPI_OPTION="-host node2,node3,node4,node5 -N ${MPI_PROCS}"
-MPI_OPTION="-N ${MPI_PROCS}  -hostfile myhosts -host node2"
+MPI_OPTION="-N ${MPI_PROCS}  -hostfile myhosts -host node2,node3,node4,node5"
 
 
 # set exe file and args
-EXE_FILE='./utc_shmatrix.utc'
-EXE_ARGS="-p 1 -t 1 -s 2880"
+EXE_FILE='./utc_shmatrix_v2.utc'
+EXE_ARGS="-p 4 -t 12 -s 2880"
 
 # set iterations and run
-iter=3
+iter=10
 i=1
 while [ $i -le $iter ]
 do

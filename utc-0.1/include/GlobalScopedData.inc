@@ -383,8 +383,10 @@ void GlobalScopedData<T>::waitChangeUntil(condCMPType cond, T value){
 template<typename T>
 void GlobalScopedData<T>::rstoreSetFinishFlag(int remotePE){
 	m_ctxSpinMutex->lock();
-	shmem_fence();
-	shmem_int_add(&m_flagValue[m_currentPE], 1, remotePE);
+	//shmem_fence();
+	//shmem_int_add(&m_flagValue[m_currentPE], 1, remotePE);
+	int oldvalue = shmem_int_g(&m_flagValue[m_currentPE], remotePE);
+	shmem_int_p(&m_flagValue[m_currentPE], oldvalue+1, remotePE);
 	m_ctxSpinMutex->unlock();
 }
 

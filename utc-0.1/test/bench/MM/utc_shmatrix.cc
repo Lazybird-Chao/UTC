@@ -71,21 +71,23 @@ public:
 		if(__numProcesses>1 && getUniqueExecution()){
 			localPtrA= (double*)malloc(dimRows * blockColums * sizeof(double));
 		}
-		intra_Barrier();
+		//intra_Barrier();
 		int neighbour= __processId;
 		for( int i=1; i< nBlocks; i++){
+			inter_Barrier();
 			neighbour = (neighbour+1)%__numProcesses;
 			if(getUniqueExecution()){
 				subMatrixA->rloadblock(neighbour, localPtrA, 0, dimRows * blockColums);
 			}
-			intra_Barrier();
+			//inter_Barrier();
 
 			timer1.start();
 			currentColumIdx = (__processId + i) % nBlocks;
 			startRowB = currentColumIdx * blockColums;
 			for(int i= startRowA; i< startRowA + blockRows; i++){
+				for(int k = 0; k< blockColums; k++){
 				for(int j = 0; j< blockColums; j++){
-					for(int k = 0; k< blockColums; k++){
+					//for(int k = 0; k< blockColums; k++){
 						subMatrixC[i*blockColums + j] += localPtrA[i*blockColums + k] *
 															subMatrixB[(startRowB + k)*blockColums + j];
 					}
@@ -93,8 +95,7 @@ public:
 			}
 			runtime[__localThreadId*2+1] += timer1.stop();
 		}
-
-		intra_Barrier();
+		inter_Barrier();
 		runtime[__localThreadId*2] = timer.stop();
 		if(__numProcesses>1 && getUniqueExecution())
 			free(localPtrA);
@@ -185,7 +186,7 @@ int main(int argc, char* argv[]){
 		std::cout<<"\t comp time: "<<avg_comptime2<<std::endl;
 		std::cout<<"\t comm time: "<<avg_runtime2-avg_comptime2<<std::endl;
 
-		double timer[0];
+		double timer[3];
         timer[0] = avg_runtime2;
         timer[1] = avg_comptime2;
         timer[2] = avg_runtime2-avg_comptime2;

@@ -4,6 +4,7 @@
 
 #include "Utc.h"
 #include "../helper_getopt.h"
+#include "../helper_printtime.h"
 
 #include <iostream>
 
@@ -207,20 +208,23 @@ private:
 				if(getUniqueExecution()){
 					if(__processId < __numProcesses-1){
 						U_Curr_Above->rstoreblock(__processId+1, &c_p[my_num_rows-1][0], 0, (int) floor (width / H));
-						U_Curr_Above->rstoreSetFinishFlag(__processId+1);
+						//U_Curr_Above->rstoreSetFinishFlag(__processId+1);
 					}
+					shmem_barrier_all();
 					if(__processId > 0){
 						U_Curr_Below->rstoreblock(__processId-1, &c_p[0][0], 0, (int) floor (width / H));
-						U_Curr_Below->rstoreSetFinishFlag(__processId-1);
+						//U_Curr_Below->rstoreSetFinishFlag(__processId-1);
 					}
-					if(__processId<__numProcesses-1)
+					shmem_barrier_all();
+					/*if(__processId<__numProcesses-1)
 						U_Curr_Below->rstoreWaitFinishFlag(__processId+1);
 					if(__processId>0)
 						U_Curr_Above->rstoreWaitFinishFlag(__processId-1);
+						*/
 				}
 				inter_Barrier();
 			}
-			runtime[3*__localThreadId+2] += timer.stop();
+			runtime[4*__localThreadId+2] += timer.stop();
 			timer.start();
 			for (int j = t_start_row; j <= t_end_row; j++) {
 				for (int i = 0; i < (int) floor (width / H); i++) {
@@ -235,7 +239,7 @@ private:
 					enforce_bc_par (next_ptr, __processId, i, j);
 				}
 			}
-			runtime[3*__localThreadId+1] += timer.stop();
+			runtime[4*__localThreadId+1] += timer.stop();
 			intra_Barrier();
 		}
 		else{ // more than 1 local threads
@@ -244,11 +248,11 @@ private:
 				// last thread as special
 				if(__processId<__numProcesses -1){
 					U_Curr_Above->rstoreblock(__processId+1, &c_p[my_num_rows-1][0], 0, (int) floor (width / H));
-					U_Curr_Above->rstoreSetFinishFlag(__processId+1);
+					//U_Curr_Above->rstoreSetFinishFlag(__processId+1);
 				}
 				if(__processId>0){
 					U_Curr_Below->rstoreblock(__processId-1, &c_p[0][0], 0, (int) floor (width / H));
-					U_Curr_Below->rstoreSetFinishFlag(__processId-1);
+					//U_Curr_Below->rstoreSetFinishFlag(__processId-1);
 				}
 				for(int j=my_start_row+1; j<=my_start_row+NLINES-2; j++){
 					for (int i = 0; i < (int) floor (width / H); i++) {
@@ -263,10 +267,11 @@ private:
 						enforce_bc_par (next_ptr, __processId, i, j);
 					}
 				}
-				if(__processId<__numProcesses-1)
+				/*if(__processId<__numProcesses-1)
 					U_Curr_Below->rstoreWaitFinishFlag(__processId+1);
 				if(__processId>0)
-					U_Curr_Above->rstoreWaitFinishFlag(__processId-1);
+					U_Curr_Above->rstoreWaitFinishFlag(__processId-1);*/
+				shmem_barrier_all();
 				for (int i = 0; i < (int) floor (width / H); i++) {
 					n_p[my_start_row - my_start_row][i] =
 							.25 * (
@@ -304,9 +309,9 @@ private:
 					}
 				}
 			}
-			runtime[3*__localThreadId+2] += timer.stop();
+			runtime[4*__localThreadId+2] += timer.stop();
 			intra_Barrier();
-			runtime[3*__localThreadId+1] += timer.stop();
+			runtime[4*__localThreadId+1] += timer.stop();
 		}
 
 	}
@@ -369,12 +374,22 @@ public:
 
 		int t_s, t_e, NLINES;
 		if(__numLocalThreads>1 &&__numProcesses>1){
-			NLINES = 10 + 2;
+			NLINES = 0 + 2;
 			int rows_per_thread = (my_num_rows - NLINES) / (__numLocalThreads-1);
-			t_s = __localThreadId * rows_per_thread + my_start_row + NLINES -1;
+			int residue = (my_num_rows - NLINES) % (__numLocalThreads-1);
+			if(__localThreadId < residue){
+				t_s = __localThreadId*(rows_per_thread+1) + my_start_row + NLINES -1;
+				t_e = t_s + rows_per_thread;
+			}
+			else{
+				t_s = __localThreadId * rows_per_thread + residue + my_start_row + NLINES -1;
+				t_e = t_s + rows_per_thread -1;
+			}
+			/*t_s = __localThreadId * rows_per_thread + my_start_row + NLINES -1;
 			t_e = t_s + rows_per_thread -1;
 			if(__localThreadId == __numLocalThreads-2)
 				t_e = my_end_row -1;
+				*/
 		}
 
 		float(*c_p)[(int) floor (width / H)] = (float(*)[(int) floor (width / H)])U_Curr;
@@ -384,13 +399,16 @@ public:
 			gather_local_convergence= new float[__numProcesses];
 		/* computing utill convergence */
 		int k =1;
+		double jacbtime =0;
 		while(1){
 			if(k%100==0 && __globalThreadId ==0){
 				std::cout<<"Iteration: "<<k<<std::endl;
 			}
 			switch(method){
 			case 1:
+				timer1.start();
 				jacobi(U_Curr, U_Next, runtime, t_s, t_e, NLINES);
+				jacbtime+=timer1.stop();
 				break;
 			case 2:
 				gauss_seidel(U_Curr, U_Next);
@@ -402,7 +420,7 @@ public:
 			timer1.start();
 			get_convergence_sqd(U_Curr, U_Next);
 			//std::cout<<local_convergence_sqd<<std::endl;
-			runtime[3*__localThreadId +1] += timer1.stop();
+			//runtime[3*__localThreadId +1] += timer1.stop();
 			timer2.start();
 			SharedDataGather(&local_convergence_sqd, sizeof(float), gather_local_convergence, 0);
 			if(__globalThreadId == 0){
@@ -428,7 +446,8 @@ public:
 			k++;
 			inter_Barrier();
 		}
-		runtime[3*__localThreadId] = timer.stop();
+		runtime[4*__localThreadId] = timer.stop();
+		runtime[4*__localThreadId+3] = jacbtime;
 		if(__globalThreadId ==0){
 			delete gather_local_convergence;
 			printf
@@ -506,8 +525,8 @@ int main(int argc, char* argv[]){
 		}
 		int myproc = ctx.getProcRank();
 
-		double *runtime = new double[3*nthreads];
-		for(int i=0; i<3*nthreads; i++)
+		double *runtime = new double[4*nthreads];
+		for(int i=0; i<4*nthreads; i++)
 			runtime[i]=0;
 		ProcList plist1;
 		for(int i=0; i<nprocs; i++)
@@ -522,22 +541,38 @@ int main(int argc, char* argv[]){
 		double avg_runtime1=0;
 		double avg_runtime2=0;
 		double avg_comptime1=0;
+		double firsttime=0;
+		double jacbtime =0;
 		//double avg_commtime1 =0;
 		for(int i=0; i<nthreads; i++){
 			avg_runtime1 += runtime[3*i];
-			avg_comptime1 += runtime[3*i + 1];
+			jacbtime += runtime[3*i+3];
+			//avg_comptime1 += runtime[3*i + 1];
 			//avg_commtime1 += runtime[3*i + 2];
 		}
+		for(int i=0; i<nthreads-1; i++)
+			firsttime+=runtime[3*i+2];
+		firsttime /=(nthreads-1);
 		avg_runtime1 /= nthreads;
 		avg_comptime1 /= nthreads;
 		//avg_commtime1 /= nthreads;
 		ctx.Barrier();
 		MPI_Reduce(&avg_runtime1, &avg_runtime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		avg_runtime2/=nprocs;
-		if(myproc ==0)
-			std::cout<<"average run() time: "<<avg_runtime2<<std::endl;
+		if(myproc ==0){
+			std::cout<<"average run() time: "<<avg_runtime1<<std::endl;
+			std::cout<<"last thread run() time: "<<runtime[(nthreads-1)*3+2]<<std::endl;
+			std::cout<<"first thread run() time: "<<firsttime<<std::endl;
+
+			double timer[4];
+			 timer[0]=avg_runtime1;
+			 timer[1]=runtime[(nthreads-1)*4+2];
+			 timer[2]=firsttime;
+			 timer[3]=jacbtime;
+			 print_time(4, timer);
+		}
 		ctx.Barrier();
-		for(int i=0; i<nprocs; i++){
+		/*for(int i=0; i<nprocs; i++){
 			if(i == myproc){
 				std::cout<<"time info on proc "<<i<<":"<<std::endl;
 				std::cout<<"\trun: "<<avg_runtime1<<
@@ -550,6 +585,7 @@ int main(int argc, char* argv[]){
 			}
 			ctx.Barrier();
 		}
+		*/
 		delete runtime;
 
 		return 0;

@@ -63,13 +63,15 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include "shmem.h"
+#include "../helper_printtime.h"
 
 /* declare functions */
 int get_start (int rank);
 int get_end (int rank);
 int get_num_rows (int rank);
 void init_domain (float **domain_ptr, int rank);
-void jacobi (float *current_ptr, float *next_ptr, float*, float*,int my_start, int my_end, int my_num_rows);
+void jacobi (float *current_ptr, float *next_ptr, float*, float*,
+		int my_start, int my_end, int my_num_rows, double*comptime, double*commtime);
 //void gauss_seidel (float **current_ptr, float **next_ptr);
 //void sor (float **current_ptr, float **next_ptr);
 float get_val_par (float *above_ptr, float *domain_ptr, float *below_ptr,
@@ -92,7 +94,8 @@ float convergence;
 float convergence_sqd, local_convergence_sqd;
 
 /* Function pointer to solver method of choice */
-void (*method) (float *current_ptr, float *next_ptr, float*, float*,int my_start, int my_end, int my_num_rows);
+void (*method) (float *current_ptr, float *next_ptr, float*, float*,
+		int my_start, int my_end, int my_num_rows, double*comptime, double*commtime);
 double
 gettime ()
 {
@@ -258,17 +261,23 @@ main (int argc, char **argv)
         tv[0] = gettime ();
     }
     k = 1;
-    double jtime=0;
+    double comptime=0;
+    double commtime=0;
+    double jacbtime = 0;
     while (1) {
     	if(k%100 ==0 && my_rank ==0)
     		printf("iteration: %d\n", k);
         //method (U_Curr, U_Next, U_Curr_Above, U_Curr_Below);
     	tv[2]=gettime();
-    	jacobi(U_Curr[0], U_Next[0], U_Curr_Above, U_Curr_Below, my_start_row, my_end_row, my_num_rows);
+    	jacobi(U_Curr[0], U_Next[0], U_Curr_Above, U_Curr_Below, my_start_row, my_end_row, my_num_rows, &comptime, &commtime);
     	tv[3]=gettime();
-    	jtime += dt (&tv[3], &tv[2]);
+    	jacbtime += dt(&tv[3], &tv[2]);
+    	tv[2]=gettime();
         local_convergence_sqd = get_convergence_sqd (U_Curr[0], U_Next[0], my_rank);
+        tv[3]=gettime();
+        //comptime += dt (&tv[3], &tv[2]);
 
+        tv[2]=gettime();
         //shmem_barrier_all ();
         shmem_float_sum_to_all (&convergence_sqd, &local_convergence_sqd, 1, 0,
                                 0, p, pWrk, pSync);
@@ -294,6 +303,8 @@ main (int argc, char **argv)
                 U_Curr_p[j - my_start_row][i] = U_Next_p[j - my_start_row][i];
             }
         }
+        tv[3]=gettime();
+        //commtime += dt (&tv[3], &tv[2]);
         k++;
         // MPI_Barrier(MPI_COMM_WORLD);
         shmem_barrier_all ();
@@ -309,7 +320,17 @@ main (int argc, char **argv)
             ("Estimated time to convergence in %d iterations using %d processors on a %dx%d grid is %f seconds\n",
              k, p, (int) floor (WIDTH / H), (int) floor (HEIGHT / H),
              t / 1000000.0);
-        printf("%f\n", jtime/1000000.0);
+        printf("comp time: %f\n", comptime/1000000.0);
+        printf("comm time: %f\n", commtime/1000000.0);
+    }
+
+    if(my_rank == ROOT){
+    	 double timer[4];
+    	 timer[0]=t/1000000.0;
+    	 timer[1]=comptime/1000000.0;
+    	 timer[2]=commtime/1000000.0;
+    	 timer[3]=jacbtime/1000000.0;
+    	 print_time(4, timer);
     }
 
     if (U_Curr) {
@@ -361,7 +382,8 @@ get_convergence_sqd (float *current_ptr, float *next_ptr, int rank)
 
 void
 jacobi (float *current_ptr, float *next_ptr,
-		float *U_Curr_Above, float *U_Curr_Below, int my_start, int my_end, int my_num_rows)
+		float *U_Curr_Above, float *U_Curr_Below, int my_start, int my_end, int my_num_rows,
+		double *comptime, double *commtime)
 {
     //int i, j, my_start, my_end, my_num_rows;
 	int i, j;
@@ -386,7 +408,8 @@ jacobi (float *current_ptr, float *next_ptr,
     /*
      * Communicating ghost rows - only bother if p > 1
      */
-
+	double  t1, t2;
+	t1 = gettime();
     if (p > 1) {
         /* send/receive bottom rows */
         if (my_rank < (p - 1)) {
@@ -425,7 +448,8 @@ jacobi (float *current_ptr, float *next_ptr,
         // MPI_Barrier(MPI_COMM_WORLD);
         shmem_barrier_all ();
     }
-
+    t2=gettime();
+    *commtime += dt(&t2, &t1);
     /* Jacobi method using global addressing */
     for (j = my_start; j <= my_end; j++) {
         for (i = 0; i < (int) floor (WIDTH / H); i++) {
@@ -443,7 +467,8 @@ jacobi (float *current_ptr, float *next_ptr,
             enforce_bc_par (next_ptr, my_rank, i, j);
         }
     }
-
+    t1 = gettime();
+    *comptime+=dt(&t1,&t2);
     /*if (U_Send_Buffer) {
         shmem_free (U_Send_Buffer);
     }

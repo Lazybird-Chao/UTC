@@ -4,6 +4,7 @@
 
 #include "Utc.h"
 #include "../helper_getopt.h"
+#include "../helper_printtime.h"
 
 #include <iostream>
 
@@ -204,20 +205,22 @@ private:
 			if(getUniqueExecution()){
 				if(__processId < __numProcesses-1){
 					U_Curr_Above->rstoreblock(__processId+1, &c_p[my_num_rows-1][0], 0, (int) floor (width / H));
-					U_Curr_Above->rstoreSetFinishFlag(__processId+1);
+					//U_Curr_Above->rstoreSetFinishFlag(__processId+1);
 				}
+				shmem_barrier_all();
 				if(__processId > 0){
 					U_Curr_Below->rstoreblock(__processId-1, &c_p[0][0], 0, (int) floor (width / H));
-					U_Curr_Below->rstoreSetFinishFlag(__processId-1);
+					//U_Curr_Below->rstoreSetFinishFlag(__processId-1);
 				}
-				if(__processId<__numProcesses-1)
+				shmem_barrier_all();
+				/*if(__processId<__numProcesses-1)
 					U_Curr_Below->rstoreWaitFinishFlag(__processId+1);
 				if(__processId>0)
-					U_Curr_Above->rstoreWaitFinishFlag(__processId-1);
+					U_Curr_Above->rstoreWaitFinishFlag(__processId-1);*/
 			}
-			inter_Barrier();
+			intra_Barrier();
 		}
-		runtime[3*__localThreadId+2] += timer.stop();
+		runtime[4*__localThreadId+2] += timer.stop();
 		timer.start();
 
 		/* Jacobi method using global addressing */
@@ -234,7 +237,7 @@ private:
 				enforce_bc_par (next_ptr, __processId, i, j);
 			}
 		}
-		runtime[3*__localThreadId+1] += timer.stop();
+		runtime[4*__localThreadId+1] += timer.stop();
 		intra_Barrier();
 	}
 
@@ -300,13 +303,16 @@ public:
 			gather_local_convergence= new float[__numProcesses];
 		/* computing utill convergence */
 		int k =1;
+		double jacbtime =0;
 		while(1){
 			if(k%100==0 && __globalThreadId ==0){
 				std::cout<<"Iteration: "<<k<<std::endl;
 			}
 			switch(method){
 			case 1:
+				timer1.start();
 				jacobi(U_Curr, U_Next, runtime);
+				jacbtime +=timer1.stop();
 				break;
 			case 2:
 				gauss_seidel(U_Curr, U_Next);
@@ -317,7 +323,7 @@ public:
 			}
 			timer1.start();
 			get_convergence_sqd(U_Curr, U_Next);
-			runtime[3*__localThreadId +1] += timer1.stop();
+			//runtime[3*__localThreadId +1] += timer1.stop();
 			timer2.start();
 			SharedDataGather(&local_convergence_sqd, sizeof(float), gather_local_convergence, 0);
 			if(__globalThreadId == 0){
@@ -339,11 +345,13 @@ public:
 							U_Next[(j - my_start_row)*((int) floor (width / H)) +i];
 				}
 			}
-			runtime[3*__localThreadId +2] += timer2.stop();
+			//runtime[3*__localThreadId +2] += timer2.stop();
 			k++;
 			inter_Barrier();
 		}
-		runtime[3*__localThreadId] = timer.stop();
+		runtime[4*__localThreadId] = timer.stop();
+		runtime[4*__localThreadId +3] = jacbtime;
+
 		if(__globalThreadId ==0){
 			delete gather_local_convergence;
 			printf
@@ -420,8 +428,8 @@ int main(int argc, char* argv[]){
 		}
 		int myproc = ctx.getProcRank();
 
-		double *runtime = new double[3*nthreads];
-		for(int i=0; i<3*nthreads; i++)
+		double *runtime = new double[4*nthreads];
+		for(int i=0; i<4*nthreads; i++)
 			runtime[i]=0;
 		ProcList plist1;
 		for(int i=0; i<nprocs; i++)
@@ -436,21 +444,34 @@ int main(int argc, char* argv[]){
 		double avg_runtime2=0;
 		double avg_comptime1=0;
 		double avg_commtime1 =0;
+		double jacbtime =0;
 		for(int i=0; i<nthreads; i++){
-			avg_runtime1 += runtime[3*i];
-			avg_comptime1 += runtime[3*i + 1];
-			avg_commtime1 += runtime[3*i + 2];
+			avg_runtime1 += runtime[4*i];
+			avg_comptime1 += runtime[4*i + 1];
+			avg_commtime1 += runtime[4*i + 2];
+			jacbtime+=runtime[4*i+3];
 		}
 		avg_runtime1 /= nthreads;
 		avg_comptime1 /= nthreads;
 		avg_commtime1 /= nthreads;
+		jacbtime /= nthreads;
 		ctx.Barrier();
 		MPI_Reduce(&avg_runtime1, &avg_runtime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		avg_runtime2/=nprocs;
-		if(myproc ==0)
+		if(myproc ==0){
 			std::cout<<"average run() time: "<<avg_runtime2<<std::endl;
+			std::cout<<"comptime: "<<avg_comptime1<<std::endl;
+			std::cout<<"commtime: "<<avg_commtime1<<std::endl;
+
+			double timer[4];
+			 timer[0]=avg_runtime1;
+			 timer[1]=avg_comptime1;
+			 timer[2]=avg_commtime1;
+			 timer[4]=jacbtime;
+			 print_time(4, timer);
+		}
 		ctx.Barrier();
-		for(int i=0; i<nprocs; i++){
+		/*for(int i=0; i<nprocs; i++){
 			if(i == myproc){
 				std::cout<<"time info on proc "<<i<<":"<<std::endl;
 				std::cout<<"\trun: "<<avg_runtime1<<
@@ -458,7 +479,7 @@ int main(int argc, char* argv[]){
 						" commu: "<<avg_commtime1<<std::endl;
 			}
 			ctx.Barrier();
-		}
+		}*/
 
 		delete runtime;
 
