@@ -8,6 +8,7 @@
 
 #include "Utc.h"
 #include "../helper_getopt.h"
+#include "../helper_printtime.h"
 
 #include <iostream>
 
@@ -106,7 +107,7 @@ public:
 
 		/* iteration for computing */
 		int SPEC_ThreadId = __numLocalThreads-1; // let the last local thread to be the special thread
-		int NLINES = 10 + 2;  // how many lines the special thread response.
+		int NLINES = 0 + 2;  // how many lines the special thread response.
 		int linesperthread;
 		int residue;
 		int starti, endi;
@@ -126,7 +127,7 @@ public:
 			else{
 				linesperthread = (mx-2-NLINES)/(__numLocalThreads-1);
 				residue = (mx-2-NLINES)%(__numLocalThreads-1);
-				starti = __localThreadId*linesperthread + 1 + NLINES-1;
+				starti = __localThreadId*linesperthread + NLINES;
 				endi = starti+linesperthread-1;
 				if(__localThreadId == __numLocalThreads-2)
 					endi = mx-2 -1;
@@ -179,16 +180,17 @@ public:
 						*/
 				}
 				curf = 1-curf;
-				runtime[__localThreadId*2+1] += timer2.stop();
-				runtime[__localThreadId*2] += timer1.stop();
+				runtime[__localThreadId*3+1] += timer2.stop();
+				runtime[__localThreadId*3] += timer1.stop();
 
 			}
 			else{
 				//std::cout<<"("<<__processId<<" "<<__localThreadId<<" "<<n<<") ";
 				//inter_Barrier();
+				timer2.start();
 				//more than 2 threads, we use one thread for comm and do less compute
 				if(__numProcesses>1 && __localThreadId == SPEC_ThreadId){
-					timer2.start();
+
 					// the special thread (last thread)
 					for (int j = 1; j < my-1; j++) {
 						// i=1;
@@ -196,22 +198,30 @@ public:
 							((f[0][j] + f[2][j]) * rdx2 +
 							 (f[1][j - 1] + f[1][j + 1]) * rdy2 - r[my + j]) * beta;
 						// i=mx-2
-						newf[1][j] =
+						newf[mx-2][j] =
 							((f[mx-3][j] + f[mx-1][j]) * rdx2 +
 							 (f[mx-2][j - 1] + f[mx-2][j + 1]) * rdy2 - r[(mx-2)*my + j]) * beta;
 					}
+					shmem_barrier_all();
+					if(__processId>0)
+						doublef->rstoreblock(__processId-1, &(newf[1][1]), basef[1-curf]+(partmx-1)*my+1, my-2);
+					if(__processId<__numProcesses-1)
+						doublef->rstoreblock(__processId+1, &(newf[mx-2][1]), basef[1-curf]+1, my-2);
+					shmem_barrier_all();
+					/*
 					if(__processId>0)
 						doublef->rstoreSetFinishFlag(__processId-1);
 					if(__processId<__numProcesses-1)
 						doublef->rstoreSetFinishFlag(__processId+1);
-					//std::cout<<"("<<__processId<<" "<<__localThreadId<<" "<<n<<") ";
-					for (int i = 2; i <=NLINES-1; i++) {
+					*/
+					for (int i = 2; i <= NLINES-1; i++) {
 						for (int j = 1; j < my-1; j++) {
 							newf[i][j] =
 								((f[i - 1][j] + f[i + 1][j]) * rdx2 +
 								 (f[i][j - 1] + f[i][j + 1]) * rdy2 - r[i*my + j]) * beta;
 						}
 					}
+					/*
 					if(__processId>0){
 						doublef->rstoreWaitFinishFlag(__processId-1);
 						doublef->rloadblock(__processId-1, &(newf[0][1]), basef[1-curf]+(mx-2)*my+1, my-2);
@@ -219,13 +229,11 @@ public:
 					if(__processId<__numProcesses-1){
 						doublef->rstoreWaitFinishFlag(__processId+1);
 						doublef->rloadblock(__processId+1, &(newf[partmx-1][1]), basef[1-curf]+(1*my+1), my-2);
-					}
-					runtime[__localThreadId*2+1] += timer2.stop();
-					//std::cout<<"("<<__processId<<" "<<__localThreadId<<" "<<n<<") ";
+					}*/
+
 				}
 				else{
 					// other threads
-					timer2.start();
 					for (int i = starti; i <=endi; i++) {
 						for (int j = 1; j < my-1; j++) {
 							newf[i][j] =
@@ -233,13 +241,14 @@ public:
 								 (f[i][j - 1] + f[i][j + 1]) * rdy2 - r[i*my + j]) * beta;
 						}
 					}
-					runtime[__localThreadId*2+1] += timer2.stop();
+
 					//std::cout<<"("<<__processId<<" "<<__localThreadId<<" "<<n<<") ";
 				}
+				runtime[__localThreadId*3+2] += timer2.stop();
 				curf = 1-curf;
 				//intra_Barrier();
 				inter_Barrier();
-				runtime[__localThreadId*2] += timer1.stop();
+				runtime[__localThreadId*3] += timer1.stop();
 			}
 
 		}
@@ -328,8 +337,8 @@ int main(int argc, char* argv[]){
 	}
 	int myproc = ctx.getProcRank();
 
-	double *runtime = new double[2*nthreads];
-	for(int i=0; i<2*nthreads; i++)
+	double *runtime = new double[3*nthreads];
+	for(int i=0; i<3*nthreads; i++)
 		runtime[i]=0;
 	ProcList plist1;
 	for(int i=0; i<nprocs; i++)
@@ -361,15 +370,32 @@ int main(int argc, char* argv[]){
 	else{
 		double avg_runtime1=0;
 		double avg_runtime2=0;
-		for(int i=0; i<nthreads; i++)
-			avg_runtime1 += runtime[i*2];
+		double firsttime=0;
+		double lasttime=0;
+		for(int i=0; i<nthreads; i++){
+			avg_runtime1 += runtime[i*3];
+
+		}
 		avg_runtime1 /= nthreads;
-		std::cout<<myproc<<": "<<avg_runtime1<<std::endl;
+		for(int i=0; i<nthreads-1; i++)
+			firsttime +=runtime[i*3+2];
+		firsttime /= (nthreads-1);
+
+		//std::cout<<myproc<<": "<<avg_runtime1<<std::endl;
 		ctx.Barrier();
 		MPI_Reduce(&avg_runtime1, &avg_runtime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		avg_runtime2 /= nprocs;
-		if(myproc==0)
-			std::cout<<"average run() time: "<<avg_runtime2<<std::endl;
+		if(myproc==0){
+			std::cout<<"average run() time: "<<avg_runtime2<<std::endl<<
+					"\tlast thread time: "<<runtime[(nthreads-1)*3+2]<<std::endl<<
+					"\tfirst thread time: "<<firsttime<<std::endl;
+			double timer[3];
+			timer[0] = avg_runtime1;
+			timer[1] = runtime[(nthreads-1)*3+2];
+			timer[2] = firsttime;
+			print_time(3,timer);
+		}
+		/*
 		ctx.Barrier();
 		for(int i=0;i<nprocs; i++){
 			if(myproc == i){
@@ -379,6 +405,7 @@ int main(int argc, char* argv[]){
 			}
 			ctx.Barrier();
 		}
+		*/
 
 	}
 	delete runtime;

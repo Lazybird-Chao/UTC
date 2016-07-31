@@ -45,6 +45,7 @@
 #include <shmem.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include "../helper_printtime.h"
 
 double
 gettime ()
@@ -69,9 +70,9 @@ dt (double *tv1, double *tv2)
 #define DIM6( basetype, name, w1, w2, w3, w4, w5 ) basetype (*name)[w1][w2][w3][w4][w5]
 #define DIM7( basetype, name, w1, w2, w3, w4, w5, w6 ) basetype (*name)[w1][w2][w3][w4][w5][w6]
 // file name of output image
-#define FILENAME "tmp.image"
+#define FILENAME ".image"
 // Change here the number of steps, the cell geometry, etc
-#define NITER 10000
+#define NITER 5000
 #define STEPITER 1000
 #define delx 0.5
 #define dely 0.25
@@ -191,17 +192,21 @@ main (int argc, char **argv)
         my1 = my - 1;
         shmem_barrier_all ();
 /* Iteration loop: */
-        tv[0] = gettime ();
+
 
         int imageCount = 1;
         int k;
         char filename[20];
         char fidx[2];
         fidx[1]='\0';
+        double t, tcomp, tcomm;
+        t= tcomp = tcomm =0;
+        double tv1[2];
         for(k=0; k<imageCount; k++){
-        	strcpy(filename, FILENAME);
         	fidx[0]='0'+k;
         	strcat(filename,fidx);
+        	strcpy(filename, FILENAME);
+        	 tv[0] = gettime ();
         for (n = 0; n < NITER; n++) {
 
             if (!my_number) {
@@ -211,9 +216,13 @@ main (int argc, char **argv)
             /* Step of calculation starts here: */
             f = pf[curf];
             newf = pf[1 - curf];
+            tv1[0]=gettime();
             itstep (mx, my, f, newf, r, rdx2, rdy2, beta);
+            tv1[1]=gettime();
+            tcomp +=dt(&tv1[1], &tv1[0]);
             /* Do all the transfers: */
             shmem_barrier_all ();
+            tv1[0]=gettime();
             if (my_number > 0)
                 shmem_double_put (&(newf[partmx - 1][1]), &(newf[1][1]), my - 2,
                                   my_number - 1);
@@ -221,6 +230,8 @@ main (int argc, char **argv)
                 shmem_double_put (&(newf[0][1]), &(newf[mx - 2][1]), my - 2,
                                   my_number + 1);
             shmem_barrier_all ();
+            tv1[1]=gettime();
+            tcomm +=dt(&tv1[1], &tv1[0]);
             /* swap the halves: */
 
             curf = 1 - curf;
@@ -233,6 +244,12 @@ main (int argc, char **argv)
             printf ("Output image file in current directory\n");
             fp = fopen (filename, "w");
             fclose (fp);
+
+            double timer[3];
+            timer[0] = t/ 1000000.0;
+            timer[1] = tcomp/ 1000000.0;
+            timer[2] = tcomm/ 1000000.0;
+            print_time(3,timer);
         }
 
         for (j = 0; j < n_of_nodes; j++) {

@@ -66,18 +66,18 @@
 #include "../helper_printtime.h"
 
 /* declare functions */
-int get_start (int rank);
-int get_end (int rank);
-int get_num_rows (int rank);
+inline int get_start (int rank);
+inline int get_end (int rank);
+inline int get_num_rows (int rank);
 void init_domain (float **domain_ptr, int rank);
 void jacobi (float *current_ptr, float *next_ptr, float*, float*,
 		int my_start, int my_end, int my_num_rows, double*comptime, double*commtime);
 //void gauss_seidel (float **current_ptr, float **next_ptr);
 //void sor (float **current_ptr, float **next_ptr);
-float get_val_par (float *above_ptr, float *domain_ptr, float *below_ptr,
+inline float get_val_par (float *above_ptr, float *domain_ptr, float *below_ptr,
                    int rank, int i, int j);
 void enforce_bc_par (float *domain_ptr, int rank, int i, int j);
-int global_to_local (int rank, int row);
+inline int global_to_local (int rank, int row);
 float f (int i, int j);
 float get_convergence_sqd (float *current_ptr, float *next_ptr, int rank);
 
@@ -501,7 +501,7 @@ enforce_bc_par (float *domain_ptr, int rank, int i, int j)
 
  /* returns appropriate values for requested i,j */
 
-float
+inline float
 get_val_par (float *above_ptr, float *domain_ptr, float *below_ptr, int rank,
              int i, int j)
 {
@@ -574,7 +574,7 @@ init_domain (float **domain_ptr, int rank)
 
  /* computes start row for given PE */
 
-int
+inline int
 get_start (int rank)
 {
     /* computer row divisions to each proc */
@@ -598,7 +598,7 @@ get_start (int rank)
 
  /* computes end row for given PE */
 
-int
+inline int
 get_end (int rank)
 {
     /* computer row divisions to each proc */
@@ -617,13 +617,13 @@ get_end (int rank)
 
  /* calcs number of rows for given PE */
 
-int
+inline int
 get_num_rows (int rank)
 {
     return 1 + get_end (rank) - get_start (rank);
 }
 
-int
+inline int
 global_to_local (int rank, int row)
 {
     return row - get_start (rank);

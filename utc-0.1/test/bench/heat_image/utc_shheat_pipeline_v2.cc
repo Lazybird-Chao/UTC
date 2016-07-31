@@ -14,7 +14,90 @@
 #define delx 0.5
 #define dely 0.25
 
+
 using namespace iUtc;
+
+class FileWriter: public UserTaskBase{
+private:
+	char filename[20];
+	int iter;
+	int dimx, dimy;
+	double *buffer;
+
+	int nproc;
+	int partmx;
+	int leftmx;
+
+	Conduit* dataCdt;
+
+public:
+	void initImpl(int iter, int x, int y, int nproc, Conduit* cdt){
+		if(getUniqueExecution()){
+			dimx = x;
+			dimy = y;
+			this->iter = iter;
+			buffer = (double*)malloc((dimx+2)*(dimy+2)*sizeof(double));
+			dataCdt = cdt;
+			this->nproc = nproc;
+
+			partmx = (dimx + __numProcesses -1) / __numProcesses;
+			leftmx = dimx - partmx *(__numProcesses -1);
+			partmx +=2;
+		}
+
+		inter_Barrier();
+		if(__localThreadId ==0){
+			std::cout<<"task: "<<getCurrentTask()->getName()<<" finish initImpl on "
+					<<__processId<<".\n";
+		}
+	}
+
+	void runImpl(double *runtime){
+		DIM2 (double, re, dimy+2);
+		Timer timer;
+		//timer.start();
+		for(int i=0; i<iter; i++){
+			char fidx[2];
+			fidx[1]='\0';
+			fidx[0]= '0'+i;
+			char filename[20];
+			strcpy(filename,"./figure/");
+			strcat(filename,fidx);
+			strcat(filename,".img");
+			FILE* fp = fopen(filename, "w");
+
+			dataCdt->Read(buffer, (dimx+2)*(dimy+2)*sizeof(double), i);
+
+			timer.start();
+			for(int i=0; i<__numProcesses-1; i++){
+				re = (double (*)[dimy+2])(&buffer[i*partmx*(dimy+2)]);
+				for(int j=1; j<(dimx+1); j++)
+					fwrite(&(re[j][1]), dimy, sizeof(double), fp);
+			}
+			re = (double (*)[dimy+2])(buffer+(__numProcesses-1)*partmx*(dimy+2));
+
+			for(int j=1; j<leftmx+1; j++){
+				fwrite(&(re[j][1]), dimy , sizeof(double), fp);
+			}
+			fclose(fp);
+			runtime[__localThreadId] += timer.stop();
+		}
+
+
+		inter_Barrier();
+		if(__localThreadId ==0){
+			std::cout<<"task: "<<getCurrentTask()->getName()<<" finish runImpl on "<<
+					__processId<<".\n";
+		}
+	}
+
+	~FileWriter(){
+		if(buffer)
+			free(buffer);
+	}
+};
+
+
 class HeatImage: public UserTaskBase{
 private:
 	int mx;
@@ -25,15 +108,25 @@ private:
 	double rdx2, rdy2, beta;
 	int NITER;
 
+	int Nfiles;
+	int dimx, dimy;
+
 	GlobalScopedData<double> *doublef;
 	//double *f;
 	//double *newf;
 	double *r;
 
+	Conduit* cdt;
+
+
+
 public:
-	void initImpl(int dimx, int dimy, int iters){
+	void initImpl(int dimx, int dimy, int iters, int nfiles, Conduit* cdt){
 		if(getUniqueExecution()){
+			this->dimx = dimx;
+			this->dimy = dimy;
 			NITER = iters;
+			Nfiles = nfiles;
 			this->mx = dimx;
 			this->my = dimy;
 			totalmx = mx;
@@ -75,6 +168,8 @@ public:
 					}
 					r[i*this->my + j]=0.0;
 				}
+
+			this->cdt = cdt;
 		}
 
 		inter_Barrier();
@@ -88,7 +183,6 @@ public:
 	void runImpl(double *runtime){
 		Timer timer, timer1, timer2;
 		inter_Barrier();
-		timer.start();
 
 		DIM2 (double, f, my);
 		DIM2 (double, newf, my);
@@ -110,12 +204,18 @@ public:
 		if(__localThreadId == __numLocalThreads-1)
 			endi = mx-2;
 		//std::cout<<starti<<" "<<endi<<std::endl;
-		for( int n=0; n< NITER; n++){
+		timer.start();
+		for(int m =0; m< Nfiles; m++ ){
 			if(__globalThreadId == 0){
-				if(n%STEPITER == 0)
-					std::cout<<"Iteration "<<n<<std::endl;
+				std::cout<<"Iteration "<<m<<std::endl;
 			}
 			timer1.start();
+		for( int n=0; n< NITER; n++){
+			/*if(__globalThreadId == 0){
+				if(n%STEPITER == 0)
+					std::cout<<"Iteration "<<n<<std::endl;
+			}*/
+			//timer1.start();
 			f = pf[curf];
 			newf = pf[1-curf];
 			/*computing */
@@ -127,11 +227,11 @@ public:
 						 (f[i][j - 1] + f[i][j + 1]) * rdy2 - r[i*my + j]) * beta;
 				}
 			}
-			runtime[__localThreadId*3+1] += timer2.stop();
+			//runtime[__localThreadId*3+1] += timer2.stop();
 			inter_Barrier();
 
 			/* exchanging bondary data */
-			timer2.start();
+			//timer2.start();
 			if(__numProcesses>1){
 				if(getUniqueExecution()){
 					if(__processId>0){
@@ -159,34 +259,27 @@ public:
 						*/
 
 				}
-				intra_Barrier();
+				//intra_Barrier();
 			}
-			runtime[__localThreadId*3+2] += timer2.stop();
 			curf = 1-curf;
-			runtime[__localThreadId*3] += timer1.stop();
+			//runtime[__localThreadId] += timer1.stop();
+		}
+		inter_Barrier();
+
+		// gather all results to one process
+		double * results;
+		if(__globalThreadId==0){
+			results = (double*)malloc(partmx*my*__numProcesses*sizeof(double));
+		}
+		//std::cout<<results<<std::endl;
+		SharedDataGather(&newf[0][0], sizeof(double)*partmx*my, results, 0);
+		cdt->WriteBy(0,results,partmx*my*__numProcesses*sizeof(double),m );
+		intra_Barrier();
+		if(__globalThreadId==0)
+			free(results);
+		runtime[__localThreadId] += timer1.stop();
 		}
 
-		char outfile[20] = "out.img";
-		if (!__globalThreadId) {
-			printf ("Elapsed time: %4.2f sec\n", timer.stop());
-			printf ("Output image file in current directory\n");
-			FILE*fp = fopen (outfile, "w");
-			fclose (fp);
-
-		}
-
-
-		for (int j = 0; j < __numProcesses; j++) {
-			inter_Barrier();
-			if(getUniqueExecution()){
-				if (j == __processId) {
-					FILE* fp = fopen (outfile, "a");
-					for (int i = 1; i < (mx - 1); i++)
-						fwrite (&(newf[i][1]), my - 2, sizeof (newf[0][0]), fp);
-					fclose (fp);
-				}
-			}
-		}
 
 		inter_Barrier();
 		if(__localThreadId ==0){
@@ -206,7 +299,7 @@ public:
 
 int main(int argc, char* argv[]){
 	UtcContext &ctx = UtcContext::getContext(argc, argv);
-
+	std::cout<<"here"<<std::endl;
 	int nthreads=0;
 	int nprocs=0;
 	int dimx=600;
@@ -251,45 +344,56 @@ int main(int argc, char* argv[]){
 	}
 	int myproc = ctx.getProcRank();
 
-	double *runtime = new double[3*nthreads];
-	for(int i=0; i<3*nthreads; i++)
-		runtime[i]=0;
+	double *runtime1 = new double[nthreads];
+	double *runtime2 = new double[1];
+	for(int i=0; i<nthreads; i++)
+		runtime1[i]=0;
+	runtime2[0]=0;
 	ProcList plist1;
 	for(int i=0; i<nprocs; i++)
 		for(int j=0; j<nthreads; j++)
 			plist1.push_back(i);
+
 	Task<HeatImage> heatImageInst(plist1);
-	heatImageInst.init(dimx, dimy, iters);
-	heatImageInst.run(runtime);
+
+	Task<FileWriter> filewriter(ProcList(0));
+
+	Conduit cdt(&heatImageInst, &filewriter);
+
+	heatImageInst.init(dimx, dimy, iters, 10, &cdt);
+	filewriter.init(10,dimx,dimy,nprocs, &cdt);
+	Timer timer;
+	timer.start();
+	heatImageInst.run(runtime1);
+	filewriter.run(runtime2);
 	heatImageInst.wait();
+	filewriter.wait();
+	double totaltime = timer.stop();
 
 	double avg_runtime1=0;
 	double avg_runtime2=0;
-	double avg_commtime=0;
-	double avg_comptime=0;
+	double write_time=0;
 	for(int i =0; i<nthreads; i++){
-		avg_runtime1+= runtime[i*3];
-		avg_comptime+= runtime[i*3+1];
-		avg_commtime += runtime[3*i +2];
+		avg_runtime1+= runtime1[i];
 	}
 	avg_runtime1/=nthreads;
-	avg_commtime/=nthreads;
-	avg_comptime/=nthreads;
+	write_time = runtime2[0];
 	ctx.Barrier();
 	MPI_Reduce(&avg_runtime1, &avg_runtime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	avg_runtime2/=nprocs;
 
 	if(myproc==0){
-		std::cout<<"average run() time: "<<avg_runtime2<<std::endl<<
-					"\tcompute time: "<<avg_comptime<<std::endl<<
-					"\tcommunicate time: "<<avg_commtime<<std::endl;
+		std::cout<<"total time: "<<totaltime<<std::endl<<
+				"compute time: "<<avg_runtime1<<std::endl<<
+					"\twrite time: "<<write_time<<std::endl;
 		double timer[3];
-		timer[0] = avg_runtime1;
-		timer[1] = avg_comptime;
-		timer[2] = avg_commtime;
+		timer[0] = totaltime;
+		timer[1] = avg_runtime1;
+		timer[2] = write_time;
 		print_time(3,timer);
 	}
-	delete runtime;
+	delete runtime1;
+	delete runtime2;
 
 	return 0;
 }

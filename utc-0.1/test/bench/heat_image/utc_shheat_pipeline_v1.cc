@@ -25,15 +25,23 @@ private:
 	double rdx2, rdy2, beta;
 	int NITER;
 
+	int Nfiles;
+	int dimx, dimy;
+
 	GlobalScopedData<double> *doublef;
 	//double *f;
 	//double *newf;
 	double *r;
 
+
+
 public:
-	void initImpl(int dimx, int dimy, int iters){
+	void initImpl(int dimx, int dimy, int iters, int nfiles){
 		if(getUniqueExecution()){
+			this->dimx = dimx;
+			this->dimy = dimy;
 			NITER = iters;
+			Nfiles = nfiles;
 			this->mx = dimx;
 			this->my = dimy;
 			totalmx = mx;
@@ -88,7 +96,6 @@ public:
 	void runImpl(double *runtime){
 		Timer timer, timer1, timer2;
 		inter_Barrier();
-		timer.start();
 
 		DIM2 (double, f, my);
 		DIM2 (double, newf, my);
@@ -110,12 +117,18 @@ public:
 		if(__localThreadId == __numLocalThreads-1)
 			endi = mx-2;
 		//std::cout<<starti<<" "<<endi<<std::endl;
-		for( int n=0; n< NITER; n++){
+		timer.start();
+		for(int m =0; m< Nfiles; m++ ){
 			if(__globalThreadId == 0){
-				if(n%STEPITER == 0)
-					std::cout<<"Iteration "<<n<<std::endl;
+				std::cout<<"Iteration "<<m<<std::endl;
 			}
 			timer1.start();
+		for( int n=0; n< NITER; n++){
+			/*if(__globalThreadId == 0){
+				if(n%STEPITER == 0)
+					std::cout<<"Iteration "<<n<<std::endl;
+			}*/
+			//timer1.start();
 			f = pf[curf];
 			newf = pf[1-curf];
 			/*computing */
@@ -127,11 +140,11 @@ public:
 						 (f[i][j - 1] + f[i][j + 1]) * rdy2 - r[i*my + j]) * beta;
 				}
 			}
-			runtime[__localThreadId*3+1] += timer2.stop();
+			//runtime[__localThreadId*3+1] += timer2.stop();
 			inter_Barrier();
 
 			/* exchanging bondary data */
-			timer2.start();
+			//timer2.start();
 			if(__numProcesses>1){
 				if(getUniqueExecution()){
 					if(__processId>0){
@@ -161,32 +174,53 @@ public:
 				}
 				intra_Barrier();
 			}
-			runtime[__localThreadId*3+2] += timer2.stop();
+			//runtime[__localThreadId*3+2] += timer2.stop();
 			curf = 1-curf;
-			runtime[__localThreadId*3] += timer1.stop();
+			//runtime[__localThreadId*3] += timer1.stop();
 		}
 
-		char outfile[20] = "out.img";
-		if (!__globalThreadId) {
-			printf ("Elapsed time: %4.2f sec\n", timer.stop());
-			printf ("Output image file in current directory\n");
-			FILE*fp = fopen (outfile, "w");
-			fclose (fp);
-
+		// gather all results to one process
+		double * results;
+		if(__globalThreadId==0){
+			results = (double*)malloc(partmx*my*__numProcesses*sizeof(double));
 		}
+		//std::cout<<results<<std::endl;
+		SharedDataGather(&newf[0][0], sizeof(double)*partmx*my, results, 0);
+		runtime[__localThreadId*3+1] += timer1.stop();
 
-
-		for (int j = 0; j < __numProcesses; j++) {
-			inter_Barrier();
-			if(getUniqueExecution()){
-				if (j == __processId) {
-					FILE* fp = fopen (outfile, "a");
-					for (int i = 1; i < (mx - 1); i++)
-						fwrite (&(newf[i][1]), my - 2, sizeof (newf[0][0]), fp);
-					fclose (fp);
-				}
+		timer2.start();
+		//write result to file
+		if(__globalThreadId==0){
+			char fidx[2];
+			fidx[1]='\0';
+			fidx[0]= '0'+m;
+			char filename[20];
+			strcpy(filename,"./figure/");
+			strcat(filename,fidx);
+			strcat(filename,".img");
+			FILE* fp = fopen(filename, "w");
+			DIM2 (double, re, my);
+			for(int i=0; i<__numProcesses-1; i++){
+				re = (double (*)[my])(&results[i*partmx*my]);
+				for(int j=1; j<(mx-1); j++)
+					fwrite(&(re[j][1]), my-2, sizeof(double), fp);
 			}
+			re = (double (*)[my])(results+(__numProcesses-1)*partmx*my);
+
+			for(int j=1; j<leftmx+1; j++){
+				fwrite(&(re[j][1]), my-2, sizeof(double), fp);
+			}
+			fclose(fp);
+			free(results);
 		}
+		runtime[__localThreadId*3+2] += timer2.stop();
+		inter_Barrier();
+
+		}
+		runtime[__localThreadId*3] += timer.stop();
+
+
+
 
 		inter_Barrier();
 		if(__localThreadId ==0){
@@ -259,22 +293,24 @@ int main(int argc, char* argv[]){
 		for(int j=0; j<nthreads; j++)
 			plist1.push_back(i);
 	Task<HeatImage> heatImageInst(plist1);
-	heatImageInst.init(dimx, dimy, iters);
+	heatImageInst.init(dimx, dimy, iters, 10);
+	Timer timer;
+	timer.start();
 	heatImageInst.run(runtime);
 	heatImageInst.wait();
+	double totaltime = timer.stop();
 
 	double avg_runtime1=0;
 	double avg_runtime2=0;
-	double avg_commtime=0;
+	double write_time=0;
 	double avg_comptime=0;
 	for(int i =0; i<nthreads; i++){
 		avg_runtime1+= runtime[i*3];
 		avg_comptime+= runtime[i*3+1];
-		avg_commtime += runtime[3*i +2];
 	}
 	avg_runtime1/=nthreads;
-	avg_commtime/=nthreads;
 	avg_comptime/=nthreads;
+	write_time = runtime[0*3+2];
 	ctx.Barrier();
 	MPI_Reduce(&avg_runtime1, &avg_runtime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	avg_runtime2/=nprocs;
@@ -282,11 +318,11 @@ int main(int argc, char* argv[]){
 	if(myproc==0){
 		std::cout<<"average run() time: "<<avg_runtime2<<std::endl<<
 					"\tcompute time: "<<avg_comptime<<std::endl<<
-					"\tcommunicate time: "<<avg_commtime<<std::endl;
+					"\twrite time: "<<write_time<<std::endl;
 		double timer[3];
-		timer[0] = avg_runtime1;
+		timer[0] = totaltime;
 		timer[1] = avg_comptime;
-		timer[2] = avg_commtime;
+		timer[2] = write_time;
 		print_time(3,timer);
 	}
 	delete runtime;

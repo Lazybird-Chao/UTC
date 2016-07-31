@@ -451,9 +451,9 @@ public:
 		if(__globalThreadId ==0){
 			delete gather_local_convergence;
 			printf
-				("Estimated time to convergence in %d iterations using %d processors on a %dx%d grid is %f seconds\n",
+				("Estimated time to convergence in %d iterations using %d processors on a %dx%d grid is %f seconds. %f\n",
 				 k, __numProcesses, (int) floor (width / H), (int) floor (heigth / H),
-				 timer.stop());
+				 timer.stop(), runtime[4*__localThreadId+1]);
 		}
 		if(__localThreadId ==0){
 			std::cout<<"task: "<<getCurrentTask()->getName()<<" finish runImpl on "<<
@@ -545,13 +545,14 @@ int main(int argc, char* argv[]){
 		double jacbtime =0;
 		//double avg_commtime1 =0;
 		for(int i=0; i<nthreads; i++){
-			avg_runtime1 += runtime[3*i];
-			jacbtime += runtime[3*i+3];
+			avg_runtime1 += runtime[4*i];
+			jacbtime += runtime[4*i+3];
 			//avg_comptime1 += runtime[3*i + 1];
 			//avg_commtime1 += runtime[3*i + 2];
 		}
+		jacbtime /= nthreads;
 		for(int i=0; i<nthreads-1; i++)
-			firsttime+=runtime[3*i+2];
+			firsttime+=runtime[4*i+2];
 		firsttime /=(nthreads-1);
 		avg_runtime1 /= nthreads;
 		avg_comptime1 /= nthreads;
@@ -561,7 +562,7 @@ int main(int argc, char* argv[]){
 		avg_runtime2/=nprocs;
 		if(myproc ==0){
 			std::cout<<"average run() time: "<<avg_runtime1<<std::endl;
-			std::cout<<"last thread run() time: "<<runtime[(nthreads-1)*3+2]<<std::endl;
+			std::cout<<"last thread run() time: "<<runtime[(nthreads-1)*4+2]<<std::endl;
 			std::cout<<"first thread run() time: "<<firsttime<<std::endl;
 
 			double timer[4];

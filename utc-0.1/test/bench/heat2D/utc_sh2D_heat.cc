@@ -321,10 +321,10 @@ public:
 				sor(U_Curr, U_Next);
 				break;
 			}
-			timer1.start();
+			//timer1.start();
 			get_convergence_sqd(U_Curr, U_Next);
 			//runtime[3*__localThreadId +1] += timer1.stop();
-			timer2.start();
+			//timer2.start();
 			SharedDataGather(&local_convergence_sqd, sizeof(float), gather_local_convergence, 0);
 			if(__globalThreadId == 0){
 				convergence_sqd = 0;
@@ -467,7 +467,7 @@ int main(int argc, char* argv[]){
 			 timer[0]=avg_runtime1;
 			 timer[1]=avg_comptime1;
 			 timer[2]=avg_commtime1;
-			 timer[4]=jacbtime;
+			 timer[3]=jacbtime;
 			 print_time(4, timer);
 		}
 		ctx.Barrier();
