@@ -4,23 +4,23 @@
         none
     [New]
         -Ranklist     a int vector like list, used for mapping task to different processes, used
-		              when creating a user task.
-			     eg. (1 1 1) means task have 3 threads, both on process1
-				     (1 2 3 3) means task have 4 threads, thread1 on process1, thread2 on 
-				     process2, thread3/4 on process3
-		
+                      when creating a user task.
+                 eg. (1 1 1) means task have 3 threads, both on process1
+                     (1 2 3 3) means task have 4 threads, thread1 on process1, thread2 on 
+                     process2, thread3/4 on process3
+        
         -RootTask     a class derived from TaskBase. Created by system at initialization, not user. 
-		              Eash process has one and only one RootTask obj, all other tasks are children of 
-		              this roottask. root task has one thread, actually is the main thread of the 
-		              process. Other task will run on other threads created on this process.
-		
+                      Eash process has one and only one RootTask obj, all other tasks are children of 
+                      this roottask. root task has one thread, actually is the main thread of the 
+                      process. Other task will run on other threads created on this process.
+        
         -TaskBase      the base class for task. Define some common functions and data for task.
-		          eg.  m_TaskId  a logical number create for this task.
-		               m_numProcesses  how many processes this task would use for run.
-		               m_numLocalThreads  how many threads this task has on current process.
-		               m_LocalThreadRegistry  a map from threadid to thread rank of task at current
-		                                      process.
-		                                      
+                  eg.  m_TaskId  a logical number create for this task.
+                       m_numProcesses  how many processes this task would use for run.
+                       m_numLocalThreads  how many threads this task has on current process.
+                       m_LocalThreadRegistry  a map from threadid to thread rank of task at current
+                                              process.
+                                              
         -TaskInfo      a struct define several basic infomation about a task. every thread will
                        create a TaskInfo struct, it was implemented as TSS(thread specifice storage).
                        roottask also has this in main thread of a process.
@@ -32,7 +32,7 @@
                        and coresponded task object. Each task will be registed by taskmanager. 
                        Also TaskInfo struct is defied in it. 
                        TODO: improving the singleton implemention      
-                        	                                      
+                                                                  
         -Utc.h          a main header file that user shoudl include in his program to use this system
         
         -UtcBase        a base interface class, which will be implemented by UtcMpi.
@@ -144,14 +144,38 @@
                         
 
 -Version 0.1.0
-			The first usable task&conduit prototype. Implement task create procedure, inproc conduit, xproc 
-			conduit.
-			
-			
-			
--Version 0.1.1	
-			Finish debugging the last version. Right now the main problem of the system is conduit's 
-			performance. 
-			Improving inproc conduit communication using "lock free" design and algorithm.
-			
+            The first usable task&conduit prototype. Implement task create procedure, inproc conduit, xproc 
+            conduit.
+            
+            
+            
+-Version 0.1.1  
+            Finish debugging the last version. Right now the main problem of the system is conduit's 
+            performance. 
+            Improving inproc conduit communication using "lock free" design and algorithm.
+    
+    
+    
+-Version 0.1.2
+
+
+
+
+
+-Version 0.1.3
+
+
+
+-Version 0.1.4
+
+
+-Version 0.1.5
+            Add PGAS support for task: 
+                add GlobalScopedData and PrivateScopedData;
+                now make use of OpenSHMEM to implement GlobalScopedData, there 
+                are problems, the shmem_barrier can not be used anyway, especially
+                for multiple task's running. Also other OpenSHMEM function may
+                have problem for using with multiple threads;
+                
+                    
                                                                
