@@ -164,12 +164,12 @@ main (int argc, char **argv)
     for( p = 1; p<=np; p++){
         tv2[0]=gettime();
     	for(i=0; i<ROWS; i++){
-   	    for (k = 0; k < blocksize; k++) {
-                for (j = 0; j < blocksize; j++) {
-                    c_local[i][j] = c_local[i][j] + a_local[i][k]
-                        * b_local[k + B_matrix_displacement][j];
-                }
-            }
+			for (k = 0; k < blocksize; k++) {
+					for (j = 0; j < blocksize; j++) {
+						c_local[i][j] = c_local[i][j] + a_local[i][k]
+							* b_local[k + B_matrix_displacement][j];
+					}
+				}
 	    }
         tv2[1]=gettime();
         t2 += dt(&tv2[1], &tv2[0]);
@@ -247,7 +247,7 @@ main (int argc, char **argv)
         printf ("Execution comp time in seconds =%.4f \n",  maxtime2 / 1000000.0);
         printf ("Execution comm time in seconds =%.4f \n",(maxtime-maxtime2) / 1000000.0);
         //printf("%f \n %f\n", c_local[1][10], c_local[10][100]);
-        double timer[0];
+        double timer[3];
         timer[0] = maxtime / 1000000.0;
         timer[2] = (maxtime-maxtime2)/ 1000000.0;
         timer[1] = maxtime2/ 1000000.0;

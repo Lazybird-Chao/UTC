@@ -40,7 +40,7 @@ private:
 	GlobalScopedData<float> *U_Curr_Below;
 	GlobalScopedData<float> *U_Send_Buffer;
 
-	int get_start(int rank){
+	 inline int get_start(int rank){
 		/* computer row divisions to each proc */
 		int per_proc, start_row, remainder;
 		// MPI_Comm_size(MPI_COMM_WORLD,&p);
@@ -60,7 +60,7 @@ private:
 		return start_row;
 	}
 
-	int get_end(int rank ){
+	 inline int get_end(int rank ){
 		 /* computer row divisions to each proc */
 		int per_proc, remainder, end_row;
 		// MPI_Comm_size(MPI_COMM_WORLD,&p);
@@ -75,11 +75,11 @@ private:
 		return end_row;
 	}
 
-	int get_num_rows(int rank){
+	 inline int get_num_rows(int rank){
 		return 1+ get_end(rank) - get_start(rank);
 	}
 
-	int global_to_local(int rank, int row){
+	 inline int global_to_local(int rank, int row){
 		return row - get_start(rank);
 	}
 
@@ -109,12 +109,16 @@ private:
 		}*/
 		for (int j = t_start_row; j <= t_end_row; j++) {
 			for (int i = 0; i < (int) floor (width / H); i++) {
-				sum +=
+				/*sum +=
 					pow (n_p[global_to_local (__processId, j)][i] -
-						 c_p[global_to_local (__processId, j)][i], 2);
+						 c_p[global_to_local (__processId, j)][i], 2);*/
+				sum +=(n_p[j-my_start_row][i] -
+						 c_p[j-my_start_row][i]) * (n_p[j-my_start_row][i] -
+								 c_p[j-my_start_row][i]);
 			}
 		}
 		local_convergence_sqd_array[__localThreadId]= sum;
+		//local_convergence_sqd=sum;
 		intra_Barrier();
 		if(getUniqueExecution()){
 			local_convergence_sqd = 0;
@@ -122,7 +126,6 @@ private:
 				local_convergence_sqd += local_convergence_sqd_array[i];
 		}
 		intra_Barrier();
-
 	}
 
 	void enforce_bc_par(float *domain_ptr, int rank, int i, int j){
@@ -135,7 +138,8 @@ private:
 		else if (i <= 0 || j <= 0 || i >= ((int) floor (width / H) - 1)
 				 || j >= ((int) floor (width / H) - 1)) {
 			/* All edges and beyond are set to 0.0 */
-			domain_ptr[global_to_local (rank, j)*((int) floor (width / H)) +i] = 0.0;
+			//domain_ptr[global_to_local (rank, j)*((int) floor (width / H)) +i] = 0.0;
+			domain_ptr[(j-my_start_row)*((int) floor (width / H)) +i] = 0.0;
 		}
 	}
 
@@ -156,7 +160,7 @@ private:
 	    }
 	    else {
 	        /* Else, return value for matrix supplied or ghost rows */
-	        if (j < get_start (rank)) {
+	        if (j < my_start_row) {
 	            if (rank == ROOT) {
 	                /* not interested in above ghost row */
 	                ret_val = 0.0;
@@ -167,7 +171,7 @@ private:
 	                   %f\n",rank,i,j,above_ptr[i]); fflush(stdout); */
 	            }
 	        }
-	        else if (j > get_end (rank)) {
+	        else if (j > my_end_row) {
 	            if (rank == (__numProcesses - 1)) {
 	                /* not interested in below ghost row */
 	                ret_val = 0.0;
@@ -180,7 +184,7 @@ private:
 	        }
 	        else {
 	            /* else, return the value in the domain asked for */
-	            ret_val = domain_ptr[global_to_local (rank, j)*((int) floor (width / H)) + i];
+	            ret_val = domain_ptr[(j-my_start_row)*((int) floor (width / H)) + i];
 	            /* printf("%d: Used real (%d,%d) row from self =
 	               %f\n",rank,i,global_to_local(rank,j),domain_ptr[global_to_local(rank,j)][i]);
 	               fflush(stdout); */
@@ -321,10 +325,10 @@ public:
 				sor(U_Curr, U_Next);
 				break;
 			}
-			//timer1.start();
+			timer1.start();
 			get_convergence_sqd(U_Curr, U_Next);
-			//runtime[3*__localThreadId +1] += timer1.stop();
-			//timer2.start();
+			runtime[4*__localThreadId +1] += timer1.stop();
+			timer2.start();
 			SharedDataGather(&local_convergence_sqd, sizeof(float), gather_local_convergence, 0);
 			if(__globalThreadId == 0){
 				convergence_sqd = 0;
@@ -345,7 +349,7 @@ public:
 							U_Next[(j - my_start_row)*((int) floor (width / H)) +i];
 				}
 			}
-			//runtime[3*__localThreadId +2] += timer2.stop();
+			runtime[4*__localThreadId +2] += timer2.stop();
 			k++;
 			inter_Barrier();
 		}
@@ -462,6 +466,7 @@ int main(int argc, char* argv[]){
 			std::cout<<"average run() time: "<<avg_runtime2<<std::endl;
 			std::cout<<"comptime: "<<avg_comptime1<<std::endl;
 			std::cout<<"commtime: "<<avg_commtime1<<std::endl;
+			std::cout<<"jacbtime: "<<jacbtime<<std::endl;
 
 			double timer[4];
 			 timer[0]=avg_runtime1;

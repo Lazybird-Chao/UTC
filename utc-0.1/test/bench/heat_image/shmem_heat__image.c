@@ -206,62 +206,64 @@ main (int argc, char **argv)
         	fidx[0]='0'+k;
         	strcat(filename,fidx);
         	strcpy(filename, FILENAME);
-        	 tv[0] = gettime ();
-        for (n = 0; n < NITER; n++) {
+        	tv[0] = gettime ();
+			for (n = 0; n < NITER; n++) {
 
-            if (!my_number) {
-                if (!(n % STEPITER))
-                    printf ("Iteration %d\n", n);
-            }
-            /* Step of calculation starts here: */
-            f = pf[curf];
-            newf = pf[1 - curf];
-            tv1[0]=gettime();
-            itstep (mx, my, f, newf, r, rdx2, rdy2, beta);
-            tv1[1]=gettime();
-            tcomp +=dt(&tv1[1], &tv1[0]);
-            /* Do all the transfers: */
-            shmem_barrier_all ();
-            tv1[0]=gettime();
-            if (my_number > 0)
-                shmem_double_put (&(newf[partmx - 1][1]), &(newf[1][1]), my - 2,
-                                  my_number - 1);
-            if (my_number < (n_of_nodes - 1))
-                shmem_double_put (&(newf[0][1]), &(newf[mx - 2][1]), my - 2,
-                                  my_number + 1);
-            shmem_barrier_all ();
-            tv1[1]=gettime();
-            tcomm +=dt(&tv1[1], &tv1[0]);
-            /* swap the halves: */
+				if (!my_number) {
+					if (!(n % STEPITER))
+						printf ("Iteration %d\n", n);
+				}
+				/* Step of calculation starts here: */
+				f = pf[curf];
+				newf = pf[1 - curf];
+				tv1[0]=gettime();
+				itstep (mx, my, f, newf, r, rdx2, rdy2, beta);
+				tv1[1]=gettime();
+				tcomp +=dt(&tv1[1], &tv1[0]);
+				/* Do all the transfers: */
+				shmem_barrier_all ();
+				tv1[0]=gettime();
+				if (my_number > 0)
+					shmem_double_put (&(newf[partmx - 1][1]), &(newf[1][1]), my - 2,
+									  my_number - 1);
+				if (my_number < (n_of_nodes - 1))
+					shmem_double_put (&(newf[0][1]), &(newf[mx - 2][1]), my - 2,
+									  my_number + 1);
+				shmem_barrier_all ();
+				tv1[1]=gettime();
+				tcomm +=dt(&tv1[1], &tv1[0]);
+				/* swap the halves: */
 
-            curf = 1 - curf;
-        }
+				curf = 1 - curf;
+			}
 
-        if (!my_number) {
-            tv[1] = gettime ();
-            t = dt (&tv[1], &tv[0]);
-            printf ("Elapsed time: %4.2f sec\n", t / 1000000.0);
-            printf ("Output image file in current directory\n");
-            fp = fopen (filename, "w");
-            fclose (fp);
+			if (!my_number) {
+				tv[1] = gettime ();
+				t = dt (&tv[1], &tv[0]);
+				printf ("Elapsed time: %4.2f sec\n", t / 1000000.0);
+				printf ("comp time: %4.2f sec\n", tcomp / 1000000.0);
+				printf ("comm time: %4.2f sec\n", tcomm / 1000000.0);
+				printf ("Output image file in current directory\n");
+				fp = fopen (filename, "w");
+				fclose (fp);
 
-            double timer[3];
-            timer[0] = t/ 1000000.0;
-            timer[1] = tcomp/ 1000000.0;
-            timer[2] = tcomm/ 1000000.0;
-            print_time(3,timer);
-        }
+				double timer[3];
+				timer[0] = t/ 1000000.0;
+				timer[1] = tcomp/ 1000000.0;
+				timer[2] = tcomm/ 1000000.0;
+				print_time(3,timer);
+			}
 
-        for (j = 0; j < n_of_nodes; j++) {
-            shmem_barrier_all ();
-            if (j == my_number) {
-                fp = fopen (filename, "a");
-                for (i = 1; i < (mx - 1); i++)
-                    fwrite (&(newf[i][1]), my - 2, sizeof (newf[0][0]), fp);
-                fclose (fp);
-            }
-        }
-        shmem_barrier_all ();
+			for (j = 0; j < n_of_nodes; j++) {
+				shmem_barrier_all ();
+				if (j == my_number) {
+					fp = fopen (filename, "a");
+					for (i = 1; i < (mx - 1); i++)
+						fwrite (&(newf[i][1]), my - 2, sizeof (newf[0][0]), fp);
+					fclose (fp);
+				}
+			}
+			shmem_barrier_all ();
         }
     }
 

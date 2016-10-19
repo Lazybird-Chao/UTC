@@ -33,7 +33,7 @@ public:
 			this->membership = membership;
 			this->clusters = clusters;
 			this->loops = loops;
-			threshold = 0.0001;
+			threshold = 0.001;
 			numChanges =0;
 			for (int i=0; i<numObjs; i++)
 				membership[i] = -1;

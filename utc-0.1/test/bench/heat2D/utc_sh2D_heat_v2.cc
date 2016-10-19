@@ -111,8 +111,8 @@ private:
 		for (int j = t_start_row; j <= t_end_row; j++) {
 			for (int i = 0; i < (int) floor (width / H); i++) {
 				sum +=
-					pow (n_p[global_to_local (__processId, j)][i] -
-						 c_p[global_to_local (__processId, j)][i], 2);
+					pow (n_p[j-my_start_row][i] -
+						 c_p[j-my_start_row][i], 2);
 			}
 		}
 
@@ -137,7 +137,7 @@ private:
 		else if (i <= 0 || j <= 0 || i >= ((int) floor (width / H) - 1)
 				 || j >= ((int) floor (width / H) - 1)) {
 			/* All edges and beyond are set to 0.0 */
-			domain_ptr[global_to_local (rank, j)*((int) floor (width / H)) +i] = 0.0;
+			domain_ptr[(j-my_start_row)*((int) floor (width / H)) +i] = 0.0;
 		}
 	}
 
@@ -158,7 +158,7 @@ private:
 	    }
 	    else {
 	        /* Else, return value for matrix supplied or ghost rows */
-	        if (j < get_start (rank)) {
+	        if (j < my_start_row) {
 	            if (rank == ROOT) {
 	                /* not interested in above ghost row */
 	                ret_val = 0.0;
@@ -169,7 +169,7 @@ private:
 	                   %f\n",rank,i,j,above_ptr[i]); fflush(stdout); */
 	            }
 	        }
-	        else if (j > get_end (rank)) {
+	        else if (j > my_end_row) {
 	            if (rank == (__numProcesses - 1)) {
 	                /* not interested in below ghost row */
 	                ret_val = 0.0;
@@ -182,7 +182,7 @@ private:
 	        }
 	        else {
 	            /* else, return the value in the domain asked for */
-	            ret_val = domain_ptr[global_to_local (rank, j)*((int) floor (width / H)) + i];
+	            ret_val = domain_ptr[(j-my_start_row)*((int) floor (width / H)) + i];
 	            /* printf("%d: Used real (%d,%d) row from self =
 	               %f\n",rank,i,global_to_local(rank,j),domain_ptr[global_to_local(rank,j)][i]);
 	               fflush(stdout); */
@@ -417,11 +417,11 @@ public:
 				sor(U_Curr, U_Next);
 				break;
 			}
-			timer1.start();
+			//timer1.start();
 			get_convergence_sqd(U_Curr, U_Next);
 			//std::cout<<local_convergence_sqd<<std::endl;
 			//runtime[3*__localThreadId +1] += timer1.stop();
-			timer2.start();
+			//timer2.start();
 			SharedDataGather(&local_convergence_sqd, sizeof(float), gather_local_convergence, 0);
 			if(__globalThreadId == 0){
 				convergence_sqd = 0;
@@ -555,13 +555,13 @@ int main(int argc, char* argv[]){
 			firsttime+=runtime[4*i+2];
 		firsttime /=(nthreads-1);
 		avg_runtime1 /= nthreads;
-		avg_comptime1 /= nthreads;
+		//avg_comptime1 /= nthreads;
 		//avg_commtime1 /= nthreads;
 		ctx.Barrier();
 		MPI_Reduce(&avg_runtime1, &avg_runtime2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		avg_runtime2/=nprocs;
 		if(myproc ==0){
-			std::cout<<"average run() time: "<<avg_runtime1<<std::endl;
+			std::cout<<"average run() time: "<<avg_runtime2<<std::endl;
 			std::cout<<"last thread run() time: "<<runtime[(nthreads-1)*4+2]<<std::endl;
 			std::cout<<"first thread run() time: "<<firsttime<<std::endl;
 

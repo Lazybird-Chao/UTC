@@ -75,8 +75,8 @@ void jacobi (float *current_ptr, float *next_ptr, float*, float*,
 //void gauss_seidel (float **current_ptr, float **next_ptr);
 //void sor (float **current_ptr, float **next_ptr);
 inline float get_val_par (float *above_ptr, float *domain_ptr, float *below_ptr,
-                   int rank, int i, int j);
-void enforce_bc_par (float *domain_ptr, int rank, int i, int j);
+                   int rank, int i, int j, int my_start_row, int my_end_row);
+void enforce_bc_par (float *domain_ptr, int rank, int i, int j, int my_start_row);
 inline int global_to_local (int rank, int row);
 float f (int i, int j);
 float get_convergence_sqd (float *current_ptr, float *next_ptr, int rank);
@@ -275,10 +275,10 @@ main (int argc, char **argv)
     	tv[2]=gettime();
         local_convergence_sqd = get_convergence_sqd (U_Curr[0], U_Next[0], my_rank);
         tv[3]=gettime();
-        //comptime += dt (&tv[3], &tv[2]);
+        comptime += dt (&tv[3], &tv[2]);
 
+        shmem_barrier_all ();
         tv[2]=gettime();
-        //shmem_barrier_all ();
         shmem_float_sum_to_all (&convergence_sqd, &local_convergence_sqd, 1, 0,
                                 0, p, pWrk, pSync);
 
@@ -304,7 +304,7 @@ main (int argc, char **argv)
             }
         }
         tv[3]=gettime();
-        //commtime += dt (&tv[3], &tv[2]);
+        commtime += dt (&tv[3], &tv[2]);
         k++;
         // MPI_Barrier(MPI_COMM_WORLD);
         shmem_barrier_all ();
@@ -322,6 +322,7 @@ main (int argc, char **argv)
              t / 1000000.0);
         printf("comp time: %f\n", comptime/1000000.0);
         printf("comm time: %f\n", commtime/1000000.0);
+        printf("jacb time: %f\n", jacbtime/1000000.0);
     }
 
     if(my_rank == ROOT){
@@ -347,7 +348,7 @@ main (int argc, char **argv)
         free (U_Next);
     }
     // MPI_Finalize();
-    exit (EXIT_SUCCESS);
+    //exit (EXIT_SUCCESS);
     return 0;
 }
 
@@ -371,8 +372,8 @@ get_convergence_sqd (float *current_ptr, float *next_ptr, int rank)
     for (j = my_start; j <= my_end; j++) {
         for (i = 0; i < (int) floor (WIDTH / H); i++) {
             sum +=
-                pow (U_Next_p[global_to_local (rank, j)][i] -
-                		U_Curr_p[global_to_local (rank, j)][i], 2);
+                pow (U_Next_p[(j-my_start)][i] -
+                		U_Curr_p[(j-my_start)][i], 2);
         }
     }
     return sum;
@@ -451,20 +452,21 @@ jacobi (float *current_ptr, float *next_ptr,
     t2=gettime();
     *commtime += dt(&t2, &t1);
     /* Jacobi method using global addressing */
+    t1 = gettime();
     for (j = my_start; j <= my_end; j++) {
         for (i = 0; i < (int) floor (WIDTH / H); i++) {
             next_ptr[(j - my_start)*((int) floor (WIDTH / H)) +i] =
                 .25 *
                 (get_val_par
                  (U_Curr_Above, current_ptr, U_Curr_Below, my_rank, i - 1,
-                  j) + get_val_par (U_Curr_Above, current_ptr, U_Curr_Below,
+                  j, my_start, my_end) + get_val_par (U_Curr_Above, current_ptr, U_Curr_Below,
                                     my_rank, i + 1,
-                                    j) + get_val_par (U_Curr_Above, current_ptr,
+                                    j,my_start, my_end) + get_val_par (U_Curr_Above, current_ptr,
                                                       U_Curr_Below, my_rank, i,
-                                                      j - 1) +
+                                                      j - 1,my_start, my_end) +
                  get_val_par (U_Curr_Above, current_ptr, U_Curr_Below, my_rank,
-                              i, j + 1) - (pow (H, 2) * f (i, j)));
-            enforce_bc_par (next_ptr, my_rank, i, j);
+                              i, j + 1, my_start, my_end) - (pow (H, 2) * f (i, j)));
+            enforce_bc_par (next_ptr, my_rank, i, j, my_start);
         }
     }
     t1 = gettime();
@@ -485,7 +487,7 @@ jacobi (float *current_ptr, float *next_ptr,
  /* enforces bcs in in serial and parallel */
 
 void
-enforce_bc_par (float *domain_ptr, int rank, int i, int j)
+enforce_bc_par (float *domain_ptr, int rank, int i, int j, int my_start_row)
 {
     /* enforce bc's first */
     if (i == ((int) floor (WIDTH / H / 2) - 1) && j == 0) {
@@ -495,7 +497,7 @@ enforce_bc_par (float *domain_ptr, int rank, int i, int j)
     else if (i <= 0 || j <= 0 || i >= ((int) floor (WIDTH / H) - 1)
              || j >= ((int) floor (HEIGHT / H) - 1)) {
         /* All edges and beyond are set to 0.0 */
-        domain_ptr[global_to_local (rank, j)*((int) floor (WIDTH / H)) + i] = 0.0;
+        domain_ptr[(j-my_start_row)*((int) floor (WIDTH / H)) + i] = 0.0;
     }
 }
 
@@ -503,7 +505,7 @@ enforce_bc_par (float *domain_ptr, int rank, int i, int j)
 
 inline float
 get_val_par (float *above_ptr, float *domain_ptr, float *below_ptr, int rank,
-             int i, int j)
+             int i, int j, int my_start_row, int my_end_row)
 {
     float ret_val;
 
@@ -521,7 +523,7 @@ get_val_par (float *above_ptr, float *domain_ptr, float *below_ptr, int rank,
     }
     else {
         /* Else, return value for matrix supplied or ghost rows */
-        if (j < get_start (rank)) {
+        if (j < my_start_row) {
             if (rank == ROOT) {
                 /* not interested in above ghost row */
                 ret_val = 0.0;
@@ -532,7 +534,7 @@ get_val_par (float *above_ptr, float *domain_ptr, float *below_ptr, int rank,
                    %f\n",rank,i,j,above_ptr[i]); fflush(stdout); */
             }
         }
-        else if (j > get_end (rank)) {
+        else if (j > my_end_row) {
             if (rank == (p - 1)) {
                 /* not interested in below ghost row */
                 ret_val = 0.0;
@@ -545,7 +547,7 @@ get_val_par (float *above_ptr, float *domain_ptr, float *below_ptr, int rank,
         }
         else {
             /* else, return the value in the domain asked for */
-            ret_val = domain_ptr[global_to_local (rank, j)*((int) floor (WIDTH / H)) +i];
+            ret_val = domain_ptr[(j-my_start_row)*((int) floor (WIDTH / H)) +i];
             /* printf("%d: Used real (%d,%d) row from self =
                %f\n",rank,i,global_to_local(rank,j),domain_ptr[global_to_local(rank,j)][i]);
                fflush(stdout); */
