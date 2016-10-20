@@ -289,8 +289,6 @@ main (int argc, char **argv)
             }
         }
 
-        /* broadcast method to use */
-
         //shmem_barrier_all ();
         shmem_broadcast32 (&convergence, &convergence, 1, 0, 0, 0, p, pSync);
         if (convergence <= EPSILON) {

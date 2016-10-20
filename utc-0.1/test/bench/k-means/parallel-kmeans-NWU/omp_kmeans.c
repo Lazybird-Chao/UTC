@@ -23,7 +23,8 @@
 #include <stdlib.h>
 
 #include <omp.h>
-#include "kmeans.h"
+
+#include "../parallel-kmeans-NWU/kmeans.h"
 
 
 /*----< euclid_dist_2() >----------------------------------------------------*/

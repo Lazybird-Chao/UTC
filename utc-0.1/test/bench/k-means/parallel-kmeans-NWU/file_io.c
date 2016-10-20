@@ -27,7 +27,7 @@
 #include <errno.h>
 extern int errno;
 
-#include "kmeans.h"
+#include "../parallel-kmeans-NWU/kmeans.h"
 
 #define MAX_CHAR_PER_LINE 128
 

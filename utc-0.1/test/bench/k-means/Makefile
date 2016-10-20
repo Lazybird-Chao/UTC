@@ -1,17 +1,18 @@
 #################################
-BENCHMARK = utc_kmeans_mtask_v2
+BENCHMARK = utc_kmeans_stask_v2
 BINDIR = .
-PROGRAM_SOURCE:= utc_kmeans_mtask_v2.cc
-
+PROGRAM_SOURCE:= utc_kmeans_stask_v2.cc
+COMM_FILE = ../../../for-vm.comm
+LIBMK_FILE = for-vm.mk
 
 #################################
 PROGRAM = $(BINDIR)/$(BENCHMARK).utc
 default: $(PROGRAM)
 
-include ../../../for-lab.comm
+include $(COMM_FILE)
 
 libutc:
-	cd $(PROJECT_HOMEDIR);$(MAKE) -f for-lab.mk
+	cd $(PROJECT_HOMEDIR);$(MAKE) -f $(LIBMK_FILE)
 
 
 ### helper function for test program
@@ -26,7 +27,7 @@ $(PROGRAM): $(PROGRAM_OBJ) libutc
 	$(G++)	$(CCFLAG) $(LINKFLAG) -o $(PROGRAM) $(PROGRAM_OBJ) $(LIB)
 	@echo "make target successful !!!" 
 
-utc_kmeans_stask_v2.o:utc_kmeans_stask_v2.cc
+$(BENCHMARK).o:$(BENCHMARK).cc
 	$(G++)	-c $< $(CCFLAG) $(INCLUDE)
 
 				

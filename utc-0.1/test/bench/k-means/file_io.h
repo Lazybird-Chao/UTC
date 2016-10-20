@@ -44,9 +44,9 @@ int _debug =0;
 using namespace iUtc;
 
 /*---< file_read() >---------------------------------------------------------*/
-class FileRead{
+class FileRead: public UserTaskBase{
 public:
-	void init(    char *filename,      /* input file name */
+	void initImpl(    char *filename,      /* input file name */
                   int  *numObjs,       /* no. data objects (local) */
                   int  *numCoords,     /* no. coordinates */
 				  float **&objects_out)
@@ -117,7 +117,7 @@ public:
 		}
 	}
 
-	void run(){
+	void runImpl(){
 		int     i, j;
 
 		if(getLrank() == 0){
@@ -154,9 +154,9 @@ private:
 
 
 /*---< file_write() >---------------------------------------------------------*/
-class FileWrite{
+class FileWrite : public UserTaskBase{
 public:
-	void init(char      *filename,     /* input file name */
+	void initImpl(char      *filename,     /* input file name */
             int        numClusters,  /* no. clusters */
             int        numObjs,      /* no. data objects */
             int        numCoords,    /* no. coordinates (local) */
@@ -175,7 +175,7 @@ public:
 		}
 	}
 
-	void run(){
+	void runImpl(){
 		if(getLrank() == 0){
 			FILE *fptr;
 		    int   i, j;

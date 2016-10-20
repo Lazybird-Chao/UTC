@@ -28,7 +28,7 @@
 
 #include <mpi.h>
 int      _debug;
-#include "kmeans.h"
+#include "../parallel-kmeans-NWU/kmeans.h"
 
 #ifdef _PNETCDF_BUILT
 #include <pnetcdf.h>

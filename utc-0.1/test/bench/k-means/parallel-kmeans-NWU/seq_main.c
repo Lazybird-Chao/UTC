@@ -27,7 +27,7 @@
 #include <unistd.h>     /* getopt() */
 
 int      _debug;
-#include "kmeans.h"
+#include "../parallel-kmeans-NWU/kmeans.h"
 
 /*---< usage() >------------------------------------------------------------*/
 static void usage(char *argv0, float threshold) {

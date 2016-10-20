@@ -26,7 +26,7 @@
 extern int errno;
 
 #include <mpi.h>
-#include "kmeans.h"
+#include "../parallel-kmeans-NWU/kmeans.h"
 
 
 /*---< mpi_read() >----------------------------------------------------------*/

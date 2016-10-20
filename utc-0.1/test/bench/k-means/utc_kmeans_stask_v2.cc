@@ -21,9 +21,9 @@
 
 using namespace iUtc;
 
-class kmeans_algorithm{
+class kmeans_algorithm : public UserTaskBase{
 public:
-	void init(float** objects, int numCoords, int numObjs, int numClusters,
+	void initImpl(float** objects, int numCoords, int numObjs, int numClusters,
 			int *membership, float **clusters, double *runtime, int *loops){
 		if(getLrank()==0){
 			this->runtime = runtime;
@@ -31,22 +31,22 @@ public:
 			threshold = 0.001;
 			numChanges =0;
 		}
-		if(getTrank()==0){
+		if(getGrank()==0){
 			this->objects = objects;
 			this->numCoords = numCoords;
 			this->numObjs = numObjs;
 			this->numClusters = numClusters;
 			this->membership = membership;
 			this->clusters = clusters;
-			//std::cout<<getTrank()<<" "<<this->numCoords<<" "<<this->numObjs<<" "<<this->numClusters<<std::endl;
+			//std::cout<<getGrank()<<" "<<this->numCoords<<" "<<this->numObjs<<" "<<this->numClusters<<std::endl;
 		}
 		SharedDataBcast((void*)&(this->numCoords), sizeof(int), 0);
 		SharedDataBcast((void*)&(this->numObjs), sizeof(int), 0);
 		SharedDataBcast((void*)&(this->numClusters), sizeof(int), 0);
-		//std::cout<<getTrank()<<" "<<this->numCoords<<" "<<this->numObjs<<" "<<this->numClusters<<std::endl;
+		//std::cout<<getGrank()<<" "<<this->numCoords<<" "<<this->numObjs<<" "<<this->numClusters<<std::endl;
 		int objsize = this->numCoords * this->numObjs;
 		int clustersize = this->numClusters *this->numCoords;
-		if(getTrank()!=0 && getLrank()==0){
+		if(getGrank()!=0 && getLrank()==0){
 			this->objects = (float**)malloc(this->numObjs * sizeof(float*));
 			this->objects[0]=(float*)malloc(objsize*sizeof(float));
 			for(int i=1; i<this->numObjs; i++)
@@ -62,7 +62,7 @@ public:
 		intra_Barrier();
 		SharedDataBcast((void*)this->objects[0], objsize*sizeof(float), 0);
 		SharedDataBcast((void*)this->clusters[0], clustersize*sizeof(float), 0);
-		//std::cout<<getTrank()<<std::endl;
+		//std::cout<<getGrank()<<std::endl;
 		if(getLrank()==0){
 			newClusters    = (float**) malloc(this->numClusters * sizeof(float*));
 			assert(newClusters != NULL);
@@ -75,12 +75,12 @@ public:
 				this->membership[i]=-1;
 			}
 		}
-		/*if(getLrank()==0)
-			std::cout<<"Finish init."<<std::endl;*/
+		if(getLrank()==0)
+			std::cout<<"Finish init."<<std::endl;
 	}
 
-	void run(){
-		int taskThreadId = getTrank();
+	void runImpl(){
+		int taskThreadId = getGrank();
 		int numTotalThreads = getGsize();
 		/* local cluster centers used in each thread*/
 		float **localClusters;
@@ -127,6 +127,23 @@ public:
 			/* find each object's belonged cluster */
 			for(int i= startObjIdx; i<= endObjIdx; i++){
 				int idx = find_nearest_cluster(numClusters, numCoords, objects[i], clusters);
+				/*int idx=0;
+				float min_dist = 0.0;
+				for(int j=0; j<numCoords; j++){
+					min_dist +=(objects[i][j] - clusters[0][j])*(objects[i][j] - clusters[0][j]);
+				}
+				float dist = 0.0;
+				for(int k=1; k<numClusters; k++){
+					dist =0.0;
+					for(int j=0; j<numCoords; j++){
+						dist +=(objects[i][j] - clusters[k][j])*(objects[i][j] - clusters[k][j]);
+					}
+					if(dist < min_dist){
+						min_dist = dist;
+						idx = k;
+					}
+				}*/
+
 				/* check if membership changed */
 				if(idx != membership[i]){
 					changedObjs++;
@@ -205,8 +222,8 @@ public:
 			}
 			SharedDataBcast(clusters[0], numClusters*numCoords*sizeof(float), 0);
 			loopruntime[1]+= timer.stop();
-			loopcounter++;
-		}while(((float)changedObjs)/numObjs > threshold && loopcounter < 100);
+			//loopcounter++;
+		}while(((float)changedObjs)/numObjs > threshold && loopcounter++ < 100);
 
 		/* finish compute */
 		if(getLrank() ==0){
@@ -226,7 +243,7 @@ public:
 			delete changeforgather;
 			free(clustersizeforgather);
 		}
-		if(getTrank()!=0 && getLrank()==0){
+		if(getGrank()!=0 && getLrank()==0){
 			free(objects[0]);
 			free(objects);
 			free(clusters[0]);
@@ -321,7 +338,7 @@ int main(int argc, char*argv[]){
 	int N;
 
 	/* startup utc contex*/
-	UtcContext ctx(argc, argv);
+	UtcContext &ctx = UtcContext::getContext(argc, argv);
 
 	int opt;
 	extern char *optarg;
