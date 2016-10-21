@@ -6,5 +6,9 @@
  */
 
 
-
+/*
+ *   overlap thread lock time during update new clusters in local
+ *
+ *   that time may too small, no effect when overlap, so temporary give up that try
+ */
 

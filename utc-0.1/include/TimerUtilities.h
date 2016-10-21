@@ -14,6 +14,7 @@ void usleep_for(long n_useconds);
 
 double time_from_start();
 
+inline void spinWait(long _counter);
 
 }
 

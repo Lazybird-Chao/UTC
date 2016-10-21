@@ -156,7 +156,7 @@ public:
 			}
 
 			/* update task-threads shared newClusters with localClusters */
-			updateNewCluster.write_lock();
+			updateNewCluster.lock();
 			for(int i=0; i<numClusters; i++){
 				if(localClusterSize[i] != 0){
 					for(int j=0; j<numCoords; j++){
@@ -168,7 +168,7 @@ public:
 				}
 			}
 			numChanges +=changedObjs;
-			updateNewCluster.write_unlock();
+			updateNewCluster.unlock();
 			/* sync all task-threads, wait local compute finish*/
 			intra_Barrier();
 			loopruntime[0]+=timer.stop();
@@ -309,7 +309,9 @@ private:
 	float **newClusters;
 	int *newClusterSize;
 
-	SharedDataLock updateNewCluster;
+	//SharedDataLock updateNewCluster;
+	SpinLock updateNewCluster;
+
 
 	double *runtime;
 	int *loops;

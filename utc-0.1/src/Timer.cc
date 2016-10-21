@@ -150,4 +150,20 @@ double time_from_start()
 }
 
 
+
+inline void spinWait(long _counter){
+	if(_counter<USE_PAUSE)
+		_mm_pause();
+	else if(_counter<USE_SHORT_SLEEP){
+		__asm__ __volatile__ ("pause" ::: "memory");
+		std::this_thread::yield();
+	}
+	else if(_counter<USE_LONG_SLEEP)
+		nanosleep(&SHORT_PERIOD, nullptr);
+	else
+		nanosleep(&LONG_PERIOD, nullptr);
+}
+
+
+
 }// end namespace iUtc
