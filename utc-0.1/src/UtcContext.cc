@@ -2,6 +2,10 @@
 #include "RootTask.h"
 #include "ConduitManager.h"
 #include "AffinityUtilities.h"
+#include "gpu/UtcGpuBasics.h"
+#if ENABLE_GPU_TASK
+#include "gpu/CudaDeviceManager.h"
+#endif
 
 std::chrono::system_clock::time_point SYSTEM_START_TIME = std::chrono::system_clock::now();
 
@@ -130,10 +134,36 @@ void UtcContext::initialize(int& argc, char** argv)
     PRINT_TIME_NOW(*procOstream)
     *procOstream<<"Utc context created on proc "<<pRank<<" ("<<getpid()<<")..."<<std::endl;
 #endif
+
+    /******** init gpu related staff *****/
+#if ENABLE_GPU_TASK
+#ifdef USE_DEBUG_LOG
+    PRINT_TIME_NOW(*procOstream)
+    *procOstream<<"Utc context init cudaDeviceManager!!!"<<std::endl;
+#endif
+    CudaDeviceManager& cudaDevMgr = CudaDeviceManager::getCudaDeviceManager();
+	#if CUDA_CONTEX_MAP_MODE==3
+    	for(int i=0; i<cudaDevMgr.getNumDevices(); i++)
+    		cudaDevMgr.initDevice(i);
+	#endif
+#endif
+
 }
 
 void UtcContext::finalize()
 {
+#if ENABLE_GPU_TASK
+#ifdef USE_DEBUG_LOG
+    PRINT_TIME_NOW(*procOstream)
+    *procOstream<<"Utc context destroy cudaDeviceManager!!!"<<std::endl;
+#endif
+    CudaDeviceManager& cudaDevMgr = CudaDeviceManager::getCudaDeviceManager();
+	#if CUDA_CONTEX_MAP_MODE==3
+    	for(int i=0; i<cudaDevMgr.getNumDevices(); i++)
+    		cudaDevMgr.resetDevice(i);
+    	cudaDevMgr.~CudaDeviceManager();
+	#endif
+#endif
     if(TaskManager::getCurrentTaskId()!= m_rootTaskId)
         return;
     if(--m_nCount != 0)

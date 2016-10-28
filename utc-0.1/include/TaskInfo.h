@@ -45,7 +45,26 @@ namespace iUtc{
     MPI_Group* mpigroupPtr = nullptr; // same value in one task
 #endif
 
+    struct CPUTaskSpecInfo cpuSpecInfo;
+
+    struct GPUTaskSpecInfo gpuSpecInfo;
+
  };
+
+
+ /* cpu task specific info */
+ struct CPUTaskSpecInfo{
+
+ };
+
+
+ /* gpu task specific info*/
+ struct GPUTaskSpecInfo{
+	 // current thread's binded GPU device Id
+	 int gpuId=-1;
+
+ };
+
 
 struct ThreadPrivateData
 {

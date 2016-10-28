@@ -64,9 +64,13 @@
 //Z
 
 
+/****** gpu task support ******/
+#include "gpu/UtcGpuBasics.h"
+#if ENABLE_GPU_TASK
 
+#include "gpu/UtcGpu.h"
 
-
+#endif
 
 
 #endif

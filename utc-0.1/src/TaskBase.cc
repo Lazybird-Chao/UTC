@@ -175,6 +175,7 @@ void TaskBase::display()
 {
 	std::cout<<
 			"Name:"<< m_Name<<
+			", Type:"<<m_TaskType<<
 			", ProcessRank:"<<m_processRank<<
 			", NumLocalThreads:"<<m_numLocalThreads<<
 			", NumTotalThreads:"<<m_numTotalThreads<<

@@ -17,3 +17,5 @@
 /for-vm.comm
 /for-mac.comm
 *.utc
+.project
+.cproject
