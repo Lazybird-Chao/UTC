@@ -12,6 +12,7 @@
 #include "TaskArtifact.h"
 #include "TaskInfo.h"
 #include "UserTaskBase.h"
+#include "UtcGpuContext.h"
 
 #include <vector>
 #include <map>
@@ -39,7 +40,7 @@ namespace iUtc{
 
 		~TaskGPU();
 
-		void launchThread();
+		void launchThreads();
 
 		int initImpl(std::function<void()> initHandle);
 
@@ -52,8 +53,10 @@ namespace iUtc{
 		int finishImpl();
 
 		void threadImpl(ThreadRank_t trank, ThreadRank_t lrank,
-					std::ofstream* output, int hardcoreId = -1,
-					int gpuToBind);
+					std::ofstream* output,
+					int hardcoreId,
+					int gpuToBind
+					);
 
 		void threadSync();
 		void threadSync(ThreadRank_t lrank);

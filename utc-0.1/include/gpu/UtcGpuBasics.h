@@ -21,7 +21,7 @@
 	2	cudaCtxMapToTask,
 	3	cudaCtxMapToDevice
  */
-#define CUDA_CONTEX_MAP_MODE	3
+#define CUDA_CONTEXT_MAP_MODE	3
 
 #define MAX_DEVICE_PER_NODE		4
 

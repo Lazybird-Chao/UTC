@@ -8,6 +8,9 @@
 #include "gpu/CudaDeviceManager.h"
 #include "gpu/UtcGpuBasics.h"
 
+#include "cuda_runtime.h"
+#include "cuda.h"
+
 namespace iUtc{
 
 CudaDeviceManager* m_managerInstance = nullptr;
@@ -20,14 +23,14 @@ CudaDeviceManager::CudaDeviceManager(){
 	runtimeMajor = runtimeVersion/1000;
 	runtimeMinor = (runtimeVersion%100)/10;
 
-	cudaGetDevicCount(&m_numTotalDevices);
+	cudaGetDeviceCount(&m_numTotalDevices);
 	m_numDevicesForUse = 0;
 	for(int i=0; i<MAX_DEVICE_PER_NODE;i++)
 		m_deviceForUseArray[i] = -1;
 	for(int i=0; i<m_numTotalDevices; i++){
 		cudaSetDevice(i);
 		cudaDeviceProp *devProp = (cudaDeviceProp*) malloc(sizeof(cudaDeviceProp));
-		cudaGetDeviceProerties(devProp, i);
+		cudaGetDeviceProperties(devProp, i);
 		/*
 		 * we only record GPU capability >=2
 		 */
@@ -74,7 +77,7 @@ cudaDeviceInfo CudaDeviceManager::getDeviceInfo(int devId){
 	return m_deviceInfoArray[devId];
 }
 
-inline void CudaDeviceManager::initDevice(int devId){
+void CudaDeviceManager::initDevice(int devId){
 	if(m_deviceInfoArray[devId].inited == false &&
 			m_deviceInfoArray[devId].reseted == false){
 		/*
@@ -94,12 +97,12 @@ inline void CudaDeviceManager::initDevice(int devId){
 		 */
 		//cudaSetDeviceFlags();
 
-		m_deviceInfoArray[devId]= true;
+		m_deviceInfoArray[devId].inited= true;
 	}
 
 }
 
-inline void CudaDeviceManager::resetDevice(int devId){
+void CudaDeviceManager::resetDevice(int devId){
 	if(m_deviceInfoArray[devId].inited==true &&
 			m_deviceInfoArray[devId].reseted==false){
 		cudaSetDevice(m_deviceForUseArray[devId]);

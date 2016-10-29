@@ -1,7 +1,7 @@
 ###################
 default:libutc.a
 
-include ./comm.mk
+include ./make.comm
 
 ###################
 vpath %.h  $(PROJECT_INCLUDEDIR)
@@ -9,13 +9,33 @@ vpath %.inc $(PROJECT_INCLUDEDIR)
 vpath %.cc $(PROJECT_SRCDIR)
 
 ###################
-OBJS:= 	UtcContext.o UtcMpi.o ProcList.o UniqueExeTag.o \
-    		RootTask.o  TaskBase.o TaskManager.o Task.o  TaskCPU.o TaskUtilities.o UserTaskBase.o \
-    		PrivateScopedData.o GlobalScopedData.o\
-    		ConduitManager.o Conduit.o InprocConduit.o XprocConduit.o \
-    		InprocConduit_Write.o InprocConduit_BWrite.o InprocConduit_PWrite.o	InprocConduit_Read.o \
-    		InprocConduit_Async.o XprocConduit_Async.o \
-    		Timer.o  Barrier.o SharedDataLock.o
+OBJS:= 	UtcContext.o \
+		UtcMpi.o \
+		ProcList.o \
+		UniqueExeTag.o \
+    	RootTask.o  \
+    	TaskBase.o  \
+    	TaskManager.o \
+    	Task.o  \
+    	TaskCPU.o \
+    	TaskUtilities.o \ 
+    	UserTaskBase.o \
+    	PrivateScopedData.o \
+    	GlobalScopedData.o \
+		ConduitManager.o \
+		Conduit.o \
+		InprocConduit.o \
+		XprocConduit.o \
+		InprocConduit_Write.o \
+		InprocConduit_BWrite.o \
+		InprocConduit_PWrite.o	\
+		InprocConduit_Read.o \
+		InprocConduit_Async.o \
+		XprocConduit_Async.o \
+		Timer.o  \
+		Barrier.o \
+		SharedDataLock.o
+		
 OBJ_UTC = $(addprefix ./lib/, $(OBJS))
 
 ### library required object files

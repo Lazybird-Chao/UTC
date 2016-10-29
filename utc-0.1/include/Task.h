@@ -11,6 +11,7 @@
 #include "AffinityUtilities.h"
 #include "TaskArtifact.h"
 #include "TaskCPU.h"
+#include "gpu/TaskGPU.h"
 
 #include <thread>
 #include <mutex>

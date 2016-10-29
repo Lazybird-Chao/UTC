@@ -58,9 +58,22 @@ TaskGPU::TaskGPU(int numLocalThreads,
 	for(int i=0; i< numLocalThreads; i++){
 		m_gpuIdBindList.push_back(findProperGPU(i));
 	}
-	m_allLocalThreadUtcGpuContexPtr = UtcGpuContext** malloc(numLocalThreads*
+	m_allLocalThreadUtcGpuContexPtr = (UtcGpuContext**) malloc(numLocalThreads*
 							sizeof(UtcGpuContext*));
-	m_cudaCtxMode = CUDA_CONTEX_MAP_MODE;
+	switch(CUDA_CONTEXT_MAP_MODE){
+	case 1:
+		m_cudaCtxMode = cudaCtxMapMode::cudaCtxMapToThread;
+		break;
+	case 2:
+		m_cudaCtxMode = cudaCtxMapMode::cudaCtxMapToTask;
+		break;
+	case 3:
+		m_cudaCtxMode = cudaCtxMapMode::cudaCtxMapToDevice;
+		break;
+	default:
+		m_cudaCtxMode = cudaCtxMapMode::unknown;
+
+	}
 
 }
 
@@ -177,7 +190,8 @@ void TaskGPU::threadImpl(ThreadRank_t trank,
 						ThreadRank_t lrank,
 						std::ofstream *output,
 						int hardcoreId,
-						int gpuToBind){
+						int gpuToBind
+						){
 	//
 	std::ofstream *m_threadOstream = output;
 #ifdef USE_DEBUG_LOG

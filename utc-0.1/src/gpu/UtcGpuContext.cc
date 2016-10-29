@@ -7,6 +7,7 @@
 
 #include "gpu/UtcGpuBasics.h"
 #include "gpu/UtcGpuContext.h"
+#include "gpu/CudaDeviceManager.h"
 
 namespace iUtc{
 
@@ -17,7 +18,7 @@ UtcGpuContext::UtcGpuContext(int gpuId, cudaCtxMapMode ctxMode){
 }
 
 UtcGpuContext::~UtcGpuContext(){
-	m_cudaCtxMapMode = 0;
+	m_cudaCtxMapMode = cudaCtxMapMode::unknown;
 	m_utcGpuId = -1;
 	m_cudaDeviceId = m_cudaDevice = -1;
 }

@@ -173,9 +173,22 @@ void TaskBase::RegisterTask()
 
 void TaskBase::display()
 {
+	std::string tasktype[3]={"unknown", "cpu_task", "gpu_task"};
+	std::string s;
+	switch(m_TaskType){
+	case TaskType::cpu_task:
+		s = tasktype[1];
+		break;
+	case TaskType::gpu_task:
+		s = tasktype[2];
+		break;
+	default:
+		s = tasktype[0];
+		break;
+	}
 	std::cout<<
 			"Name:"<< m_Name<<
-			", Type:"<<m_TaskType<<
+			", Type:"<<s<<
 			", ProcessRank:"<<m_processRank<<
 			", NumLocalThreads:"<<m_numLocalThreads<<
 			", NumTotalThreads:"<<m_numTotalThreads<<

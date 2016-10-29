@@ -44,8 +44,8 @@ public:
 	 * it will init the cuda primary context on each gpu;
 	 * as well as reset this primary context on each gpu;
 	 */
-	inline void initDevice(int devId);
-	inline void resetDevice(int devId);
+	void initDevice(int devId);
+	void resetDevice(int devId);
 
 	int				runtimeMajor;
 	int				runtimeMinor;

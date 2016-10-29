@@ -142,7 +142,7 @@ void UtcContext::initialize(int& argc, char** argv)
     *procOstream<<"Utc context init cudaDeviceManager!!!"<<std::endl;
 #endif
     CudaDeviceManager& cudaDevMgr = CudaDeviceManager::getCudaDeviceManager();
-	#if CUDA_CONTEX_MAP_MODE==3
+	#if CUDA_CONTEXT_MAP_MODE==3
     	for(int i=0; i<cudaDevMgr.getNumDevices(); i++)
     		cudaDevMgr.initDevice(i);
 	#endif
@@ -158,7 +158,7 @@ void UtcContext::finalize()
     *procOstream<<"Utc context destroy cudaDeviceManager!!!"<<std::endl;
 #endif
     CudaDeviceManager& cudaDevMgr = CudaDeviceManager::getCudaDeviceManager();
-	#if CUDA_CONTEX_MAP_MODE==3
+	#if CUDA_CONTEXT_MAP_MODE==3
     	for(int i=0; i<cudaDevMgr.getNumDevices(); i++)
     		cudaDevMgr.resetDevice(i);
     	cudaDevMgr.~CudaDeviceManager();

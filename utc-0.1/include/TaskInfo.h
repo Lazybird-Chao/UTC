@@ -22,6 +22,21 @@ namespace iUtc{
  * \remarks This class is not designed to be used outside of the Task class.
  *
  */
+
+/* cpu task specific info */
+ struct CPUTaskSpecInfo{
+
+ };
+
+
+ /* gpu task specific info*/
+ struct GPUTaskSpecInfo{
+	 // current thread's binded GPU device Id
+	 int gpuId=-1;
+
+ };
+
+
  struct TaskInfo
  {
     //the task id that the current thread belongs to
@@ -51,19 +66,6 @@ namespace iUtc{
 
  };
 
-
- /* cpu task specific info */
- struct CPUTaskSpecInfo{
-
- };
-
-
- /* gpu task specific info*/
- struct GPUTaskSpecInfo{
-	 // current thread's binded GPU device Id
-	 int gpuId=-1;
-
- };
 
 
 struct ThreadPrivateData

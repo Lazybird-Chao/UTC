@@ -546,6 +546,22 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 											&m_threadPrivateData,
 											m_userTaskObjPtr);
 		}
+		else if(tType==TaskType::gpu_task){
+			m_realTaskInstance = new TaskGPU(m_numLocalThreads,
+											m_processRank,
+											m_numProcesses,
+											m_numTotalThreads,
+											plist[currentProcRank],
+											&m_LocalThreadList,
+											&m_LocalThreadRegistry,
+											&m_ThreadRank2Local,
+											m_procOstream,
+											&m_commonTaskInfo,
+											&m_commonThreadPrivateData,
+											&m_threadPrivateData,
+											m_userTaskObjPtr
+											);
+		}
 		else{
 			std:cerr<<"Error, unsupported task type!!!\n";
 			exit(1);

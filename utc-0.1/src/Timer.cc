@@ -1,7 +1,12 @@
 #include "Timer.h"
+#include "UtcBasics.h"
+#include "TimerUtilities.h"
+
 #include <iostream>
 #include <thread>
-#include "../include/TimerUtilities.h"
+#include <atomic>
+#include <emmintrin.h>
+
 
 namespace iUtc{
 

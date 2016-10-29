@@ -25,6 +25,7 @@ enum class TaskType{
 	gpu_task
 };
 
+
 class TaskBase{
 public:
     std::string getName();
