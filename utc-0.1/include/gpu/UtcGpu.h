@@ -20,6 +20,7 @@
 
 #include "TaskGPU.h"
 
+#include "GpuTaskUtilities.h"
 
 #include "helper_cuda.h"
 

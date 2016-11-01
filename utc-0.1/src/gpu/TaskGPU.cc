@@ -5,12 +5,12 @@
  *      Author: chao
  */
 
-#include "gpu/TaskGPU.h"
+#include "TaskGPU.h"
 #include "gpu/UtcGpuBasics.h"
 #include "UtcContext.h"
 #include "TaskManager.h"
-#include "gpu/UtcGpuContext.h"
-#include "gpu/CudaDeviceManager.h"
+#include "UtcGpuContext.h"
+#include "CudaDeviceManager.h"
 
 
 namespace iUtc{
@@ -243,6 +243,9 @@ void TaskGPU::threadImpl(ThreadRank_t trank,
 	/****** setup the gpu context *****/
 	m_allLocalThreadUtcGpuContexPtr[lrank] = new UtcGpuContext(gpuToBind, m_cudaCtxMode);
 	UtcGpuContext *myUtcGpuContext = m_allLocalThreadUtcGpuContexPtr[lrank];
+#if ENABLE_GPU_TASK
+	taskInfoPtr->gpuSpecInfo.utcGpuCtx = myUtcGpuContext;
+#endif
 	myUtcGpuContext->ctxInit();
 
 

@@ -5,9 +5,10 @@
  *      Author: chao
  */
 
-#include "gpu/UtcGpuBasics.h"
-#include "gpu/UtcGpuContext.h"
-#include "gpu/CudaDeviceManager.h"
+#include "UtcGpuBasics.h"
+#include "UtcGpuContext.h"
+#include "CudaDeviceManager.h"
+#include "helper_cuda.h"
 
 namespace iUtc{
 
@@ -33,7 +34,7 @@ void UtcGpuContext::ctxInit(){
 		/*
 		 * bind cuda device primary ctx to this host thread
 		 */
-		cudaSetDevice(m_cudaDeviceId);
+		checkCudaRuntimeErrors(cudaSetDevice(m_cudaDeviceId));
 
 		/*
 		 * set flag for device, should be done in other places,
@@ -50,14 +51,14 @@ void UtcGpuContext::ctxInit(){
 		/*
 		 * get the current primary cuda ctx
 		 */
-		cuCtxGetCurrent(&m_cudaContextBound);
+		checkCudaDriverErrors(cuCtxGetCurrent(&m_cudaContextBound));
 
 		/*
 		 * get the cuda stream handle for this host thread
 		 */
 		if(ENABLE_CONCURRENT_CUDA_KERNEL){
 			// cudaStreamDefault, cudaStreamNonBlocking
-			cudaStreamCreateWithFlags(&m_cudaStreamBound, cudaStreamDefault);
+			checkCudaRuntimeErrors(cudaStreamCreateWithFlags(&m_cudaStreamBound, cudaStreamDefault));
 
 			/* create stream with flag and priority
 			 */
@@ -101,10 +102,23 @@ void UtcGpuContext::ctxDestroy(){
 			 * may need to call stream sync before destroy it
 			 */
 			//cudaStreamSynchronize(m_cudaStreamBound);
-			cudaStreamDestroy(m_cudaStreamBound);
+			checkCudaRuntimeErrors(cudaStreamDestroy(m_cudaStreamBound));
 		}
 	}
 }// end ctxDestroy
+
+
+CUcontext* UtcGpuContext::getCudaContext(){
+	return &m_cudaContextBound;
+}
+
+int UtcGpuContext::getCudaDeviceId(){
+	return m_cudaDeviceId;
+}
+
+int UtcGpuContext::getUtcGpuId(){
+	return m_utcGpuId;
+}
 
 }// end namespace iUtc
 

@@ -50,7 +50,7 @@ GENCODE_SM35 = -gencode arch=compute35,code=sm_35
 
 NVCCFLAG = $(GENCODE_SM20)
 
-CUDA_LIB := $(CUDA_DIR)/lib64 -lcuda -lcudart
+CUDA_LIB := -L$(CUDA_DIR)/lib64 -lcuda -lcudart
 
 NVLINKFLAG = $(GENCODE_SM20)
 
@@ -58,6 +58,8 @@ NVLINKFLAG = $(GENCODE_SM20)
 ifeq ($(ENABLE_GPU), 1)
 	INCLUDE += -I$(CUDA_DIR)/include
 	INCLUDE += -I$(PROJECT_HOMEDIR)/include/gpu
+	LIB += $(PROJECT_LIBDIR)/libutcgpu.a
+	LIB += $(CUDA_LIB)
 endif
 
 

@@ -146,6 +146,7 @@ void UtcContext::initialize(int& argc, char** argv)
     	for(int i=0; i<cudaDevMgr.getNumDevices(); i++)
     		cudaDevMgr.initDevice(i);
 	#endif
+    	//std::cout<<cudaDevMgr.getNumDevices()<<std::endl;
 #endif
 
 }

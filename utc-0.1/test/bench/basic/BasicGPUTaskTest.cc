@@ -7,6 +7,7 @@
 
 /* main UTC header file */
 #include "Utc.h"
+#include "UtcGpu.h"
 
 /* other standard header file */
 #include <iostream>
@@ -21,10 +22,18 @@ using namespace iUtc;
  * user defined task class
  */
 class GPUTaskTest: public UserTaskBase{
+public:
+	void initImpl(){
+		std::cout<<"finish init"<<std::endl;
+	};
 
-	void initImpl(){};
-
-	void runImpl(){};
+	void runImpl(){
+		std::cout<<"Using utcGPU: "<<getCurrentUtcGpuId()<<std::endl;
+		std::cout<<"Mapping to cudaGPU: "<<getCurrentCudaDeviceId()<<std::endl;
+		int dev;
+		cudaGetDevice(&dev);
+		std::cout<<"From cudart: GPU "<<dev<<std::endl;
+	};
 
 
 };
@@ -36,7 +45,7 @@ class GPUTaskTest: public UserTaskBase{
 int main(int argc, char** argv){
 
 	/* initialize UTC context */
-	UtcContext &ctx = UtcContext::getContext(&argc, &argv);
+	UtcContext &ctx = UtcContext::getContext(argc, argv);
 
 	/* get total procs of UTC runtime */
 	int nproc = ctx.numProcs();

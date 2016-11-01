@@ -36,6 +36,12 @@ public:
 
 	void ctxDestroy();
 
+	CUcontext* getCudaContext();
+
+	int getUtcGpuId();
+
+	int getCudaDeviceId();
+
 private:
 	// the actual related cuda context
 	CUcontext	m_cudaContextBound;

@@ -18,7 +18,7 @@ OBJS:= 	UtcContext.o \
     	TaskManager.o \
     	Task.o  \
     	TaskCPU.o \
-    	TaskUtilities.o \ 
+    	TaskUtilities.o \
     	UserTaskBase.o \
     	PrivateScopedData.o \
     	GlobalScopedData.o \

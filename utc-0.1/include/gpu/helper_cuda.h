@@ -12,6 +12,8 @@
 
 #include "cuda_runtime.h"
 #include "cuda.h"
+#include "cstdlib"
+#include "cstdio"
 
 
 static const char *_cudartGetErrorEnum(cudaError_t error)
@@ -455,7 +457,7 @@ inline void __getLastCudaError(const char *errorMessage, const char *file, const
     {
         fprintf(stderr, "%s(%i) : getLastCudaError() CUDA error : %s : (%d) %s.\n",
                 file, line, errorMessage, (int)err, cudaGetErrorString(err));
-        DEVICE_RESET
+        cudaDeviceReset();
         exit(EXIT_FAILURE);
     }
 }

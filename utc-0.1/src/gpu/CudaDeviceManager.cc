@@ -5,32 +5,36 @@
  *      Author: chao
  */
 
-#include "gpu/CudaDeviceManager.h"
-#include "gpu/UtcGpuBasics.h"
+#include "CudaDeviceManager.h"
+#include "UtcGpuBasics.h"
+#include "helper_cuda.h"
+
+#include <iostream>
 
 #include "cuda_runtime.h"
 #include "cuda.h"
 
 namespace iUtc{
 
-CudaDeviceManager* m_managerInstance = nullptr;
+CudaDeviceManager* CudaDeviceManager::m_managerInstance = nullptr;
 CudaDeviceManager::CudaDeviceManager(){
 	int driverVersion, runtimeVersion;
-	cudaDriverGetVersion(&driverVersion);
-	cudaRuntimeGetVersion(&runtimeVersion);
+	checkCudaRuntimeErrors(cudaDriverGetVersion(&driverVersion));
+	checkCudaRuntimeErrors(cudaRuntimeGetVersion(&runtimeVersion));
 	driverMajor = driverVersion/1000;
 	driverMinor = (driverVersion%100)/10;
 	runtimeMajor = runtimeVersion/1000;
 	runtimeMinor = (runtimeVersion%100)/10;
 
-	cudaGetDeviceCount(&m_numTotalDevices);
+	checkCudaRuntimeErrors(cudaGetDeviceCount(&m_numTotalDevices));
+	//std::cout<<m_numTotalDevices<<driverMajor<<runtimeMajor<<ERROR_LINE<<std::endl;
 	m_numDevicesForUse = 0;
 	for(int i=0; i<MAX_DEVICE_PER_NODE;i++)
 		m_deviceForUseArray[i] = -1;
 	for(int i=0; i<m_numTotalDevices; i++){
-		cudaSetDevice(i);
+		checkCudaRuntimeErrors(cudaSetDevice(i));
 		cudaDeviceProp *devProp = (cudaDeviceProp*) malloc(sizeof(cudaDeviceProp));
-		cudaGetDeviceProperties(devProp, i);
+		checkCudaRuntimeErrors(cudaGetDeviceProperties(devProp, i));
 		/*
 		 * we only record GPU capability >=2
 		 */
@@ -84,7 +88,7 @@ void CudaDeviceManager::initDevice(int devId){
 		 * this devId is not the gpu device id managed by cuda.
 		 * the real cuda id is m_deviceForUseArray[devId]
 		 */
-		cudaSetDevice(m_deviceForUseArray[devId]);
+		checkCudaRuntimeErrors(cudaSetDevice(m_deviceForUseArray[devId]));
 		/*
 		 * set flag for device, should be done in other places,
 		 * here we just bind the primary cuda ctx to this host thread
@@ -105,17 +109,17 @@ void CudaDeviceManager::initDevice(int devId){
 void CudaDeviceManager::resetDevice(int devId){
 	if(m_deviceInfoArray[devId].inited==true &&
 			m_deviceInfoArray[devId].reseted==false){
-		cudaSetDevice(m_deviceForUseArray[devId]);
+		checkCudaRuntimeErrors(cudaSetDevice(m_deviceForUseArray[devId]));
 		cudaDeviceReset();
 		m_deviceInfoArray[devId].reseted = true;
 	}
 }
 
-inline int CudaDeviceManager::getCudaDeviceId(int devId){
+int CudaDeviceManager::getCudaDeviceId(int devId){
 	return m_deviceForUseArray[devId];
 }
 
-inline int CudaDeviceManager::getAvailableGpu(int threadLocalRank){
+int CudaDeviceManager::getAvailableGpu(int threadLocalRank){
 	return threadLocalRank % m_numDevicesForUse;
 }
 

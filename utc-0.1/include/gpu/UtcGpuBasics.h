@@ -12,6 +12,8 @@
 #define UTC_GPU_UTCGPUBASICS_H_
 
 
+#define ERROR_LINE " line:"<<__LINE__<<", file:"<<__FILE__<<" "
+
 #define ENABLE_GPU_TASK		1
 
 #define ENABLE_CONCURRENT_CUDA_KERNEL	0
@@ -26,6 +28,8 @@
 #define MAX_DEVICE_PER_NODE		4
 
 #define CUDA_MAJOR	55
+
+
 
 
 #endif /* UTC_GPU_UTCGPUBASICS_H_ */

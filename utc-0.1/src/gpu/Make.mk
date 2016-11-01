@@ -17,6 +17,7 @@ vpath %.cc $(PROJECT_SRCDIR)/gpu
 OBJS:= 	CudaDeviceManager.o \
 		TaskGPU.o \
 		UtcGpuContext.o \
+		GpuTaskUtilities.o
 		
 libutcgpu.a: $(OBJS)
 	ar -r -uv libutcgpu.a $(OBJS)
@@ -29,4 +30,5 @@ TaskGPU.o: TaskGPU.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 UtcGpuContext.o : UtcGpuContext.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
-	
+GpuTaskUtilities.o : GpuTaskUtilities.cc
+	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)

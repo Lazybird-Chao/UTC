@@ -4,6 +4,10 @@
 #include "UtcBasics.h"
 #include "Barrier.h"
 #include "UniqueExeTag.h"
+#include "gpu/UtcGpuBasics.h"
+#if ENABLE_GPU_TASK
+#include "gpu/UtcGpuContext.h"
+#endif
 
 
 #include <pthread.h>
@@ -31,9 +35,12 @@ namespace iUtc{
 
  /* gpu task specific info*/
  struct GPUTaskSpecInfo{
-	 // current thread's binded GPU device Id
+	 // current thread's binded GPU device Id not cuda device id
 	 int gpuId=-1;
-
+#if ENABLE_GPU_TASK
+	 // current thread's UtcGpuContext
+	 UtcGpuContext *utcGpuCtx=nullptr;
+#endif
  };
 
 
