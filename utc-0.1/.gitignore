@@ -19,3 +19,6 @@
 *.utc
 *.project
 *.cproject
+/.cproject.back
+/.DS_Store
+/.project.back

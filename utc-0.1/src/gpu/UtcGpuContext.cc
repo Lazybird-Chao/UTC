@@ -120,6 +120,10 @@ int UtcGpuContext::getUtcGpuId(){
 	return m_utcGpuId;
 }
 
+cudaStream_t UtcGpuContext::getBoundStream(){
+	return m_cudaStreamBound;
+}
+
 }// end namespace iUtc
 
 

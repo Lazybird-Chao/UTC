@@ -18,6 +18,7 @@
 
 #define ENABLE_CONCURRENT_CUDA_KERNEL	0
 
+
 /*
  *  1	cudaCtxMapToThread,
 	2	cudaCtxMapToTask,

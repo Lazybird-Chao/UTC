@@ -32,6 +32,8 @@ $(PROGRAM): $(PROGRAM_OBJ) libutc libutcgpu
 
 BasicGPUTaskTest.o:BasicGPUTaskTest.cc
 	$(G++)	-c $< $(CCFLAG) $(INCLUDE)
+BasicGPUTaskTest_kernel.o:BasicGPUTaskTest_kernel.cc
+	$(NVCC) -c $< -x $(NVCCFLAG) $(INCLUDE)
 
 				
 
