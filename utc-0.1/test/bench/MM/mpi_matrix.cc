@@ -3,6 +3,9 @@
  *
  *  Created on: Oct 17, 2016
  *      Author: chao
+ *
+ *      Divide matrix along columns, and use mpi send/recv to
+ *      exchange data with neighbours
  */
 #include <stdio.h>
 #include <stdlib.h>

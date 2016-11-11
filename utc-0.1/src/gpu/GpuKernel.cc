@@ -52,7 +52,7 @@ int GpuKernel::setNumArgs(int numArgs){
 	m_numArgs = numArgs;
 	if(m_args != nullptr)
 		free(m_args);
-	m_args = (void*)malloc(sizeof(void*)*numArgs);
+	m_args = (void**)malloc(sizeof(void*)*numArgs);
 	if(m_argSizes != nullptr)
 			free(m_argSizes);
 	m_argSizes = (int*)malloc(sizeof(int)*numArgs);
@@ -71,42 +71,42 @@ int GpuKernel::getNumArgs(){
 }
 
 
-int GpuKernel::setSharedMemSize(int size){
+int GpuKernel::setSharedMemSize(size_t size){
 	m_sharedMemSize = size;
 	return 0;
 }
 
-int GpuKernel::setGridDim(int dim1){
-	m_cudaGridDim = dim3(dim1, 1,1);
+int GpuKernel::setGridDim(int d1){
+	m_cudaGridDim = dim3(d1, 1,1);
 	return 0;
 }
 
-int GpuKernel::setGridDim(int dim1, int dim2){
-	m_cudaGridDim = dim3(dim1, dim2,1);
+int GpuKernel::setGridDim(int d1, int d2){
+	m_cudaGridDim = dim3(d1, d2,1);
 	return 0;
 }
 
-int GpuKernel::setGridDim(int dim1, int dim2, int dim3){
-	m_cudaGridDim = dim3(dim1, dim2, dim3);
+int GpuKernel::setGridDim(int d1, int d2, int d3){
+	m_cudaGridDim = dim3(d1, d2, d3);
 	return 0;
 }
 
-int GpuKernel::setBlockDim(int dim1){
-	m_cudaBlockDim = dim3(dim1, 1,1);
+int GpuKernel::setBlockDim(int d1){
+	m_cudaBlockDim = dim3(d1, 1,1);
 	return 0;
 }
 
-int GpuKernel::setBlockDim(int dim1, int dim2){
-	m_cudaBlockDim = dim3(dim1, dim2,1);
+int GpuKernel::setBlockDim(int d1, int d2){
+	m_cudaBlockDim = dim3(d1, d2,1);
 	return 0;
 }
 
-int GpuKernel::setBlockDim(int dim1, int dim2, int dim3){
-	m_cudaBlockDim = dim3(dim1, dim2,dim3);
+int GpuKernel::setBlockDim(int d1, int d2, int d3){
+	m_cudaBlockDim = dim3(d1, d2,d3);
 	return 0;
 }
 
-int GpuKernel::launchKernel(const void* kernel_fun, bool async = false){
+int GpuKernel::launchKernel(const void* kernel_fun, bool async){
 	checkCudaRuntimeErrors(cudaConfigureCall(m_cudaGridDim, m_cudaBlockDim, m_sharedMemSize, m_cudaStream));
 	size_t offset = 0;
 	for(int i=0; i< m_numArgs; i++){

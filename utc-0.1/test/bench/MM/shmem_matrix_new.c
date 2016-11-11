@@ -35,7 +35,13 @@
  *
  * Program to calculate the product of 2 matrices A and B based on block
  * distribution. Adopted from the mpi implementation of matrix muliplication
- * based on 1D block-column distribution. */
+ * based on 1D block-column distribution.
+ *
+ *
+ * 		Use shmem_get/put to get the whole submatrix at a time, not one row
+ *
+ *
+ * */
 
 #include <stdio.h>
 #include <stdlib.h>

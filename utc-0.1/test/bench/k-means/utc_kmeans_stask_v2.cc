@@ -28,7 +28,7 @@ public:
 		if(getLrank()==0){
 			this->runtime = runtime;
 			this->loops = loops;
-			threshold = 0.001;
+			threshold = 0.0001;
 			numChanges =0;
 		}
 		if(getGrank()==0){

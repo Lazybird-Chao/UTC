@@ -102,6 +102,9 @@ public:
 	void exec(void (T::*user_fun)(T1), T1 arg1);
 
 	//
+	int setUserTaskObj(T &userTaskObj);
+
+	//
 	bool hasActiveLocalThread();
 	void waitLocalThreadFinish();
 

@@ -12,7 +12,7 @@ __global__ void kernelTest(float *vec1, float* vec2, float *vec3){
 	int tx = threadIdx.x;
 
 	int idx = bx * blockDim.x + threadIdx.x;
-	vec3[idx] = vec1[idx] + vec2[idx];
+	vec3[idx] = vec1[idx] * vec2[idx];
 	__syncthreads();
 }
 

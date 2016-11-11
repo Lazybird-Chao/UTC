@@ -22,6 +22,8 @@ public:
 	virtual bool hasActiveLocalThread()=0;
 	virtual void waitLocalThreadFinish()=0;
 
+	virtual void updateUserTaskObj(UserTaskBase* newUserObj){};
+
 	virtual ~TaskArtifact(){};
 
 private:

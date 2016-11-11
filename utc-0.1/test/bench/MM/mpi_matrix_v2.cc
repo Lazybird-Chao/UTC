@@ -3,6 +3,9 @@
  *
  *  Created on: Oct 17, 2016
  *      Author: chao
+ *
+ *      Use mpi bcast to broadcast a submatix to all other jobs.
+ *
  */
 
 #include <stdio.h>

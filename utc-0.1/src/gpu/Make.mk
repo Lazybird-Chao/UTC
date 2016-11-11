@@ -22,8 +22,8 @@ OBJS:= 	CudaDeviceManager.o \
 		
 libutcgpu.a: $(OBJS)
 	ar -r -uv libutcgpu.a $(OBJS)
-	mv libutcgpu.a $(PROJECT_LIBDIR)
-	mv $(OBJS) $(PROJECT_LIBDIR)
+	cp libutcgpu.a $(PROJECT_LIBDIR)
+	cp $(OBJS) $(PROJECT_LIBDIR)
 	@echo "make gpulibrary succefful !!!"
 CudaDeviceManager.o: CudaDeviceManager.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
@@ -35,3 +35,7 @@ GpuTaskUtilities.o : GpuTaskUtilities.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 GpuKernel.o : GpuKernel.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+
+	
+clean:
+	rm -rf *.o *.a

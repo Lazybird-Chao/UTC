@@ -22,6 +22,8 @@
 
 #include "GpuTaskUtilities.h"
 
+#include "GpuKernel.h"
+
 #include "helper_cuda.h"
 
 

@@ -33,15 +33,15 @@ public:
 	template<typename T>
 	int setArgs(int idx, T &arg, ArgType argtype=ArgType::value, size_t size=0);
 
-	int setGridDim(int dim1);
-	int setGridDim(int dim1, int dim2);
-	int setGridDim(int dim1, int dim2, int dim3);
+	int setGridDim(int d1);
+	int setGridDim(int d1, int d2);
+	int setGridDim(int d1, int d2, int d3);
 
-	int setBlockDim(int dim1);
-	int setBlockDim(int dim1, int dim2);
-	int setBlockDim(int dim1, int dim2, int dim3);
+	int setBlockDim(int d1);
+	int setBlockDim(int d1, int d2);
+	int setBlockDim(int d1, int d2, int d3);
 
-	int setSharedMemSize(int size);
+	int setSharedMemSize(size_t size);
 
 	int launchKernel(const void* kernel_fun, bool async = false);
 
@@ -67,7 +67,7 @@ private:
 
 
 template<typename T>
-int GpuKernel::setArgs(int idx, T &arg, ArgType argtype = ArgType::value, size_t size=0){
+int GpuKernel::setArgs(int idx, T &arg, ArgType argtype, size_t size){
 	m_args[idx] = (void*)&arg;
 
 	switch(argtype){

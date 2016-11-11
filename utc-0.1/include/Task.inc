@@ -429,6 +429,21 @@ void Task<T>::exec(void (T::*user_fun)(T1), T1 arg1){
 	return;
 }
 
+/*
+ * TODO: we also need to update the task artifact(CPU task or GPU task)
+ * update the userTaskObj there!!!
+ */
+template<class T>
+int Task<T>::setUserTaskObj(T &userTaskObj){
+	int ret = 0;
+	if(m_userTaskObjPtr != nullptr){
+		delete m_userTaskObjPtr;
+		ret = 1;
+	}
+	m_userTaskObjPtr = &userTaskObj;
+	m_userSupplyObj  = true;
+	return ret;
+}
 
 
 template<class T>

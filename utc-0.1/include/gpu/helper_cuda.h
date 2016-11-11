@@ -424,7 +424,7 @@ void checkrt(T result, char const *const func, const char *const file, int const
                 file, line, static_cast<unsigned int>(result), _cudartGetErrorEnum(result), func);
         cudaDeviceReset();
         // Make sure we call CUDA Device Reset before exiting
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
     }
 }
 
@@ -437,7 +437,7 @@ void check(T result, char const *const func, const char *const file, int const l
                 file, line, static_cast<unsigned int>(result), _cudaGetErrorEnum(result), func);
         cudaDeviceReset();
         // Make sure we call CUDA Device Reset before exiting
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
     }
 }
 
@@ -445,6 +445,17 @@ void check(T result, char const *const func, const char *const file, int const l
 #define checkCudaRuntimeErrors(val)           checkrt ( (val), #val, __FILE__, __LINE__ )
 #define checkCudaDriverErrors(val)            check ( (val), #val, __FILE__, __LINE__ )
 
+#define getCudaErrorString(val)				getEstring( (val), #val,__FILE__, __LINE__ )
+template<typename T>
+inline void getEstring(T result, char const*const func, const char *const file, int const line){
+	if(result){
+		fprintf(stderr, "CUDA error at %s:%d err:%s \"%s\" \n",
+				file, line, cudaGetErrorString(err), func);
+		cudaDeviceReset();
+		// Make sure we call CUDA Device Reset before exiting
+		//exit(EXIT_FAILURE);
+	}
+}
 
 // This will output the proper error string when calling cudaGetLastError
 #define getLastCudaError(msg)      __getLastCudaError (msg, __FILE__, __LINE__)
@@ -457,8 +468,8 @@ inline void __getLastCudaError(const char *errorMessage, const char *file, const
     {
         fprintf(stderr, "%s(%i) : getLastCudaError() CUDA error : %s : (%d) %s.\n",
                 file, line, errorMessage, (int)err, cudaGetErrorString(err));
-        cudaDeviceReset();
-        exit(EXIT_FAILURE);
+        //cudaDeviceReset();
+        //exit(EXIT_FAILURE);
     }
 }
 

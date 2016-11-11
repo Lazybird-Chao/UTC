@@ -51,7 +51,7 @@
   2 - gauss-seidel
   3 - sor
 */
-#define _METHOD 2
+#define _METHOD 1
 #define ITERMAX 10
 #define T_SRC0  550.0
 #define ROOT    0

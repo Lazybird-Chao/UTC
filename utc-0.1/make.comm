@@ -44,9 +44,9 @@ CUDA_DIR = /usr/local/cuda
 
 NVCC = nvcc
 
-GENCODE_SM20 = -gencode arch=compute20,code=sm_20
-GENCODE_SM30 = -gencode arch=compute30,code=sm_30
-GENCODE_SM35 = -gencode arch=compute35,code=sm_35
+GENCODE_SM20 = -gencode arch=compute_20,code=sm_20
+GENCODE_SM30 = -gencode arch=compute_30,code=sm_30
+GENCODE_SM35 = -gencode arch=compute_35,code=sm_35
 
 NVCCFLAG = $(GENCODE_SM20)
 
@@ -68,6 +68,7 @@ endif
 
 cleanlib:
 	rm  $(PROJECT_LIBDIR)/*
+	rm 	$(PROJECT_SRCDIR)/gpu/*.o $(PROJECT_SRCDIR)/gpu/*.a
 cleanlog:
 	rm  $(PROJECT_HOMEDIR)/log/*
 cleanbin:
