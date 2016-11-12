@@ -265,8 +265,8 @@ main (int argc, char **argv)
     double commtime=0;
     double jacbtime = 0;
     while (1) {
-    	if(k%100 ==0 && my_rank ==0)
-    		printf("iteration: %d\n", k);
+    	//if(k%100 ==0 && my_rank ==0)
+    	//	printf("iteration: %d\n", k);
         //method (U_Curr, U_Next, U_Curr_Above, U_Curr_Below);
     	tv[2]=gettime();
     	jacobi(U_Curr[0], U_Next[0], U_Curr_Above, U_Curr_Below, my_start_row, my_end_row, my_num_rows, &comptime, &commtime);

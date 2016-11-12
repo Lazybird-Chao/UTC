@@ -230,6 +230,7 @@ public:
 
 		}
 		runtime[5] = t2.stop();
+		runtime[6] = runtime[1]+runtime[2]+runtime[3];
 
 		if(width < 200 && heigth < 200){
 			long err = compare();
@@ -358,7 +359,7 @@ int main(int argc, char* argv[]){
 			return 1;
 		}
 
-		double runtime[6]={0,0,0,0,0,0};
+		double runtime[7]={0,0,0,0,0,0,0};
 		int blocksize[2] = {16,16};
 		Task<Heat2DGPU> myHeat2D(ProcList(0), TaskType::gpu_task);
 		myHeat2D.init(width, heigth, method, blocksize);
@@ -376,7 +377,7 @@ int main(int argc, char* argv[]){
 			std::cout<<"mem copyout time: "<<runtime[3]<<std::endl;
 			std::cout<<"conver compute time: "<<runtime[4]<<std::endl;
 
-			print_time(6, runtime);
+			print_time(7, runtime);
 		}
 
 

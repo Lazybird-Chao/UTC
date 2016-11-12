@@ -18,7 +18,7 @@
  */
 __global__ void computeNewMembership_kernel(
 		float* objs,
-		float* clusters,
+		float *clusters,
 		int* membership,
 		int numObjs,
 		int numClusters,
@@ -27,14 +27,22 @@ __global__ void computeNewMembership_kernel(
 	int bx = blockIdx.x;
 	int tx = threadIdx.x;
 
-	int obj_s = (bx*blockDim.x + tx)*batch;
+	for(int i=0; i<batch; i++){
+		int obj_pos = bx*blockDim.x + tx + i*blockDim.x*gridDim.x;
+		if(obj_pos<numObjs){
+			int idx = find_nearest_cluster(numClusters, numCoords, &objs[obj_pos*numCoords], clusters);
+			membership[obj_pos] = idx;
+		}
+	}
+
+	/*int obj_s = (bx*blockDim.x + tx)*batch;
 	int obj_e = obj_s + batch;
 	for(int i= obj_s; i< obj_e; i++){
 		if(i<numObjs){
 			int idx = find_nearest_cluster(numClusters, numCoords, &objs[i*numCoords], clusters);
 			membership[i] = idx;
 		}
-	}
+	}*/
 	__syncthreads();
 }
 

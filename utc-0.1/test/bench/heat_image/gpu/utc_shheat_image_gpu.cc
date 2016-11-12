@@ -250,10 +250,10 @@ int main(int argc, char* argv[]){
 		case 'p':
 			nprocs = atoi(optarg);
 			break;
-		case 'x':
+		case 'x':   // row
 			dimx = atoi(optarg);
 			break;
-		case 'y':
+		case 'y':   // column
 			dimy = atoi(optarg);
 			break;
 		case 'i':

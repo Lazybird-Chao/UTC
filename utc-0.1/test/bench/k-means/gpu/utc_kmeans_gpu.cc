@@ -74,18 +74,23 @@ public:
 
 			newClusters    = (float**) malloc(this->numClusters * sizeof(float*));
 			assert(newClusters != NULL);
+
 			newClusters[0] = (float*)  calloc(numClusters*numCoords, sizeof(float));
 			assert(newClusters[0] != NULL);
+
 			for (int i=1; i<this->numClusters; i++)
 				newClusters[i] = newClusters[i-1] + this->numCoords;
+
 			newClusterSize = (int*) calloc(this->numClusters, sizeof(int));
-			for(int i=0; i<this->numObjs; i++){
+
+			for(int i=0; i<this->numObjs; i++)
 				this->membership[i]=-1;
+
 			newMembership = (int*)malloc(this->numObjs*sizeof(int));
 
 			this->blocksize = blocksize;
 			this->batchPerThread = batchPerThread;
-			}
+
 		}
 
 		inter_Barrier();
@@ -120,10 +125,16 @@ public:
 
 		GpuKernel mykernel;
 		mykernel.setBlockDim(blocksize);
-		mykernel.setGridDim((numObjs+blocksize*batchPerThread -1)/blocksize*batchPerThread);
+		mykernel.setGridDim((numObjs+blocksize*batchPerThread -1)/(blocksize*batchPerThread));
 		mykernel.setNumArgs(7);
 		mykernel.setArgs<float*>(0, objects_d);
 		mykernel.setArgs<float*>(1, clusters_d);
+		/*float clusters_dd[150];
+		for(int i=0; i< 30; i++){
+			for(int j=0; j< 5; j++)
+				clusters_dd[i*5+j]=clusters[i][j];
+		}
+		mykernel.setArgs<float[150]>(1, clusters_dd);*/
 		mykernel.setArgs<int*>(2, membership_d);
 		mykernel.setArgs<int>(3, numObjs);
 		mykernel.setArgs<int>(4, numClusters);
@@ -170,6 +181,10 @@ public:
 				newClusterSize[i] = 0;
 			}
 			runtime[4]+=t1.stop();
+			/*for(int i=0; i< 30; i++){
+				for(int j=0; j< 5; j++)
+					clusters_dd[i*5+j]=clusters[i][j];
+			}*/
 		}while(((float)changedObjs)/numObjs > threshold && loopcounter++ < 100);
 		runtime[5] = t2.stop();
 

@@ -124,7 +124,7 @@ int main(int argc, char** argv){
 		B_matrix_displacement = neighbour * blocksize;
 
 
-		MPI_Barrier(MPI_COMMM_WORLD);
+		MPI_Barrier(MPI_COMM_WORLD);
 
 		tv2[0] = MPI_Wtime();
 		for(i=0; i<ROWS; i++){

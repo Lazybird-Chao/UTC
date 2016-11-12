@@ -96,15 +96,17 @@ public:
 		runtime[3] = timer.stop();
 		runtime[4] = t2.stop();
 
-		long err = 0;
-		T *res = (T*)malloc(sizeof(T)*matrixSize*matrixSize);
-		err = compareCompute(res, 1e-10);
+		if(matrixSize<=1024){
+			long err = 0;
+			T *res = (T*)malloc(sizeof(T)*matrixSize*matrixSize);
+			err = compareCompute(res, 1e-10);
 
-		if(err>0)
-			std::cout<<"run error: "<<err<<std::endl;
-		else
-			std::cout<<"run correct!"<<std::endl;
-		free(res);
+			if(err>0)
+				std::cout<<"run error: "<<err<<std::endl;
+			else
+				std::cout<<"run correct!"<<std::endl;
+			free(res);
+		}
 
 
 	}
@@ -186,7 +188,7 @@ int main(int argc, char **argv){
 	double runtime[5];
 
 	Task<GpuMatrixMultiply<double>> myMM(ProcList(0), TaskType::gpu_task);  // 1 thread on proc 0
-	myMM.init(matrixSize, 32);
+	myMM.init(matrixSize, 16);
 
 	myMM.run(runtime);
 
