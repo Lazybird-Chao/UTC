@@ -1,7 +1,8 @@
 #include "XprocConduit.h"
 #include "UtcBasics.h"
 #include "TaskManager.h"
-#include "../include/TaskUtilities.h"
+#include "TaskUtilities.h"
+#include "TimerUtilities.h"
 #include <cassert>
 
 
@@ -106,7 +107,7 @@ int XprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)
 			long _counter=0;
 			while(m_asyncOpThreadFinish[idx]->load() != 0){
 				_counter++;
-				if(_counter<USE_PAUSE)
+				/*if(_counter<USE_PAUSE)
 					_mm_pause();
 				else if(_counter<USE_SHORT_SLEEP){
 					__asm__ __volatile__ ("pause" ::: "memory");
@@ -115,7 +116,8 @@ int XprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag)
 				else if(_counter<USE_LONG_SLEEP)
 					nanosleep(&SHORT_PERIOD, nullptr);
 				else
-					nanosleep(&LONG_PERIOD, nullptr);
+					nanosleep(&LONG_PERIOD, nullptr);*/
+				spinWait(_counter);
 			}
 			int nthreads = localNumthreads-1;
 			while(1){
@@ -209,7 +211,7 @@ void XprocConduit::AsyncRead_Finish(int tag)
 			long _counter=0;
 			while(m_asyncOpThreadFinish[idx]->load() !=0){
 				_counter++;
-				if(_counter<USE_PAUSE)
+				/*if(_counter<USE_PAUSE)
 					_mm_pause();
 				else if(_counter<USE_SHORT_SLEEP){
 					__asm__ __volatile__ ("pause" ::: "memory");
@@ -218,7 +220,8 @@ void XprocConduit::AsyncRead_Finish(int tag)
 				else if(_counter<USE_LONG_SLEEP)
 					nanosleep(&SHORT_PERIOD, nullptr);
 				else
-					nanosleep(&LONG_PERIOD, nullptr);
+					nanosleep(&LONG_PERIOD, nullptr);*/
+				spinWait(_counter);
 			}
 
 			int nthreads = localNumthreads-1;
@@ -358,7 +361,7 @@ int XprocConduit::AsyncWrite(void *DataPtr, DataSize_t DataSize, int tag)
 			long _counter=0;
 			while(m_asyncOpThreadFinish[idx]->load() !=0){
 				_counter++;
-				if(_counter<USE_PAUSE)
+				/*if(_counter<USE_PAUSE)
 					_mm_pause();
 				else if(_counter<USE_SHORT_SLEEP){
 					__asm__ __volatile__ ("pause" ::: "memory");
@@ -367,7 +370,8 @@ int XprocConduit::AsyncWrite(void *DataPtr, DataSize_t DataSize, int tag)
 				else if(_counter<USE_LONG_SLEEP)
 					nanosleep(&SHORT_PERIOD, nullptr);
 				else
-					nanosleep(&LONG_PERIOD, nullptr);
+					nanosleep(&LONG_PERIOD, nullptr);*/
+				spinWait(_counter);
 			}
 
 			int nthreads = localNumthreads-1;
@@ -462,7 +466,7 @@ void XprocConduit::AsyncWrite_Finish(int tag)
 			long _counter=0;
 			while(m_asyncOpThreadFinish[idx]->load() !=0){
 				_counter++;
-				if(_counter<USE_PAUSE)
+				/*if(_counter<USE_PAUSE)
 					_mm_pause();
 				else if(_counter<USE_SHORT_SLEEP){
 					__asm__ __volatile__ ("pause" ::: "memory");
@@ -471,7 +475,8 @@ void XprocConduit::AsyncWrite_Finish(int tag)
 				else if(_counter<USE_LONG_SLEEP)
 					nanosleep(&SHORT_PERIOD, nullptr);
 				else
-					nanosleep(&LONG_PERIOD, nullptr);
+					nanosleep(&LONG_PERIOD, nullptr);*/
+				spinWait(_counter);
 			}
 
 			int nthreads = localNumthreads-1;

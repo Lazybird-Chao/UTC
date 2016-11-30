@@ -8,6 +8,8 @@
 #define UTC_USER_TASK_BASE_H_
 
 #include "PrivateScopedDataBase.h"
+#include "FastBarrier.h"
+#include "FastMutex.h"
 
 #include <vector>
 #include <mutex>
@@ -44,13 +46,16 @@ public:
 	int __numGlobalThreads=0;
 	int __numProcesses=0;
 
+	FastBarrier __fastIntraSync;
+
 private:
 	/* other useful member functions */
 
 
 	/* other useful data members */
 	std::vector<iUtc::PrivateScopedDataBase *> __psDataRegistry;
-	std::mutex __opMutex;
+	//std::mutex __opMutex;
+	FastMutex __opMutex;
 
 protected:
 	/* other useful member functions */

@@ -7,6 +7,8 @@
 #include "UtcMpi.h"
 #include "RootTask.h"
 #include "SharedDataLock.h"
+#include "SpinLock.h"
+#include "FastMutex.h"
 
 #include <vector>
 #include <string>
@@ -29,7 +31,8 @@ class UtcContext{
 
         void Barrier();
 
-        std::mutex* getCtxMutex();
+        //std::mutex* getCtxMutex();
+        FastMutex* getCtxMutex();
         SpinLock* getCtxSpinMutex();
 
         //
@@ -57,7 +60,8 @@ class UtcContext{
         static int m_nCount;    // may not be useful!
         static UtcContext *m_ContextInstance;
 
-        std::mutex m_ctxMutex;
+        //std::mutex m_ctxMutex;
+        FastMutex m_ctxMutex;
         SpinLock m_ctxSpinMutex;
         //
         UtcContext(const UtcContext& other);

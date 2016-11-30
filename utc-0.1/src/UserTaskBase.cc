@@ -57,6 +57,8 @@ void UserTaskBase::preInit(int lrank,
 	__numGlobalThreads = numTotalThreads;
 	__numProcesses = numProcesses;
 
+	__fastIntraSync.init(numLocalThreads);
+
 	if(__psDataRegistry.size()>0){
 		for(std::vector<iUtc::PrivateScopedDataBase *>::iterator item = __psDataRegistry.begin();
 				item != __psDataRegistry.end(); item++){

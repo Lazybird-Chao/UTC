@@ -11,10 +11,11 @@
 #ifndef UTC_GPU_UTCGPUBASICS_H_
 #define UTC_GPU_UTCGPUBASICS_H_
 
+#include "UtcBasics.h"
 
-#define ERROR_LINE " line:"<<__LINE__<<", file:"<<__FILE__<<" "
+//#define ERROR_LINE " line:"<<__LINE__<<", file:"<<__FILE__<<" "
 
-#define ENABLE_GPU_TASK		1
+//#define ENABLE_GPU_TASK		1
 
 #define ENABLE_CONCURRENT_CUDA_KERNEL	0
 

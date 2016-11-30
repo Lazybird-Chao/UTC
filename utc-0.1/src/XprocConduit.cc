@@ -1,7 +1,8 @@
 #include "XprocConduit.h"
 #include "UtcBasics.h"
 #include "TaskManager.h"
-#include "../include/TaskUtilities.h"
+#include "TaskUtilities.h"
+#include "TimerUtilities.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -182,7 +183,7 @@ int XprocConduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
 				long _counter=0;
 				while(m_OpThreadFinish[idx]->load() !=0){
 					_counter++;
-					if(_counter<USE_PAUSE)
+					/*if(_counter<USE_PAUSE)
 						_mm_pause();
 					else if(_counter<USE_SHORT_SLEEP){
 						__asm__ __volatile__ ("pause" ::: "memory");
@@ -191,7 +192,8 @@ int XprocConduit::Write(void* DataPtr, DataSize_t DataSize, int tag)
 					else if(_counter<USE_LONG_SLEEP)
 						nanosleep(&SHORT_PERIOD, nullptr);
 					else
-						nanosleep(&LONG_PERIOD, nullptr);
+						nanosleep(&LONG_PERIOD, nullptr);*/
+					spinWait(_counter, myLocalRank);
 				}
 			}
 			int nthreads = localNumthreads-1;
@@ -572,7 +574,7 @@ int XprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
 				long _counter=0;
 				while(m_OpThreadFinish[idx]->load() !=0){
 					_counter++;
-					if(_counter<USE_PAUSE)
+					/*if(_counter<USE_PAUSE)
 						_mm_pause();
 					else if(_counter<USE_SHORT_SLEEP){
 						__asm__ __volatile__ ("pause" ::: "memory");
@@ -581,7 +583,8 @@ int XprocConduit::PWrite(void* DataPtr, DataSize_t DataSize, int tag)
 					else if(_counter<USE_LONG_SLEEP)
 						nanosleep(&SHORT_PERIOD, nullptr);
 					else
-						nanosleep(&LONG_PERIOD, nullptr);
+						nanosleep(&LONG_PERIOD, nullptr);*/
+					spinWait(_counter, myLocalRank);
 				}
 			}
 			int nthreads = localNumthreads-1;
@@ -933,7 +936,7 @@ int XprocConduit::Read(void* DataPtr, DataSize_t DataSize, int tag)
 				long _counter=0;
 				while(m_OpThreadFinish[idx]->load() !=0){
 					_counter++;
-					if(_counter<USE_PAUSE)
+					/*if(_counter<USE_PAUSE)
 						_mm_pause();
 					else if(_counter<USE_SHORT_SLEEP){
 						__asm__ __volatile__ ("pause" ::: "memory");
@@ -942,7 +945,8 @@ int XprocConduit::Read(void* DataPtr, DataSize_t DataSize, int tag)
 					else if(_counter<USE_LONG_SLEEP)
 						nanosleep(&SHORT_PERIOD, nullptr);
 					else
-						nanosleep(&LONG_PERIOD, nullptr);
+						nanosleep(&LONG_PERIOD, nullptr);*/
+					spinWait(_counter, myLocalRank);
 				}
 			}
 			int nthreads = localNumthreads-1;

@@ -10,7 +10,9 @@
 
 #include "GlobalScopedDataBase.h"
 #include "SharedDataLock.h"
+#include "SpinLock.h"
 #include "UserTaskBase.h"
+#include "FastMutex.h"
 
 #include <mutex>
 #include "shmem.h"
@@ -129,10 +131,12 @@ private:
 	int *m_flagOldValue;
 	int *m_flagValue;
 
-	std::mutex* m_ctxMutex;
+	//std::mutex* m_ctxMutex;
+	FastMutex *m_ctxMutex;
 	SpinLock* m_ctxSpinMutex;
 
-	std::mutex m_objMutex;
+	//std::mutex m_objMutex;
+	FastMutex m_objMutex;
 
 
 };

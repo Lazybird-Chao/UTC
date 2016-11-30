@@ -450,7 +450,7 @@ template<typename T>
 inline void getEstring(T result, char const*const func, const char *const file, int const line){
 	if(result){
 		fprintf(stderr, "CUDA error at %s:%d err:%s \"%s\" \n",
-				file, line, cudaGetErrorString(err), func);
+				file, line, cudaGetErrorString(result), func);
 		cudaDeviceReset();
 		// Make sure we call CUDA Device Reset before exiting
 		//exit(EXIT_FAILURE);

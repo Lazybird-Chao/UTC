@@ -8,11 +8,13 @@
 #ifndef UTC_GPU_TASKGPU_H_
 #define UTC_GPU_TASKGPU_H_
 
-#include "UtcBasics.h"
+#include "UtcGpuBasics.h"
 #include "TaskArtifact.h"
 #include "TaskInfo.h"
 #include "UserTaskBase.h"
 #include "UtcGpuContext.h"
+#include "FastMutex.h"
+#include "FastCond.h"
 
 #include <vector>
 #include <map>
@@ -124,8 +126,10 @@ namespace iUtc{
 		// used for conduit to check all running threads of a task are finish,
 		// and can destroy the conduit
 		int m_activeLocalThreadCount;
-		std::mutex m_activeLocalThreadMutex;
-		std::condition_variable m_activeLocalThreadCond;
+		//std::mutex m_activeLocalThreadMutex;
+		//std::condition_variable m_activeLocalThreadCond;
+		FastMutex m_activeLocalThreadMutex;
+		FastCond m_activeLocalThreadCond;
 
 		TaskInfo *m_commonTaskInfo;
 		ThreadPrivateData *m_commonThreadPrivateData;

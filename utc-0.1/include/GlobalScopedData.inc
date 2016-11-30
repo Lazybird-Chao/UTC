@@ -169,6 +169,10 @@ T* GlobalScopedData<T>::getPtr(){
 	return (T*)m_dataPtr;
 }
 
+/*
+ * Actually no use in our case, as we only have one process on one
+ * node.
+ */
 template<typename T>
 T* GlobalScopedData<T>::rgetPtr(int remotePE){
 	if(!shmem_addr_accessible(m_dataPtr, remotePE ))

@@ -35,6 +35,8 @@
 
 //S
 #include "SharedDataLock.h"
+#include "SpinBarrier.h"
+#include "SpinLock.h"
 
 //T
 #include "TaskBase.h"

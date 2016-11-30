@@ -11,7 +11,10 @@
 #include "AffinityUtilities.h"
 #include "TaskArtifact.h"
 #include "TaskCPU.h"
-#include "gpu/TaskGPU.h"
+#include "FastBarrier.h"
+#if ENABLE_GPU_TASK
+	#include "TaskGPU.h"
+#endif
 
 #include <thread>
 #include <mutex>
@@ -118,6 +121,7 @@ private:
 	// barrier obj, shared by all threads in one task
 	Barrier *m_taskBarrierObjPtr;
 	SpinBarrier *m_taskSpinBarrierObjPtr;
+	FastBarrier *m_taskFastBarrierObjPtr;
 
 	// mpi comm related obj
 #ifdef USE_MPI_BASE

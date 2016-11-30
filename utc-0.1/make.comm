@@ -36,7 +36,8 @@ LIB += $(MPI_LIB) $(BOOST_LIB)
 ###################		
 INCLUDE = -I$(MPI_DIR)/include
 INCLUDE += -I$(BOOST_DIR)/include
-INCLUDE += -I$(PROJECT_HOMEDIR)/include		
+INCLUDE += -I$(PROJECT_HOMEDIR)/include	
+INCLUDE += -I$(PROJECT_HOMEDIR)/include/thread_util	
 
 
 #####################

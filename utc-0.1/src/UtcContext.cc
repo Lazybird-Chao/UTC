@@ -86,7 +86,8 @@ TaskManager* UtcContext::getTaskManager()
     return taskManager;
 }
 
-std::mutex* UtcContext::getCtxMutex(){
+//std::mutex* UtcContext::getCtxMutex(){
+FastMutex* UtcContext::getCtxMutex(){
 	return &m_ctxMutex;
 }
 

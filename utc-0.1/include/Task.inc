@@ -165,6 +165,8 @@ Task<T>::~Task()
 		m_taskBarrierObjPtr=nullptr;
 		delete m_taskSpinBarrierObjPtr;
 		m_taskSpinBarrierObjPtr=nullptr;
+		delete m_taskFastBarrierObjPtr;
+		m_taskFastBarrierObjPtr = nullptr;
 	}
 
 	if(m_userSupplyObj == false && m_userTaskObjPtr)
@@ -519,6 +521,7 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 		// create the barrier object in a task
 		m_taskBarrierObjPtr = new Barrier(m_numLocalThreads, m_TaskId, &m_taskComm);
 		m_taskSpinBarrierObjPtr = new SpinBarrier(m_numLocalThreads);
+		m_taskFastBarrierObjPtr = new FastBarrier(m_numLocalThreads);
 	}
 
 	if(m_numLocalThreads !=0){
@@ -533,6 +536,7 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 		m_commonTaskInfo.taskId = m_TaskId;
 		m_commonTaskInfo.barrierObjPtr = m_taskBarrierObjPtr;
 		m_commonTaskInfo.spinBarrierObjPtr = m_taskSpinBarrierObjPtr;
+		m_commonTaskInfo.fastBarrierObjPtr = m_taskFastBarrierObjPtr;
 		#ifdef USE_MPI_BASE
 		m_commonTaskInfo.commPtr = &m_taskComm;
 		m_commonTaskInfo.mpigroupPtr = &m_taskmpiGroup;
@@ -562,6 +566,7 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 											m_userTaskObjPtr);
 		}
 		else if(tType==TaskType::gpu_task){
+#if ENABLE_GPU_TASK
 			m_realTaskInstance = new TaskGPU(m_numLocalThreads,
 											m_processRank,
 											m_numProcesses,
@@ -576,6 +581,10 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 											&m_threadPrivateData,
 											m_userTaskObjPtr
 											);
+#else
+			m_realTaskInstance = nullptr;
+			std::cerr<<"Error, gpu task unabled!!!\n";
+#endif
 		}
 		else{
 			std:cerr<<"Error, unsupported task type!!!\n";

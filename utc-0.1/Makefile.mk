@@ -34,7 +34,9 @@ OBJS:= 	UtcContext.o \
 		XprocConduit_Async.o \
 		Timer.o  \
 		Barrier.o \
-		SharedDataLock.o
+		SpinBarrier.o \
+		SharedDataLock.o \
+		SpinLock.o
 		
 OBJ_UTC = $(addprefix ./lib/, $(OBJS))
 
@@ -92,7 +94,11 @@ libutc.a: $(OBJ_UTC)
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 ./lib/Barrier.o: Barrier.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+./lib/SpinBarrier.o: SpinBarrier.cc
+	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 ./lib/SharedDataLock.o: SharedDataLock.cc
+	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+./lib/SpinLock.o: SpinLock.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 	
 

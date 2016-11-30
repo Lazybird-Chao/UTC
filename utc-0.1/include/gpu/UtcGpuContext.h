@@ -55,7 +55,7 @@ private:
 	int		m_cudaDeviceId;    //the real gpuid that can be use by cudaSetDevice()
 	CUdevice	m_cudaDevice;
 
-	int 	m_utcGpuId;  // different from the m_gpuDeviceId
+	int 	m_utcGpuId;  // different from the m_cudaDeviceId
 
 	//
 	cudaCtxMapMode	m_cudaCtxMapMode;

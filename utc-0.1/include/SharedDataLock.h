@@ -1,6 +1,7 @@
 #ifndef UTC_SHARED_DATA_LOCK_H_
 #define UTC_SHARED_DATA_LOCK_H_
 
+#include "FastMutex.h"
 #include <boost/thread/locks.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <atomic>
@@ -31,25 +32,15 @@ public:
 	void write_lock();
 	void write_unlock();
 
+	void fastlock();
+	void fastunlock();
+
 
 private:
 	boost::shared_mutex m_SharedMutex;
+	FastMutex m_FastMutex;
 	//boost::unique_lock<boost::shared_mutex> m_Wlock{m_SharedMutex, boost::defer_lock};
 	//boost::shared_lock<boost::shared_mutex> m_Rlock{m_SharedMutex, boost::defer_lock};
-};
-
-
-
-
-class SpinLock{
-public:
-	SpinLock();
-
-	void lock();
-	void unlock();
-private:
-	typedef enum{Locked, Unlocked} LockState;
-	std::atomic<LockState> m_state;
 };
 
 }// end namespace iUtc
