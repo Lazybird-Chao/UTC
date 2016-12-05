@@ -20,8 +20,6 @@ OBJS:= 	UtcContext.o \
     	TaskCPU.o \
     	TaskUtilities.o \
     	UserTaskBase.o \
-    	PrivateScopedData.o \
-    	GlobalScopedData.o \
 		ConduitManager.o \
 		Conduit.o \
 		InprocConduit.o \
@@ -65,10 +63,6 @@ libutc.a: $(OBJ_UTC)
 ./lib/TaskUtilities.o: TaskUtilities.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 ./lib/UserTaskBase.o: UserTaskBase.cc
-	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
-./lib/PrivateScopedData.o: PrivateScopedData.cc PrivateScopedData.inc
-	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
-./lib/GlobalScopedData.o: GlobalScopedData.cc GlobalScopedData.inc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 ./lib/ConduitManager.o: ConduitManager.cc
 	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)

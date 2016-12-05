@@ -55,6 +55,7 @@ void PrivateScopedData<T>::init(){
 	if(!m_dataPtr.get()){
 		data = (T*)malloc(m_typesize * m_size);
 		m_dataPtr.reset(data);
+		m_privateDataPtr = data;
 	}
 }
 
@@ -65,6 +66,7 @@ void PrivateScopedData<T>::destroy(){
 	if(data){
 		 free(data);
 		 m_dataPtr.release();
+		 m_privateDataPtr = nullptr;
 	}
 	else{
 		std::cerr<<"Error, PrivateScopedData call destroy without init!!!\n";
@@ -75,7 +77,8 @@ void PrivateScopedData<T>::destroy(){
 
 template<typename T>
 T* PrivateScopedData<T>::getPtr(){
-	return m_dataPtr.get();
+	//return m_dataPtr.get();
+	return m_privateDataPtr;
 }
 
 template<typename T>
@@ -85,45 +88,55 @@ int PrivateScopedData<T>::getSize(){
 
 template<typename T>
 T PrivateScopedData<T>::load(int index){
-	T* data = m_dataPtr.get();
-	return data[index];
+	/*T* data = m_dataPtr.get();
+	return data[index];*/
+	return m_privateDataPtr[index];
 }
 
 template<typename T>
 void PrivateScopedData<T>::store(T value, int index){
-	T* data = m_dataPtr.get();
-	data[index]= value;
+	/*T* data = m_dataPtr.get();
+	data[index]= value;*/
+	m_privateDataPtr[index] = value;
 }
 
 template<typename T>
 int PrivateScopedData<T>::loadblock(T* dst, int startIdx, int blocks){
-	T* data = m_dataPtr.get();
-	memcpy(dst, &data[startIdx], blocks*m_typesize);
+	/*T* data = m_dataPtr.get();
+	memcpy(dst, &data[startIdx], blocks*m_typesize);*/
+	memcpy(dst, &m_privateDataPtr[startIdx], blocks*m_typesize)
 	return 0;
 }
 
 template<typename T>
 int PrivateScopedData<T>::storeblock(T* src, int startIdx, int blocks){
-	T* data = m_dataPtr.get();
-	memcpy(&data[startIdx], src, blocks*m_typesize);
+	/*T* data = m_dataPtr.get();
+	memcpy(&data[startIdx], src, blocks*m_typesize);*/
+	memcpy(&m_privateDataPtr[startIdx], src, blocks*m_typesize);
 	return 0;
 }
 
 
 template<typename T>
 PrivateScopedData<T>::operator T() const{
-	T* data = m_dataPtr.get();
-	return data[0];
+	/*T* data = m_dataPtr.get();
+	return data[0];*/
+	return m_privateDataPtr[0];
 }
 
 template<typename T>
 T& PrivateScopedData<T>::operator= (T value){
-	T* data = m_dataPtr.get();
+	/*T* data = m_dataPtr.get();
 	data[0]= value;
-	return data[0];
+	return data[0];*/
+	m_privateDataPtr[0] = value;
+	return m_privateDataPtr[0];
 }
 
-
+template<typename T>
+T& PrivateScopedData<T>::operator[] (long index){
+	return m_privateDataPtr[index];
+}
 
 }// end namespace iUtc
 

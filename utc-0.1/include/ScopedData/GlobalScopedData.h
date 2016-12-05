@@ -116,9 +116,11 @@ public:
 	void rstoreSetFinishFlag(int remotePE);
 	void rstoreWaitFinishFlag(int rstoreCaller);
 
-	// for m_size = 1
+	// for m_size = 1, only for local data, not remote
 	operator T() const;
 	T& operator =(T value);
+	//
+	T& operator[] (long index);
 
 private:
 	long m_size;

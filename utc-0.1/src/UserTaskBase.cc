@@ -16,11 +16,17 @@ thread_local int UserTaskBase::__globalThreadId = -1;
 thread_local int UserTaskBase::__processId = -1;
 UserTaskBase::UserTaskBase(){
 
+#if ENABLE_SCOPED_DATA
 	__psDataRegistry.clear();
+#endif
+
 }
 
 UserTaskBase::~UserTaskBase(){
+#if ENABLE_SCOPED_DATA
 	__psDataRegistry.clear();
+#endif
+
 }
 
 
@@ -40,9 +46,13 @@ void UserTaskBase::runImpl(){
 }
 
 
+
+
+#if ENABLE_SCOPED_DATA
 void UserTaskBase::registerPrivateScopedData(iUtc::PrivateScopedDataBase *psData){
 	__psDataRegistry.push_back(psData);
 }
+#endif
 
 void UserTaskBase::preInit(int lrank,
 							int trank,
@@ -59,19 +69,25 @@ void UserTaskBase::preInit(int lrank,
 
 	__fastIntraSync.init(numLocalThreads);
 
+#if ENABLE_SCOPED_DATA
 	if(__psDataRegistry.size()>0){
 		for(std::vector<iUtc::PrivateScopedDataBase *>::iterator item = __psDataRegistry.begin();
 				item != __psDataRegistry.end(); item++){
 			(*item)->init();
 		}
 	}
+#endif
+
 }
 
 
 void UserTaskBase::preExit(){
+#if ENABLE_SCOPED_DATA
 	for(auto& item: __psDataRegistry ){
 		item->destroy();
 	}
+#endif
+
 }
 
 // end namespace iUtc

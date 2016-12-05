@@ -68,8 +68,10 @@ extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
                               //  MPI_THREAD_SERIALIZED,
 
 /*
- * openSHMEM environment
+ * Scoped data related
  */
+#define ENABLE_SCOPED_DATA 1
+
 #define USE_OPENSHMEM
 #ifdef USE_OPENSHMEM
 	#include "shmem.h"

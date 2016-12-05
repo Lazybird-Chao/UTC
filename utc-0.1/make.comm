@@ -7,6 +7,8 @@ PROJECT_SRCDIR = $(PROJECT_HOMEDIR)/src
 
 ENABLE_GPU = 1
 
+ENABLE_SCOPEDDATA = 1
+
 ##################
 GCC = gcc
 G++ = g++
@@ -38,6 +40,13 @@ INCLUDE = -I$(MPI_DIR)/include
 INCLUDE += -I$(BOOST_DIR)/include
 INCLUDE += -I$(PROJECT_HOMEDIR)/include	
 INCLUDE += -I$(PROJECT_HOMEDIR)/include/thread_util	
+
+#####################
+
+ifeq ($(ENABLE_SCOPEDDATA), 1)
+	INCLUDE += -I$(PROJECT_HOMEDIR)/include/ScopedData
+	LIB += $(PROJECT_LIBDIR)/libutc_scopeddata.a
+endif
 
 
 #####################

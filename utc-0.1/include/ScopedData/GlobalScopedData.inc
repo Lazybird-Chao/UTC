@@ -419,5 +419,9 @@ T& GlobalScopedData<T>::operator=(T value){
 	return m_dataPtr[0];
 }
 
+template<typename T>
+T& GlobalScopedData<T>::operator [](long index){
+	return m_dataPtr[index];
+}
 
 }//end namespace iUtc

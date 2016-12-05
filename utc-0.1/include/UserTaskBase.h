@@ -7,9 +7,13 @@
 #ifndef UTC_USER_TASK_BASE_H_
 #define UTC_USER_TASK_BASE_H_
 
-#include "PrivateScopedDataBase.h"
+#include "UtcBasics.h"
 #include "FastBarrier.h"
 #include "FastMutex.h"
+#if ENABLE_SCOPED_DATA
+#include "PrivateScopedDataBase.h"
+#endif
+
 
 #include <vector>
 #include <mutex>
@@ -30,9 +34,10 @@ public:
 	virtual void runImpl();
 
 
-
+#if ENABLE_SCOPED_DATA
 	/* other useful member functions */
 	void registerPrivateScopedData(iUtc::PrivateScopedDataBase* psData);
+#endif
 
 	void preInit(int lrank, int trank, int prank, int numLocalThreads,
 			int numProcesses, int numTotalThreads);
@@ -53,7 +58,9 @@ private:
 
 
 	/* other useful data members */
+#if ENABLE_SCOPED_DATA
 	std::vector<iUtc::PrivateScopedDataBase *> __psDataRegistry;
+#endif
 	//std::mutex __opMutex;
 	FastMutex __opMutex;
 

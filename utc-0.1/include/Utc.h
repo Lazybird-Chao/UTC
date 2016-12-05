@@ -16,8 +16,10 @@
 #include "Conduit.h"
 
 //G
-#include "GlobalScopedData.h"
-#include "GlobalScopedDataBase.h"
+#if ENABLE_SCOPED_DATA
+#include "ScopedData/GlobalScopedData.h"
+#include "ScopedData/GlobalScopedDataBase.h"
+#endif
 
 //I
 #include "InprocConduit.h"
@@ -27,8 +29,10 @@
 #include "ProcList.h"
 
 //P
-#include "PrivateScopedDataBase.h"
-#include "PrivateScopedData.h"
+#if ENABLE_SCOPED_DATA
+#include "ScopedData/PrivateScopedDataBase.h"
+#include "ScopedData/PrivateScopedData.h"
+#endif
 
 //R
 #include "RootTask.h"
