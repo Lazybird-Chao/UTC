@@ -1,4 +1,5 @@
 ##################
+##################
 PROJECT_HOMEDIR = /home/chao/git/UTC/utc-0.1
 PROJECT_BINDIR = $(PROJECT_HOMEDIR)/bin
 PROJECT_LIBDIR = $(PROJECT_HOMEDIR)/lib
@@ -9,9 +10,11 @@ ENABLE_GPU = 1
 
 ENABLE_SCOPEDDATA = 1
 
+
 ##################
-GCC = gcc
-G++ = g++
+##################
+CC = gcc
+C++ = g++
 MPICXX = mpicxx
 
 CFLAG := -Wall
@@ -25,11 +28,14 @@ BOOST_DIR = /opt/boost-1.60
 OSH_DIR = /opt/openmpi-1.10
 
 MPI_LIB :=	-pthread -Wl,-rpath -Wl,$(MPI_DIR)/lib -Wl,--enable-new-dtags \
-				-L$(MPI_DIR)/lib -lmpi_cxx -lmpi -loshmem
+				-L$(MPI_DIR)/lib -lmpi_cxx -lmpi
+ifeq($ENABLE_SCOPED_DATA), 1)
+	MPI_LIB += -loshmem
+endif
+				
 BOOST_LIB := $(BOOST_DIR)/lib/libboost_thread.a \
 				$(BOOST_DIR)/lib/libboost_system.a \
 				$(BOOST_DIR)/lib/libboost_filesystem.a
-OSH_LIB :=
 				
 LIB = $(PROJECT_LIBDIR)/libutc.a
 LIB += -lrt
@@ -43,9 +49,9 @@ INCLUDE += -I$(PROJECT_HOMEDIR)/include/thread_util
 
 #####################
 
-ifeq ($(ENABLE_SCOPEDDATA), 1)
+ifeq ($(ENABLE_SCOPED_DATA), 1)
 	INCLUDE += -I$(PROJECT_HOMEDIR)/include/ScopedData
-	LIB += $(PROJECT_LIBDIR)/libutc_scopeddata.a
+	LIB += $(PROJECT_LIBDIR)/libutc-scopeddata.a
 endif
 
 
@@ -78,7 +84,13 @@ endif
 
 cleanlib:
 	rm  $(PROJECT_LIBDIR)/*
+ifeq ($(ENABLE_GPU), 1)
 	rm 	$(PROJECT_SRCDIR)/gpu/*.o $(PROJECT_SRCDIR)/gpu/*.a
+endif
+ifeq ($(ENALBE_SCOPED_DATA), 1)
+	rm $(PROJECT_SRCDIR)/ScopedData/*.o $(PROJECT_SRCDIR)/ScopedData/*.a
+endif
+
 cleanlog:
 	rm  $(PROJECT_HOMEDIR)/log/*
 cleanbin:

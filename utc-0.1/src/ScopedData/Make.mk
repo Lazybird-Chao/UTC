@@ -1,5 +1,5 @@
 #####################
-default:libutc_scopeddata.a
+default:libutc-scopeddata.a
 
 include ../../make.comm
 
@@ -21,15 +21,15 @@ endif
 OBJS:= 	PrivateScopedData.o \
     	GlobalScopedData.o
 		
-libutcgpu.a: $(OBJS)
-	ar -r -uv libutc_scopeddata.a $(OBJS)
-	cp libutc_scopeddata.a $(PROJECT_LIBDIR)
+libutc-scopeddata.a: $(OBJS)
+	ar -r -uv libutc-scopeddata.a $(OBJS)
+	cp libutc-scopeddata.a $(PROJECT_LIBDIR)
 	cp $(OBJS) $(PROJECT_LIBDIR)
 	@echo "make scopeddata library succefful !!!"
 PrivateScopedData.o: PrivateScopedData.cc PrivateScopedData.inc
-	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 GlobalScopedData.o: GlobalScopedData.cc GlobalScopedData.inc
-	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 
 	
 clean:

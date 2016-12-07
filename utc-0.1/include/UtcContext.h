@@ -15,7 +15,11 @@
 
 namespace iUtc{
 class UtcContext{
-
+/*TODO:
+	* As this class is designed as singleton, no need to use so many
+	* static data member and method members.
+	* Should change these static to normal members.
+	*/
     public:
 
         ~UtcContext();
@@ -44,6 +48,18 @@ class UtcContext{
     protected:
 
     private:
+        class dummyContext{
+        public:
+        	int dummy;
+
+        	~dummyContext(){
+        		if(m_ContextInstance)
+        			delete m_ContextInstance;
+        		m_ContextInstance = nullptr;
+        	}
+        };
+        static dummyContext m_dummyInstance;
+
         UtcContext();
 
         UtcContext(int &argc, char** &argv);

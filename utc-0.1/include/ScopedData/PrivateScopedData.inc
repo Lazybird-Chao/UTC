@@ -104,7 +104,7 @@ template<typename T>
 int PrivateScopedData<T>::loadblock(T* dst, int startIdx, int blocks){
 	/*T* data = m_dataPtr.get();
 	memcpy(dst, &data[startIdx], blocks*m_typesize);*/
-	memcpy(dst, &m_privateDataPtr[startIdx], blocks*m_typesize)
+	memcpy(dst, &m_privateDataPtr[startIdx], blocks*m_typesize);
 	return 0;
 }
 

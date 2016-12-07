@@ -2,6 +2,7 @@
 #include "UtcBasics.h"
 #include "TaskManager.h"
 #include "../include/TaskUtilities.h"
+#include "TimerUtilities.h"
 
 #include <cassert>
 //#include <utility>
@@ -101,7 +102,7 @@ int InprocConduit::AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag){
 				long _counter=0;
 				while(m_srcAsyncOpThreadFinish[idx]->load() !=0){
 					_counter++;
-					if(_counter<USE_PAUSE)
+					/*if(_counter<USE_PAUSE)
 						_mm_pause();
 					else if(_counter<USE_SHORT_SLEEP){
 						__asm__ __volatile__ ("pause" ::: "memory");
@@ -111,6 +112,8 @@ int InprocConduit::AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag){
 						nanosleep(&SHORT_PERIOD, nullptr);
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
+						*/
+					spinWait(_counter);
 				}
 
 				int nthreads = m_numSrcLocalThreads-1;
@@ -200,7 +203,7 @@ int InprocConduit::AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag){
 				long _counter=0;
 				while(m_dstAsyncOpThreadFinish[idx]->load() !=0){
 					_counter++;
-					if(_counter<USE_PAUSE)
+					/*if(_counter<USE_PAUSE)
 						_mm_pause();
 					else if(_counter<USE_SHORT_SLEEP){
 						__asm__ __volatile__ ("pause" ::: "memory");
@@ -210,6 +213,8 @@ int InprocConduit::AsyncWrite(void* DataPtr, DataSize_t DataSize, int tag){
 						nanosleep(&SHORT_PERIOD, nullptr);
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
+						*/
+					spinWait(_counter);
 				}
 				int nthreads = m_numDstLocalThreads-1;
 				while(1){
@@ -354,7 +359,7 @@ int InprocConduit::threadWriteImpl(void* DataPtr, DataSize_t DataSize, int tag, 
     		long _counter=0;
     		while(m_srcUsingPtrFinishFlag[m_numSrcLocalThreads].load() == 0){
     			_counter++;
-				if(_counter<USE_PAUSE)
+				/*if(_counter<USE_PAUSE)
 					_mm_pause();
 				else if(_counter<USE_SHORT_SLEEP){
 					__asm__ __volatile__ ("pause" ::: "memory");
@@ -364,6 +369,8 @@ int InprocConduit::threadWriteImpl(void* DataPtr, DataSize_t DataSize, int tag, 
 					nanosleep(&SHORT_PERIOD, nullptr);
 				else
 					nanosleep(&LONG_PERIOD, nullptr);
+					*/
+    			spinWait(_counter);
     		}
     	}
 	}
@@ -396,7 +403,7 @@ int InprocConduit::threadWriteImpl(void* DataPtr, DataSize_t DataSize, int tag, 
         	long _counter=0;
         	while(m_dstUsingPtrFinishFlag[m_numDstLocalThreads].load() == 0){
         		_counter++;
-				if(_counter<USE_PAUSE)
+				/*if(_counter<USE_PAUSE)
 					_mm_pause();
 				else if(_counter<USE_SHORT_SLEEP){
 					__asm__ __volatile__ ("pause" ::: "memory");
@@ -406,6 +413,8 @@ int InprocConduit::threadWriteImpl(void* DataPtr, DataSize_t DataSize, int tag, 
 					nanosleep(&SHORT_PERIOD, nullptr);
 				else
 					nanosleep(&LONG_PERIOD, nullptr);
+					*/
+        		spinWait(_counter);
         	}
         }
 
@@ -461,7 +470,7 @@ void InprocConduit::AsyncWrite_Finish(int tag){
 				long _counter=0;
 				while(m_srcAsyncOpThreadFinish[idx]->load() != 0){
 					_counter++;
-					if(_counter<USE_PAUSE)
+					/*if(_counter<USE_PAUSE)
 						_mm_pause();
 					else if(_counter<USE_SHORT_SLEEP){
 						__asm__ __volatile__ ("pause" ::: "memory");
@@ -471,6 +480,8 @@ void InprocConduit::AsyncWrite_Finish(int tag){
 						nanosleep(&SHORT_PERIOD, nullptr);
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
+						*/
+					spinWait(_counter);
 				}
 				int nthreads = m_numSrcLocalThreads-1;
 				while(1){
@@ -523,7 +534,7 @@ void InprocConduit::AsyncWrite_Finish(int tag){
         		long _counter=0;
 				while(m_dstAsyncOpThreadFinish[idx]->load() != 0){
 					_counter++;
-					if(_counter<USE_PAUSE)
+					/*if(_counter<USE_PAUSE)
 						_mm_pause();
 					else if(_counter<USE_SHORT_SLEEP){
 						__asm__ __volatile__ ("pause" ::: "memory");
@@ -533,6 +544,8 @@ void InprocConduit::AsyncWrite_Finish(int tag){
 						nanosleep(&SHORT_PERIOD, nullptr);
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
+						*/
+					spinWait(_counter);
 				}
 				int nthreads = m_numDstLocalThreads-1;
 				while(1){
@@ -640,7 +653,7 @@ int InprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag){
 				long _counter=0;
 				while(m_srcAsyncOpThreadFinish[idx]->load() !=0){
 					_counter++;
-					if(_counter<USE_PAUSE)
+					/*if(_counter<USE_PAUSE)
 						_mm_pause();
 					else if(_counter<USE_SHORT_SLEEP){
 						__asm__ __volatile__ ("pause" ::: "memory");
@@ -650,6 +663,8 @@ int InprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag){
 						nanosleep(&SHORT_PERIOD, nullptr);
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
+						*/
+					spinWait(_counter);
 				}
 
 				int nthreads = m_numSrcLocalThreads-1;
@@ -737,7 +752,7 @@ int InprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag){
         		long _counter=0;
 				while(m_dstAsyncOpThreadFinish[idx]->load() !=0){
 					_counter++;
-					if(_counter<USE_PAUSE)
+					/*if(_counter<USE_PAUSE)
 						_mm_pause();
 					else if(_counter<USE_SHORT_SLEEP){
 						__asm__ __volatile__ ("pause" ::: "memory");
@@ -747,6 +762,8 @@ int InprocConduit::AsyncRead(void* DataPtr, DataSize_t DataSize, int tag){
 						nanosleep(&SHORT_PERIOD, nullptr);
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
+						*/
+					spinWait(_counter);
 				}
 				int nthreads = m_numDstLocalThreads-1;
 				while(1){
@@ -826,7 +843,7 @@ int InprocConduit::threadReadImpl(void* DataPtr, DataSize_t DataSize, int tag, i
 				}
 			}
 			_counter++;
-			if(_counter<USE_PAUSE)
+			/*if(_counter<USE_PAUSE)
 				_mm_pause();
 			else if(_counter<USE_SHORT_SLEEP){
 				__asm__ __volatile__ ("pause" ::: "memory");
@@ -836,6 +853,8 @@ int InprocConduit::threadReadImpl(void* DataPtr, DataSize_t DataSize, int tag, i
 				nanosleep(&SHORT_PERIOD, nullptr);
 			else
 				nanosleep(&LONG_PERIOD, nullptr);
+				*/
+			spinWait(_counter);
 		}
 
 		if(tmp_buffptr->usingPtr){
@@ -935,7 +954,7 @@ int InprocConduit::threadReadImpl(void* DataPtr, DataSize_t DataSize, int tag, i
 
 			}
 			_counter++;
-			if(_counter<USE_PAUSE)
+			/*if(_counter<USE_PAUSE)
 				_mm_pause();
 			else if(_counter<USE_SHORT_SLEEP){
 				__asm__ __volatile__ ("pause" ::: "memory");
@@ -945,6 +964,8 @@ int InprocConduit::threadReadImpl(void* DataPtr, DataSize_t DataSize, int tag, i
 				nanosleep(&SHORT_PERIOD, nullptr);
 			else
 				nanosleep(&LONG_PERIOD, nullptr);
+				*/
+			spinWait(_counter);
 		}
 
 		if(tmp_buffptr->usingPtr){
@@ -1054,7 +1075,7 @@ void InprocConduit::AsyncRead_Finish(int tag){
 				long _counter=0;
 				while(m_srcAsyncOpThreadFinish[idx]->load() !=0){
 					_counter++;
-					if(_counter<USE_PAUSE)
+					/*if(_counter<USE_PAUSE)
 						_mm_pause();
 					else if(_counter<USE_SHORT_SLEEP){
 						__asm__ __volatile__ ("pause" ::: "memory");
@@ -1064,6 +1085,8 @@ void InprocConduit::AsyncRead_Finish(int tag){
 						nanosleep(&SHORT_PERIOD, nullptr);
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
+						*/
+					spinWait(_counter);
 				}
 
 				int nthreads = m_numSrcLocalThreads-1;
@@ -1115,7 +1138,7 @@ void InprocConduit::AsyncRead_Finish(int tag){
         		long _counter=0;
 				while(m_dstAsyncOpThreadFinish[idx]->load() !=0){
 					_counter++;
-					if(_counter<USE_PAUSE)
+					/*if(_counter<USE_PAUSE)
 						_mm_pause();
 					else if(_counter<USE_SHORT_SLEEP){
 						__asm__ __volatile__ ("pause" ::: "memory");
@@ -1125,6 +1148,8 @@ void InprocConduit::AsyncRead_Finish(int tag){
 						nanosleep(&SHORT_PERIOD, nullptr);
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
+						*/
+					spinWait(_counter);
 				}
 				int nthreads = m_numDstLocalThreads-1;
 				while(1){

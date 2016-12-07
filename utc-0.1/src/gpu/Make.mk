@@ -31,15 +31,15 @@ libutcgpu.a: $(OBJS)
 	cp $(OBJS) $(PROJECT_LIBDIR)
 	@echo "make gpulibrary succefful !!!"
 CudaDeviceManager.o: CudaDeviceManager.cc
-	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 TaskGPU.o: TaskGPU.cc
-	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 UtcGpuContext.o : UtcGpuContext.cc
-	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 GpuTaskUtilities.o : GpuTaskUtilities.cc
-	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 GpuKernel.o : GpuKernel.cc
-	$(G++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 
 	
 clean:

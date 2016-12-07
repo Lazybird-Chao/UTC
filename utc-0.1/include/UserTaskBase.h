@@ -10,8 +10,9 @@
 #include "UtcBasics.h"
 #include "FastBarrier.h"
 #include "FastMutex.h"
+#include "SpinLock.h"
 #if ENABLE_SCOPED_DATA
-#include "PrivateScopedDataBase.h"
+	#include "PrivateScopedDataBase.h"
 #endif
 
 
@@ -61,8 +62,9 @@ private:
 #if ENABLE_SCOPED_DATA
 	std::vector<iUtc::PrivateScopedDataBase *> __psDataRegistry;
 #endif
-	//std::mutex __opMutex;
-	FastMutex __opMutex;
+	//std::mutex __opLock;
+	FastMutex __opLock;
+	iUtc::SpinLock __opSpinLock;
 
 protected:
 	/* other useful member functions */

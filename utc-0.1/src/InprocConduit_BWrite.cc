@@ -3,6 +3,7 @@
 #include "Task.h"
 #include "UtcBasics.h"
 #include "../include/TaskUtilities.h"
+#include "TimerUtilities.h"
 
 #include <map>
 #include <cstdlib>
@@ -158,7 +159,7 @@ int InprocConduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag){
 					long _counter=0;
 					while(m_srcOpThreadFinish[idx]->load() != 0){
 						_counter++;
-						if(_counter<USE_PAUSE)
+						/*if(_counter<USE_PAUSE)
 							_mm_pause();
 						else if(_counter<USE_SHORT_SLEEP){
 							__asm__ __volatile__ ("pause" ::: "memory");
@@ -168,6 +169,8 @@ int InprocConduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag){
 							nanosleep(&SHORT_PERIOD, nullptr);
 						else
 							nanosleep(&LONG_PERIOD, nullptr);
+							*/
+						spinWait(_counter);
 					}
 				}
 
@@ -304,7 +307,7 @@ int InprocConduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag){
 					long _counter=0;
 					while(m_dstOpThreadFinish[idx]->load() !=0){
 						_counter++;
-						if(_counter<USE_PAUSE)
+						/*if(_counter<USE_PAUSE)
 							_mm_pause();
 						else if(_counter<USE_SHORT_SLEEP){
 							__asm__ __volatile__ ("pause" ::: "memory");
@@ -314,6 +317,8 @@ int InprocConduit::BWrite(void *DataPtr, DataSize_t DataSize, int tag){
 							nanosleep(&SHORT_PERIOD, nullptr);
 						else
 							nanosleep(&LONG_PERIOD, nullptr);
+							*/
+						spinWait(_counter);
 					}
 				}
 

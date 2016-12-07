@@ -70,13 +70,16 @@ extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
 /*
  * Scoped data related
  */
-#define ENABLE_SCOPED_DATA 1
+#define ENABLE_SCOPED_DATA 1     // enable the use of global shared data feature
+
+#if ENABLE_SCOPED_DATA
 
 #define USE_OPENSHMEM
 #ifdef USE_OPENSHMEM
 	#include "shmem.h"
 #endif
 
+#endif
 /*
  *
  */

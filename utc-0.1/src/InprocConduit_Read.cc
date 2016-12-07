@@ -2,6 +2,7 @@
 #include "TaskManager.h"
 #include "Task.h"
 #include "../include/TaskUtilities.h"
+#include "TimerUtilities.h"
 
 #include <map>
 #include <cstdlib>
@@ -93,16 +94,19 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 
 				}
 				_counter++;
-				if(_counter<USE_PAUSE)
+				/*if(_counter<USE_PAUSE)
 					_mm_pause();
 				else if(_counter<USE_SHORT_SLEEP){
 					__asm__ __volatile__ ("pause" ::: "memory");
-					std::this_thread::yield();
+					if(_counter%1000==0)
+						std::this_thread::yield();
 				}
 				else if(_counter<USE_LONG_SLEEP)
 					nanosleep(&SHORT_PERIOD, nullptr);
 				else
 					nanosleep(&LONG_PERIOD, nullptr);
+					*/
+				spinWait(_counter);
 
 			}
 #ifdef USE_DEBUG_LOG
@@ -195,16 +199,19 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 
 					}
 					_counter++;
-					if(_counter<USE_PAUSE)
+					/*if(_counter<USE_PAUSE)
 						_mm_pause();
 					else if(_counter<USE_SHORT_SLEEP){
 						__asm__ __volatile__ ("pause" ::: "memory");
-						std::this_thread::yield();
+						if(_counter %1000==0)
+							std::this_thread::yield();
 					}
 					else if(_counter<USE_LONG_SLEEP)
 						nanosleep(&SHORT_PERIOD, nullptr);
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
+						*/
+					spinWait(_counter);
 				}
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -285,16 +292,19 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 					long _counter=0;
 					while(m_srcOpThreadFinish[idx]->load() !=0){
 						_counter++;
-						if(_counter<USE_PAUSE)
+						/*if(_counter<USE_PAUSE)
 							_mm_pause();
 						else if(_counter<USE_SHORT_SLEEP){
 							__asm__ __volatile__ ("pause" ::: "memory");
-							std::this_thread::yield();
+							if(_counter%1000==0)
+								std::this_thread::yield();
 						}
 						else if(_counter<USE_LONG_SLEEP)
 							nanosleep(&SHORT_PERIOD, nullptr);
 						else
 							nanosleep(&LONG_PERIOD, nullptr);
+							*/
+						spinWait(_counter);
 					}
 				}
 				int nthreads = m_numSrcLocalThreads-1;
@@ -482,16 +492,19 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 
 				}
 				_counter++;
-				if(_counter<USE_PAUSE)
+				/*if(_counter<USE_PAUSE)
 					_mm_pause();
 				else if(_counter<USE_SHORT_SLEEP){
 					__asm__ __volatile__ ("pause" ::: "memory");
-					std::this_thread::yield();
+					if(_counter % 1000==0)
+						std::this_thread::yield();
 				}
 				else if(_counter<USE_LONG_SLEEP)
 					nanosleep(&SHORT_PERIOD, nullptr);
 				else
 					nanosleep(&LONG_PERIOD, nullptr);
+					*/
+				spinWait(_counter);
 			}
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -579,16 +592,19 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 
 					}
 					_counter++;
-					if(_counter<USE_PAUSE)
+					/*if(_counter<USE_PAUSE)
 						_mm_pause();
 					else if(_counter<USE_SHORT_SLEEP){
 						__asm__ __volatile__ ("pause" ::: "memory");
-						std::this_thread::yield();
+						if(_counter%1000==0)
+							std::this_thread::yield();
 					}
 					else if(_counter<USE_LONG_SLEEP)
 						nanosleep(&SHORT_PERIOD, nullptr);
 					else
 						nanosleep(&LONG_PERIOD, nullptr);
+						*/
+					spinWait(_counter);
 				}
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_threadOstream)
@@ -666,16 +682,19 @@ int InprocConduit::Read(void *DataPtr, DataSize_t DataSize, int tag){
 					long _counter=0;
 					while(m_dstOpThreadFinish[idx]->load() !=0){
 						_counter++;
-						if(_counter<USE_PAUSE)
+						/*if(_counter<USE_PAUSE)
 							_mm_pause();
 						else if(_counter<USE_SHORT_SLEEP){
 							__asm__ __volatile__ ("pause" ::: "memory");
-							std::this_thread::yield();
+							if(_counter%1000 == 0)
+								std::this_thread::yield();
 						}
 						else if(_counter<USE_LONG_SLEEP)
 							nanosleep(&SHORT_PERIOD, nullptr);
 						else
 							nanosleep(&LONG_PERIOD, nullptr);
+							*/
+						spinWait(_counter);
 					}
 				}
 				int nthreads = m_numDstLocalThreads-1;
@@ -905,16 +924,19 @@ int InprocConduit::ReadBy(ThreadRank_t thread, void* DataPtr, DataSize_t DataSiz
 
 			}
 			_counter++;
-			if(_counter<USE_PAUSE)
+			/*if(_counter<USE_PAUSE)
 				_mm_pause();
 			else if(_counter<USE_SHORT_SLEEP){
 				__asm__ __volatile__ ("pause" ::: "memory");
-				std::this_thread::yield();
+				if(_counter %1000 == 0)
+					std::this_thread::yield();
 			}
 			else if(_counter<USE_LONG_SLEEP)
 				nanosleep(&SHORT_PERIOD, nullptr);
 			else
 				nanosleep(&LONG_PERIOD, nullptr);
+				*/
+			spinWait(_counter);
 		}
 #ifdef USE_DEBUG_LOG
 PRINT_TIME_NOW(*m_threadOstream)
@@ -1001,16 +1023,19 @@ PRINT_TIME_NOW(*m_threadOstream)
 
 			}
 			_counter++;
-			if(_counter<USE_PAUSE)
+			/*if(_counter<USE_PAUSE)
 				_mm_pause();
 			else if(_counter<USE_SHORT_SLEEP){
 				__asm__ __volatile__ ("pause" ::: "memory");
-				std::this_thread::yield();
+				if(_counter%1000 ==0)
+					std::this_thread::yield();
 			}
 			else if(_counter<USE_LONG_SLEEP)
 				nanosleep(&SHORT_PERIOD, nullptr);
 			else
 				nanosleep(&LONG_PERIOD, nullptr);
+				*/
+			spinWait(_counter);
 		}
 #ifdef USE_DEBUG_LOG
 PRINT_TIME_NOW(*m_threadOstream)
@@ -1201,16 +1226,19 @@ int InprocConduit::ReadByFirst(void * DataPtr, DataSize_t DataSize, int tag){
 
 				}
 				_counter++;
-				if(_counter<USE_PAUSE)
+				/*if(_counter<USE_PAUSE)
 					_mm_pause();
 				else if(_counter<USE_SHORT_SLEEP){
 					__asm__ __volatile__ ("pause" ::: "memory");
-					std::this_thread::yield();
+					if(_counter %1000 ==0)
+						std::this_thread::yield();
 				}
 				else if(_counter<USE_LONG_SLEEP)
 					nanosleep(&SHORT_PERIOD, nullptr);
 				else
 					nanosleep(&LONG_PERIOD, nullptr);
+					*/
+				spinWait(_counter);
 			}
 #ifdef USE_DEBUG_LOG
 PRINT_TIME_NOW(*m_threadOstream)
@@ -1311,16 +1339,19 @@ PRINT_TIME_NOW(*m_threadOstream)
 
 				}
 				_counter++;
-				if(_counter<USE_PAUSE)
+				/*if(_counter<USE_PAUSE)
 					_mm_pause();
 				else if(_counter<USE_SHORT_SLEEP){
 					__asm__ __volatile__ ("pause" ::: "memory");
-					std::this_thread::yield();
+					if(_counter %1000 ==0)
+						std::this_thread::yield();
 				}
 				else if(_counter<USE_LONG_SLEEP)
 					nanosleep(&SHORT_PERIOD, nullptr);
 				else
 					nanosleep(&LONG_PERIOD, nullptr);
+					*/
+				spinWait(_counter);
 			}
 #ifdef USE_DEBUG_LOG
 PRINT_TIME_NOW(*m_threadOstream)
