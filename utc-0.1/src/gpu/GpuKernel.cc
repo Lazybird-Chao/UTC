@@ -7,6 +7,7 @@
 
 #include "GpuKernel.h"
 #include "GpuTaskUtilities.h"
+#include "CudaDeviceManager.h"
 #include "helper_cuda.h"
 
 namespace iUtc{
@@ -107,14 +108,24 @@ int GpuKernel::setBlockDim(int d1, int d2, int d3){
 }
 
 int GpuKernel::launchKernel(const void* kernel_fun, bool async){
-	checkCudaRuntimeErrors(cudaConfigureCall(m_cudaGridDim, m_cudaBlockDim, m_sharedMemSize, m_cudaStream));
-	size_t offset = 0;
-	for(int i=0; i< m_numArgs; i++){
-		checkCudaRuntimeErrors(cudaSetupArgument(m_args[i], m_argSizes[i], offset));
-		offset += m_argSizes[i];
-	}
+	if(CudaDeviceManager::runtimeMajor < 7){
+		checkCudaRuntimeErrors(cudaConfigureCall(m_cudaGridDim, m_cudaBlockDim, m_sharedMemSize, m_cudaStream));
+		size_t offset = 0;
+		for(int i=0; i< m_numArgs; i++){
+			checkCudaRuntimeErrors(cudaSetupArgument(m_args[i], m_argSizes[i], offset));
+			offset += m_argSizes[i];
+		}
 
-	checkCudaRuntimeErrors(cudaLaunch(kernel_fun));
+		checkCudaRuntimeErrors(cudaLaunch(kernel_fun));
+	}
+	else{
+		checkCudaRuntimeErrors(cudaLaunchKernel(kernel_fun,
+												m_cudaGridDim,
+												m_cudaBlockDim,
+												m_args,
+												m_sharedMemSize,
+												m_cudaStream));
+	}
 
 	if(!async)
 		checkCudaRuntimeErrors(cudaStreamSynchronize(m_cudaStream));

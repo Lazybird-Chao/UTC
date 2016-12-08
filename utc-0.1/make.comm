@@ -83,16 +83,16 @@ endif
 .PHONY: cleanlib cleanlog cleanbin
 
 cleanlib:
-	rm  $(PROJECT_LIBDIR)/*
+	rm  -rf $(PROJECT_LIBDIR)/*
 ifeq ($(ENABLE_GPU), 1)
-	rm 	$(PROJECT_SRCDIR)/gpu/*.o $(PROJECT_SRCDIR)/gpu/*.a
+	rm 	-rf $(PROJECT_SRCDIR)/gpu/*.o $(PROJECT_SRCDIR)/gpu/*.a
 endif
 ifeq ($(ENALBE_SCOPED_DATA), 1)
-	rm $(PROJECT_SRCDIR)/ScopedData/*.o $(PROJECT_SRCDIR)/ScopedData/*.a
+	rm	-rf $(PROJECT_SRCDIR)/ScopedData/*.o $(PROJECT_SRCDIR)/ScopedData/*.a
 endif
 
 cleanlog:
-	rm  $(PROJECT_HOMEDIR)/log/*
+	rm	-rf $(PROJECT_HOMEDIR)/log/*
 cleanbin:
-	rm  $(PROJECT_BINDIR)/*
+	rm	-rf $(PROJECT_BINDIR)/*
 		

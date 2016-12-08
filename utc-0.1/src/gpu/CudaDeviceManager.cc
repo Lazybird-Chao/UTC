@@ -17,6 +17,10 @@
 namespace iUtc{
 
 CudaDeviceManager* CudaDeviceManager::m_managerInstance = nullptr;
+int		CudaDeviceManager::runtimeMajor;
+int		CudaDeviceManager::runtimeMinor;
+int		CudaDeviceManager::driverMajor;
+int		CudaDeviceManager::driverMinor;
 CudaDeviceManager::CudaDeviceManager(){
 	int driverVersion, runtimeVersion;
 	checkCudaRuntimeErrors(cudaDriverGetVersion(&driverVersion));

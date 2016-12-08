@@ -47,10 +47,11 @@ public:
 	void initDevice(int devId);
 	void resetDevice(int devId);
 
-	int				runtimeMajor;
-	int				runtimeMinor;
-	int				driverMajor;
-	int				driverMinor;
+	static int				runtimeMajor;
+	static int				runtimeMinor;
+	static int				driverMajor;
+	static int				driverMinor;
+
 
 private:
 	CudaDeviceManager();

@@ -163,7 +163,9 @@ void UtcContext::finalize()
     CudaDeviceManager& cudaDevMgr = CudaDeviceManager::getCudaDeviceManager();
 	#if CUDA_CONTEXT_MAP_MODE==3
     	for(int i=0; i<cudaDevMgr.getNumDevices(); i++)
-    		cudaDevMgr.resetDevice(i);
+    		// Here may be a bug of cuda, will post erro when it's called
+    		// when the process is actually do exiting
+    		//cudaDevMgr.resetDevice(i);
     	cudaDevMgr.~CudaDeviceManager();
 	#endif
 #endif

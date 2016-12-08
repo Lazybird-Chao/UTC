@@ -15,10 +15,12 @@ include $(COMM_FILE)
 
 LIBUTC = $(PROJECT_LIBDIR)/libutc
 LIBUTC_GPU = $(PROJECT_LIBDIR)/libutcgpu
+#LIBUTC_SCOPED_DATA = $(PROJECT_LIBDIR)/libutc-scopeddata
 
 $(PROJECT_LIBDIR)/libutc:
 	cd $(PROJECT_HOMEDIR);$(MAKE) -f $(LIBMK_FILE)
-	
+$(PROJECT_LIBDIR)/libutc-scopeddata:
+	cd $(PROJECT_SRCDIR)/ScopedData;$(MAKE) -f Make.mk	
 $(PROJECT_LIBDIR)/libutcgpu:
 	cd $(PROJECT_SRCDIR)/gpu;$(MAKE) -f Make.mk
 
