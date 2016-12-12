@@ -87,8 +87,10 @@ namespace iUtc{
             //std::cout<<ERROR_LINE<<std::endl;
             shmem_finalize();
 #endif
-#endif
+#else
+
             MPI_Finalize();
+#endif
 
 #ifdef USE_DEBUG_LOG
             std::cout<<"[SYSTEM LOG]>>>>>>>>>:";

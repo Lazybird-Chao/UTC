@@ -1,7 +1,7 @@
 #####################
 default:libutc-scopeddata.a
 
-include ../../make.comm
+include ../../for-dis.comm
 
 #####################
 vpath %.h  $(PROJECT_INCLUDEDIR)
