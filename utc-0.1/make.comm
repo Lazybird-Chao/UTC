@@ -8,7 +8,7 @@ PROJECT_SRCDIR = $(PROJECT_HOMEDIR)/src
 
 ENABLE_GPU = 1
 
-ENABLE_SCOPED_DATA = 1
+ENABLE_SCOPEDDATA = 1
 
 
 ##################
@@ -66,7 +66,7 @@ GENCODE_SM35 = -gencode arch=compute_35,code=sm_35
 
 NVCCFLAG = $(GENCODE_SM20)
 
-CUDA_LIB := -L$(CUDA_DIR)/lib64 -lcuda -lcudart
+CUDA_LIB := -L$(CUDA_DIR)/lib64 -lcudart  -lcuda
 
 NVLINKFLAG = $(GENCODE_SM20)
 
