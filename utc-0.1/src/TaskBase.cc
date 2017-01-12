@@ -148,6 +148,8 @@ m_uniqueExeObjPtr(nullptr)
     m_ThreadRank2Local.clear();
     m_bcastAvailable.store(0);
     m_gatherAvailable.store(0);
+
+    m_worldRankToTaskGroupRank.clear();
 }
 
 TaskBase::~TaskBase()
@@ -160,6 +162,8 @@ TaskBase::~TaskBase()
     m_procOstream=nullptr;
     if(m_uniqueExeObjPtr)
     	delete m_uniqueExeObjPtr;
+
+    m_worldRankToTaskGroupRank.clear();
 }
 
 void TaskBase::RegisterTask()

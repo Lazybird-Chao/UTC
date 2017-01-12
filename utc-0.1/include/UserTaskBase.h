@@ -17,6 +17,7 @@
 
 
 #include <vector>
+#include <map>
 #include <mutex>
 
 
@@ -41,7 +42,7 @@ public:
 #endif
 
 	void preInit(int lrank, int trank, int prank, int numLocalThreads,
-			int numProcesses, int numTotalThreads);
+			int numProcesses, int numTotalThreads, std::map<int,int> *worldRankTranslate);
 	void preExit();
 
 	/* useful data members */
@@ -51,6 +52,7 @@ public:
 	int __numLocalThreads=0;
 	int __numGlobalThreads=0;
 	int __numProcesses=0;
+	std::map<int,int> *__worldRankTranslate=nullptr;
 
 	FastBarrier __fastIntraSync;
 

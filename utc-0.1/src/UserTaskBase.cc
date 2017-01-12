@@ -59,13 +59,15 @@ void UserTaskBase::preInit(int lrank,
 							int prank,
 							int numLocalThreads,
 							int numProcesses,
-							int numTotalThreads){
+							int numTotalThreads,
+							std::map<int,int> *worldRankTranslate){
 	__localThreadId = lrank;
 	__globalThreadId = trank;
 	__processId = prank;
 	__numLocalThreads = numLocalThreads;
 	__numGlobalThreads = numTotalThreads;
 	__numProcesses = numProcesses;
+	__worldRankTranslate = worldRankTranslate;
 
 	__fastIntraSync.init(numLocalThreads);
 

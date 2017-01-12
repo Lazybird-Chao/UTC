@@ -189,6 +189,9 @@ void TaskCPU::threadImpl(ThreadRank_t trank,
 	taskInfoPtr->fastBarrierObjPtr = m_commonTaskInfo->fastBarrierObjPtr;
 	taskInfoPtr->commPtr = m_commonTaskInfo->commPtr;
 	taskInfoPtr->mpigroupPtr = m_commonTaskInfo->mpigroupPtr;
+	taskInfoPtr->worldCommPtr = m_commonTaskInfo->worldCommPtr;
+	taskInfoPtr->worldGroupPtr = m_commonTaskInfo->worldGroupPtr;
+	taskInfoPtr->worldRankToGrouprRank = m_commonTaskInfo->worldRankToGrouprRank;
 	TaskManager::setTaskInfo(taskInfoPtr);
 	//std::cout<<trank<<" "<<ERROR_LINE<<std::endl;
 	// create ThreadPrivateData structure
@@ -210,7 +213,8 @@ void TaskCPU::threadImpl(ThreadRank_t trank,
 							m_commonTaskInfo->pRank,
 							m_numLocalThreads,
 							m_numProcesses,
-							m_numTotalThreads);
+							m_numTotalThreads,
+							m_commonTaskInfo->worldRankToGrouprRank);
 
 	while(1){
 		std::unique_lock<std::mutex> LCK1(m_jobExecMutex);

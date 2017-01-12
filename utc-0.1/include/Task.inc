@@ -498,8 +498,18 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 #ifdef USE_MPI_BASE
 	MPI_Group_incl(*(root->getWorldGroup()), m_numProcesses, inc_rank, &m_taskmpiGroup);
 	MPI_Comm_create(*(root->getWorldComm()), m_taskmpiGroup, &m_taskComm);
-#endif
 
+	/*
+	 * for each task, we careat a new communicator, so the process rank in
+	 * this m_taskComm is different from the world_rank value.
+	 * we record the map from world_rank to task_mpi_group_rank
+	 */
+	int *rankInGroup = new int[m_numProcesses];
+	MPI_Group_translate_ranks(*(root->getWorldGroup()), m_numProcesses, inc_rank,
+			m_taskmpiGroup, rankInGroup);
+	for(int i=0; i<m_numProcesses; i++)
+		m_worldRankToTaskGroupRank.insert(std::pair<int,int>(inc_rank[i], rankInGroup[i]));
+#endif
 	// create obj of user defined task class"T". With this design all threads in
 	// one process will share this user taskobj, the data members of the this obj
 	// will be accessed by all threads. Also each processes will has a same copy
@@ -540,6 +550,10 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 		#ifdef USE_MPI_BASE
 		m_commonTaskInfo.commPtr = &m_taskComm;
 		m_commonTaskInfo.mpigroupPtr = &m_taskmpiGroup;
+
+		m_commonTaskInfo.worldCommPtr = root->getWorldComm();
+		m_commonTaskInfo.worldGroupPtr = root->getWorldGroup();
+		m_commonTaskInfo.worldRankToGrouprRank = &m_worldRankToTaskGroupRank;
 		#endif
 
 		m_commonThreadPrivateData.taskUniqueExeTagObj = m_uniqueExeObjPtr;
