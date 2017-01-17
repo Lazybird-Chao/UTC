@@ -27,7 +27,7 @@ internal_MPIWin::internal_MPIWin(MPI_Comm *mpi_comm, long heap_size, int root){
 
 }
 
-internal_MPIWin::scoped_win_init(){
+void internal_MPIWin::scoped_win_init(){
 	if(!scoped_win_initialized){
 		MPI_Info sheap_info = MPI_INFO_NULL;
 		MPI_Info_create(&sheap_info);
@@ -53,9 +53,16 @@ internal_MPIWin::scoped_win_init(){
 		 /* Part (less than 128*sizeof(size_t) bytes) of this space is used for bookkeeping,
 		 * so the capacity must be at least this large */
 		 scoped_sheap_size += 128*sizeof(size_t);
-		 scoped_heap_maspace = create_mspace_with_base(scoped_sheap_base_ptr,
+		 scoped_heap_mspace = create_mspace_with_base(scoped_sheap_base_ptr,
 				 	 	 	 	 	 	 	 scoped_sheap_size,
 											 0 /* locked */);
+		 /*
+		  * should set the limit size of mspace;
+		  * similar to shmem_symetirc space size, that shared data can not
+		  * exceed this size from shmalloc()
+		  */
+		 mspace_setfootprint_limit(scoped_heap_msapce, scoped_sheap_size);
+
 		 MPI_Info_free(&sheap_info);
 
 		 scoped_win_lock = new MpiWinLock(scoped_win_comm, scoped_win_root);
@@ -67,11 +74,15 @@ internal_MPIWin::scoped_win_init(){
 	return;
 }
 
-internal_MPIWin::scoped_win_finalize(){
+void internal_MPIWin::scoped_win_finalize(){
 	if (scoped_win_initialized && !scoped_win_finalized){
 		if(scoped_win_lock){
 			delete scoped_win_lock;
 		}
+
+		// do we need to destroy the mspace???
+		//destroy_mspace(scoped_heap_mspace);
+
 		MPI_Barrier(*scoped_win_comm);
 		MPI_Win_unlock_all(scoped_sheap_win);
 		MPI_Win_free(&scoped_sheap_win);
@@ -81,16 +92,24 @@ internal_MPIWin::scoped_win_finalize(){
 	return;
 }
 
-internal_MPIWin::scoped_win_remote_sync(){
+void internal_MPIWin::scoped_win_remote_sync(){
 	MPI_Win_flush_all(scoped_sheap_win);
 }
 
-internal_MPIWin::scoped_win_remote_sync_pe(int pe){
-	MPI_Win_flush_all(pe, scoped_sheap_win);
+void internal_MPIWin::scoped_win_remote_sync_pe(int pe){
+	MPI_Win_flush(pe, scoped_sheap_win);
 }
 
-internal_MPIWin::scoped_win_local_sync(){
+void internal_MPIWin::scoped_win_local_sync(){
 	MPI_Win_sync(scoped_sheap_win);
+}
+
+void internal_MPIWin::scoped_win_local_complete(){
+	MPI_Win_flush_local_all(scoped_sheap_win);
+}
+
+void internal_MPIWin::scoped_win_local_complete_pe(int pe){
+	MPI_Win_flush_local(pe, scoped_sheap_win)
 }
 
 /* return 0 on successful lookup, otherwise 1 */
@@ -98,7 +117,7 @@ int internal_MPIWin::scoped_win_offset(const void *address, const int pe, /* IN 
         enum window_id_e * win_id,   /* OUT */
         MPI_Aint * win_offset)       /* OUT */ {
 	/*
-	 * notice the long here may call problem, it only suits 64bit system
+	 * notice the long here may cause problem, it only suits 64bit system
 	 */
 	long sheap_offset = (long)address - (long)scoped_sheap_base_ptr;
 	if (0 <= sheap_offset && sheap_offset <= scoped_sheap_size) {
@@ -157,7 +176,7 @@ void internal_MPIWin::scoped_win_get(MPI_Datatype mpi_type,
 	enum window_id_e win_id;
 	MPI_Aint win_offset;
 
-	if(scoped_win_offset(target, pe, &win_id, &win_offset)){
+	if(scoped_win_offset(source, pe, &win_id, &win_offset)){
 		/*
 		 * error
 		 */
@@ -270,8 +289,97 @@ void internal_MPIWin::scoped_win_fadd(MPI_Datatype mpi_type,
 	return;
 }
 
+void internal_MPIWin::scoped_win_wait(MPI_Datatype mpi_type,
+		void *output,
+		void *target,
+		const void *value){
+	enum window_id_e win_id;
+	MPI_Aint win_offset;
+	if(scoped_win_offset(target, pe, &win_id, &win_offset)){
+		/*
+		 * error
+		 */
+		printf("Error, scoped_win_put offset failed");
+		exit(1);
+	}
+	*output = *value;
+	while(*output == *value){
+		MPI_Fetch_and_op(nullptr, output, mpi_type, scoped_win_comm_rank,
+				win_offset, MPI_NO_OP, scoped_sheap_win);
+		MPI_Win_flush_local(scoped_win_comm_rank, scoped_sheap_win);
+	}
+}
 
+void internal_MPIWin::scoped_win_wait_until(MPI_Datatype mpi_type,
+		void *output,
+		void *target,
+		int cond,
+		const void *value){
+	enum window_id_e win_id;
+	MPI_Aint win_offset;
+	if(scoped_win_offset(target, pe, &win_id, &win_offset)){
+		/*
+		 * error
+		 */
+		printf("Error, scoped_win_put offset failed");
+		exit(1);
+	}
 
+	bool comp_res =false;
+	while(!comp_res){
+		MPI_Fetch_and_op(nullptr, output, mpi_type, scoped_win_comm_rank,
+					win_offset, MPI_NO_OP, scoped_sheap_win);
+		MPI_Win_flush_local(scoped_win_comm_rank, scoped_sheap_win);
+		switch(cond){
+		case 1:
+			if(*output = *value)
+				comp_res = true;
+			break;
+		case 2:
+			if(*output != *value)
+				comp_res = true;
+			break;
+		case 3:
+			if(*output > *value)
+				comp_res = true;
+			break;
+		case 4:
+			if(*output >= *value)
+				comp_res = true;
+			break;
+		case 5:
+			if(*output < *value)
+				comp_res = true;
+			break;
+		case 6:
+			if(*output <= *value)
+				comp_res = true;
+			break;
+		default:
+			std::cerr<<"invalid comparison in scoped_win_wait!!!"<<std::endl;
 
+		}
+	}
+}
+
+int internal_MPIWin::get_scoped_win_comm_size(){
+	return scoped_win_comm_size;
+}
+
+int internal_MPIWin::get_scoped_win_comm_rank(){
+	return scoped_win_comm_rank;
+}
+
+long internal_MPIWin::get_scoped_sheap_size(){
+	return scoped_sheap_size;
+}
+
+mspace internal_MPIWin::get_heap_mspace(){
+	return scoped_heap_mspace;
+}
+
+MpiWinLock *internal_MPIWin::get_scoped_win_lock(){
+	return scoped_win_lock;
+}
 
 }// end namespace iUtc

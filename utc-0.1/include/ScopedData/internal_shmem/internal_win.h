@@ -32,7 +32,8 @@
 #include "mpi_win_lock.h"
 
 /*
- *
+ * MPI_Accumulate functions will enable the ordering,
+ * here we do not use it yet, just use MPI_put/get
  */
 
 namespace iUtc{
@@ -51,7 +52,7 @@ private:
 	long    scoped_sheap_size;
 	void *  scoped_sheap_base_ptr;
 
-	mspace scoped_heap_maspace;
+	mspace scoped_heap_mspace;
 
 	enum window_id_e { _SHEAP_WINDOW = 0, _INVALID_WINDOW = -1 };
 	enum coll_type_e { _BARRIER = 0, _BROADCAST = 1, _ALLREDUCE = 2, _FCOLLECT = 4, _COLLECT = 8};
@@ -66,11 +67,18 @@ public:
 	void scoped_win_init();
 	void scoped_win_finalize();
 
+	/* win_flush */
 	void scoped_win_remote_sync();
+
+	/* win sync, syn window private and public copy on the calling process */
 	void scoped_win_local_sync();
 
+	/* win_flush_local */
+	void scoped_win_local_complete();
+	void scoped_win_local_complete_pe(int pe);
+
 	/* used internally only */
-	void scoped_win_remote_sync_pe(int);
+	void scoped_win_remote_sync_pe(int pe);
 
 	/* return 0 on successful lookup, otherwise 1 */
 	int scoped_win_offset(const void *address, const int pe,
@@ -84,6 +92,8 @@ public:
 	void scoped_win_add(MPI_Datatype mpi_type, void *remote, const void *input, int pe);
 	void scoped_win_fadd(MPI_Datatype mpi_type, void *output, void *remote, const void *input, int pe);
 
+	void scoped_win_wait(MPI_Datatype mpi_type, void *output, void *target, const void *value);
+	void scoped_win_wait_util(MPI_Datatype mpi_type, void *output, void *target, int cond, const void *value);
 	/*
 	 *  All collective operations will be implemented in other place as
 	 *  task utility functions; As those collective ops, such as bcast, gather,
@@ -93,6 +103,19 @@ public:
 	 *  we can implement them to realize collective ops within a task that span
 	 *  multiple nodes
 	 */
+
+	/*
+	 *
+	 */
+	int get_scoped_win_comm_size();
+
+	int get_scoped_win_comm_rank();
+
+	long get_scoped_sheap_size();
+
+	mspace get_heap_mspace();
+
+	MpiWinLock *get_scoped_win_lock();
 
 };
 

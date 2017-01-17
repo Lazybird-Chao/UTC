@@ -21,6 +21,14 @@
 
 #include <mpi.h>
 
+
+/*
+ * TODO: if the implementation is correct???
+ * can ensure the concurrent semantics of using lock???
+ *
+ */
+
+
 typedef struct{
 	int prev_owner_rank;
 	int next_owner_rank;

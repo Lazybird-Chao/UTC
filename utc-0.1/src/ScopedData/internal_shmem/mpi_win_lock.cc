@@ -68,6 +68,8 @@ MpiWinLock::~MpiWinLock(){
 void MpiWinLock::lock(long *lockp){
 	MPI_Status status;
 	mpi_win_lock_t *lock = (mpi_win_lock_t *) lockp;
+
+	m_mpi_win_baseptr[LOCK_DISP] = 1;
 	/* Replace myself with the last tail */
 	MPI_Fetch_and_op (&m_rank, &(lock->prev_owner_rank), MPI_INT, m_root,
 			TAIL_DISP, MPI_REPLACE, m_mpi_win);
@@ -83,7 +85,7 @@ void MpiWinLock::lock(long *lockp){
 	  MPI_Probe (lock->prev_owner_rank, MPI_ANY_TAG, *m_comm, &status);
 	}
 	/* Hold lock */
-	m_mpi_win_baseptr[LOCK_DISP] = 1;
+	//m_mpi_win_baseptr[LOCK_DISP] = 1;
 	MPI_Win_sync (m_mpi_win);
 
 	return;
@@ -153,12 +155,14 @@ int MpiWinLock::trylock(long *lockp){
 	  if (is_locked == 1)  // note here
 		  return 0;
 	}
+
+	m_mpi_win_baseptr[LOCK_DISP] = 1;
 	/* Add myself in tail */
 	MPI_Fetch_and_op (&m_rank, &(lock->prev_owner_rank), MPI_INT, m_root,
 			TAIL_DISP, MPI_REPLACE, m_mpi_win);
 	MPI_Win_flush (m_root, m_mpi_win);
 	/* Hold lock */
-	m_mpi_win_baseptr[LOCK_DISP] = 1;
+	//m_mpi_win_baseptr[LOCK_DISP] = 1;
 	MPI_Win_sync (m_mpi_win);
 
 	return 1;
