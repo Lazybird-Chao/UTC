@@ -42,7 +42,7 @@ T** file_read(int   isBinaryFile,  /* flag: 0 or 1 */
                   int  *numObjs,       /* count of data objects (local) */
                   int  *numCoords)     /* count of coordinates */
 {
-	T **objects;
+	float **objects;
     int     i, j, len;
     ssize_t numBytesRead;
 
@@ -60,8 +60,8 @@ T** file_read(int   isBinaryFile,  /* flag: 0 or 1 */
 
         /* allocate space for objects[][] and read all objects */
         len = (*numObjs) * (*numCoords);
-        objects    = (T**)malloc((*numObjs) * sizeof(T*));
-        objects[0] = (T*) malloc(len * sizeof(T));
+        objects    = (float**)malloc((*numObjs) * sizeof(float*));
+        objects[0] = (float*) malloc(len * sizeof(float));
 
 		if(objects == NULL || objects[0] == NULL) {
 			fprintf(stderr, "Could Not Allocate Memory\n");
@@ -71,8 +71,8 @@ T** file_read(int   isBinaryFile,  /* flag: 0 or 1 */
         for (i = 1; i < (*numObjs); i++)
             objects[i] = objects[i-1] + (*numCoords);
 
-        numBytesRead = read(infile, objects[0], len*sizeof(T));
-        assert(numBytesRead == len*sizeof(T));
+        numBytesRead = read(infile, objects[0], len*sizeof(float));
+        assert(numBytesRead == len*sizeof(float));
 		fprintf(stderr, " ... Input read successfully!\n");
         close(infile);
 
@@ -127,9 +127,9 @@ T** file_read(int   isBinaryFile,  /* flag: 0 or 1 */
 
         /* allocate space for objects[][] and read all objects */
         len = (*numObjs) * (*numCoords);
-        objects    = (T**)malloc((*numObjs) * sizeof(T*));
+        objects    = (float**)malloc((*numObjs) * sizeof(float*));
         assert(objects != NULL);
-        objects[0] = (T*) malloc(len * sizeof(T));
+        objects[0] = (float*) malloc(len * sizeof(float));
         assert(objects[0] != NULL);
         for (i=1; i<(*numObjs); i++)
             objects[i] = objects[i-1] + (*numCoords);
@@ -139,7 +139,7 @@ T** file_read(int   isBinaryFile,  /* flag: 0 or 1 */
         while (fgets(line, lineLen, infile) != NULL) {
             if (strtok(line, " \t\n") == NULL) continue;
             for (j=0; j<(*numCoords); j++)
-                objects[i][j] = (T)atof(strtok(NULL, " ,\t\n"));
+                objects[i][j] = (float)atof(strtok(NULL, " ,\t\n"));
             i++;
         }
 		fprintf(stderr, " ... Input read successfully!\n");
@@ -147,6 +147,23 @@ T** file_read(int   isBinaryFile,  /* flag: 0 or 1 */
         free(line);
     }
 
-    return objects;
+    if(sizeof(T) == sizeof(float))
+		return (T**)objects;
+	else{
+		double** objects_d = (double**)malloc((*numObjs) * sizeof(double*));
+		objects_d[0] = (double*) malloc(len * sizeof(double));
+		for (i = 1; i < (*numObjs); i++)
+			objects_d[i] = objects_d[i-1] + (*numCoords);
+
+		for (i=0; i< (*numObjs); i++){
+			for (j=0; j<(*numCoords); j++){
+				objects_d[i][j] = objects[i][j];
+			}
+		}
+		free(objects[0]);
+		free(objects);
+
+		return (T**)objects_d;
+	}
 }
 #endif

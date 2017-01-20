@@ -89,9 +89,10 @@ int main(int argc, char **argv) {
 
 	std::cout<<"Start clustering..."<<std::endl;
 	/* Launch the core computation algorithm */
+	int iters = 0;
 	t1 = getTime();
     clusters = kmeans(objects, numCoords, numObjs,
-                          numClusters, threshold, membership);
+                          numClusters, threshold, membership, &iters);
     t2 = getTime();
     clustering_timing = t2 - t1;
 
@@ -126,6 +127,7 @@ int main(int argc, char **argv) {
     printf("numClusters   = %d\n", numClusters);
     printf("threshold     = %.4f\n", threshold);
 
+    printf("Iterations         = %d\n", iters);
     printf("I/O time           = %10.4f sec\n", io_timing);
     printf("Computation timing = %10.4f sec\n", clustering_timing);
 

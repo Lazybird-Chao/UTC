@@ -81,9 +81,9 @@ template<typename T>
 T** create_array_2d(int height, int width) {
 	T** ptr;
 	int i;
-	ptr = calloc(height, sizeof(T*));
+	ptr = (T**)calloc(height, sizeof(T*));
 	assert(ptr != NULL);
-	ptr[0] = calloc(width * height, sizeof(T));
+	ptr[0] = (T*)calloc(width * height, sizeof(T));
 	assert(ptr[0] != NULL);
 	/* Assign pointers correctly */
 	for(i = 1; i < height; i++)
@@ -100,8 +100,8 @@ FTYPE** kmeans(
                    int     numObjs,           	/* no. objects */
                    int     numClusters,       	/* no. clusters */
                    FTYPE   threshold,         	/* % objects change membership */
-                   int    *membership			/* membership of each object */
-				   )        	/* out: [numObjs] */
+                   int    *membership,			/* membership of each object */
+				   int	  *iters)        	/* out */
 {
     int      i, j, k, index, loop = 0;
     int     *newClusterSize; /* [numClusters]: no. objects assigned in each
@@ -140,7 +140,8 @@ FTYPE** kmeans(
 		/* Average the sum and replace old cluster centers with newClusters */
 		for (i = 0; i < numClusters; i++) {
 			for (j = 0; j < numCoords; j++) {
-				//if (newClusterSize[i] > 1)
+				clusters[i][j] = newClusters[i][j];
+				if (newClusterSize[i] > 1)
 					clusters[i][j] = newClusters[i][j] / newClusterSize[i];
 				newClusters[i][j] = 0.0;   /* set back to 0 */
 			}
@@ -148,6 +149,7 @@ FTYPE** kmeans(
 		}
 		delta /= numObjs;
     } while (loop++ < PREC && delta > threshold);
+    *iters = loop;
 
     free(newClusters[0]);
     free(newClusters);

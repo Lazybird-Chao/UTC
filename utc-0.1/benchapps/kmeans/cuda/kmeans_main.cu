@@ -13,6 +13,7 @@
 #include "../../common/helper_err.h"
 
 #include "file_io.h"
+#include "kmeans_kernel.h"
 
 #define FTYPE float
 #define PREC 300 // max iteration times
@@ -38,9 +39,9 @@ template<typename T>
 T** create_array_2d(int height, int width) {
 	T** ptr;
 	int i;
-	ptr = malloc(height, sizeof(T*));
+	ptr = (T**)calloc(height, sizeof(T*));
 	assert(ptr != NULL);
-	ptr[0] = malloc(width * height, sizeof(T));
+	ptr[0] = (T*)calloc(width * height, sizeof(T));
 	assert(ptr[0] != NULL);
 	/* Assign pointers correctly */
 	for(i = 1; i < height; i++)
@@ -107,31 +108,32 @@ int main(int argc, char **argv) {
     int *new_membership = (int*) malloc(numObjs * sizeof(int));
     clusters = create_array_2d<FTYPE>(numClusters, numCoords);
     FTYPE **new_clusters = create_array_2d<FTYPE>(numClusters, numCoords);
-    int *new_clustersize = (int*)calloc(sizeof(int)*numClusters);
+    int *new_clustersize = (int*)calloc(numClusters, sizeof(int));
     /* Pick first numClusters elements of objects[] as initial cluster centers */
-	for (i=0; i < numClusters; i++)
-		for (j=0; j < numCoords; j++)
+	for (int i=0; i < numClusters; i++)
+		for (int j=0; j < numCoords; j++)
 			clusters[i][j] = objects[i][j];
 
 	/* Initialize membership, no object belongs to any cluster yet */
-	for (i = 0; i < numObjs; i++)
+	for (int i = 0; i < numObjs; i++)
 		membership[i] = -1;
 
     /*
      * create gpu memory
      */
+	cudaSetDevice(0);
     FTYPE *objects_d;
-    FTYPE *membership_d;
+    int *membership_d;
     FTYPE *clusters_d;
-    checkCudaErr(cudaMalloc(&objects_d, sizeof(TYPE)*numObjs*numCoords));
-    checkCudaErr(cudaMalloc(&membership_d, sizeof(TYPE)*numObjs*numCoords));
-    checkCudaErr(cudaMalloc(&clusters_d, sizeof(TYPE)*numObjs*numCoords));
+    checkCudaErr(cudaMalloc(&objects_d, sizeof(FTYPE)*numObjs*numCoords));
+    checkCudaErr(cudaMalloc(&membership_d, sizeof(int)*numObjs));
+    checkCudaErr(cudaMalloc(&clusters_d, sizeof(FTYPE)*numClusters*numCoords));
 
     /*
      * copy data in
      */
     t1 = getTime();
-    checkCudaErr(cudaMemcpy(objects_d, objects[0], sizeof(TYPE)*numObjs*numCoords, cudaMemcpyHostToDevice));
+    checkCudaErr(cudaMemcpy(objects_d, objects[0], sizeof(FTYPE)*numObjs*numCoords, cudaMemcpyHostToDevice));
     t2 = getTime();
     double copyinTime = t2- t1;
 
@@ -145,11 +147,11 @@ int main(int argc, char **argv) {
 
 	int batchPerThread = 16;
 	int blocksize = 256;
-	int gridsize = (numObjs + blocksize*bachPerThread -1)/(blocksize*batchPerThread);
+	int gridsize = (numObjs + blocksize*batchPerThread -1)/(blocksize*batchPerThread);
 	dim3 block(blocksize, 1, 1);
 	dim3 grid(gridsize, 1, 1);
 	int changedObjs =0;
-	int loopcounter = 0;
+	int loopcounters = 0;
 	do{
 		/*
 		 * copy in new clusters data and compute new membership of each obj
@@ -158,14 +160,15 @@ int main(int argc, char **argv) {
 		checkCudaErr(cudaMemcpy(clusters_d, clusters[0], sizeof(FTYPE)*numClusters*numCoords, cudaMemcpyHostToDevice));
 		t2 = getTime();
 		copyinTime += t2-t1;
-
+		//std::cout<<__LINE__<<std::endl;
 		t1 = getTime();
 		kmeans_kernel<<<grid, block>>>(objects_d, numCoords, numObjs, numClusters,
                           clusters_d, membership_d, batchPerThread);
 		cudaDeviceSynchronize();
+		checkCudaErr(cudaGetLastError());
 		t2 = getTime();
 		kernelTime += t2-t1;
-
+		//std::cout<<__LINE__<<std::endl;
 		/*
 		 * copy out new membership
 		 */
@@ -178,6 +181,7 @@ int main(int argc, char **argv) {
 		 * compute new clusters
 		 */
 		t1 = getTime();
+		changedObjs = 0;
 		for(int i=0; i<numObjs; i++){
 			if(new_membership[i] != membership[i]){
 				changedObjs++;
@@ -185,20 +189,23 @@ int main(int argc, char **argv) {
 			}
 			new_clustersize[new_membership[i]]++;
 			for(int j=0; j<numCoords; j++)
-				new_clusters[i][j] += objests[i][j];
+				new_clusters[new_membership[i]][j] += objects[i][j];
 		}
+		//std::cout<<__LINE__<<std::endl;
 		for(int i=0; i<numClusters; i++){
-			for(j=0; j<numCoords; j++){
-				//if(new_clustersize[i]>1)
+			for(int j=0; j<numCoords; j++){
+				clusters[i][j] = new_clusters[i][j];
+				if(new_clustersize[i]>1)
 					clusters[i][j] = new_clusters[i][j]/new_clustersize[i];
 				new_clusters[i][j] = 0;
 			}
 			new_clustersize[i]=0;
 		}
+
 		t2 = getTime();
 		hostCompTime += t2-t1;
 
-	}while((float)changedObjs/numObjs > threshold && loopcounters++ < PREC);
+	}while(loopcounters++ < PREC && (FTYPE)changedObjs/numObjs > threshold );
 
 
     /* Memory cleanup */
@@ -219,7 +226,7 @@ int main(int argc, char **argv) {
     if(outfile != NULL) {
         int l;
         FILE* fp = fopen(outfile, "w");
-        for(j = 0; j < numClusters; j++) {
+        for(int j = 0; j < numClusters; j++) {
             fprintf(fp, "Cluster %d: ", j);
             for(l = 0; l < numCoords; l++)
                 fprintf(fp, "%f ", clusters[j][l]);
@@ -241,6 +248,7 @@ int main(int argc, char **argv) {
     printf("numClusters   = %d\n", numClusters);
     printf("threshold     = %.4f\n", threshold);
 
+    printf("Iterations     	   = %d\n", loopcounters);
     printf("I/O time           = %10.4f sec\n", io_timing);
     printf("copyin time        = %10.4f sec\n", copyinTime);
     printf("copyout time       = %10.4f sec\n", copyoutTime);

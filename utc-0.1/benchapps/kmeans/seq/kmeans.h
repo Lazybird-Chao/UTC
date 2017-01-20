@@ -8,9 +8,9 @@
 
 #include <assert.h>
 
-#define FTYPE float
+#define FTYPE double
 
-double** kmeans(int, FTYPE**, int, int, int, FTYPE, int*);
+FTYPE** kmeans(FTYPE**, int, int, int, FTYPE, int*, int*);
 
 FTYPE** file_read(int, char*, int*, int*);
 

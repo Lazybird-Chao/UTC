@@ -12,12 +12,12 @@
 
 
 __global__ void kmeans_kernel(
-		T *object,
+		FTYPE *objects,
 		int numCoords,
 		int numObjs,
 		int numClusters,
-		T *clusters,
-		T *membership,
+		FTYPE *clusters,
+		int *membership,
 		int batchPerThread);
 
 

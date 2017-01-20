@@ -57,7 +57,7 @@ __global__ void kmeans_kernel(
 	int bx = blockIdx.x;
 	int tx = threadIdx.x;
 
-	if(numClusters<= blodkDim.x && numClusters*numCoords < 1024){
+	if(numClusters<= blockDim.x && numClusters*numCoords < 1024){
 		__shared__ FTYPE clusters_s[1024];
 		if(tx < numClusters){
 			for(int i=0; i<numCoords; i++){
@@ -66,7 +66,7 @@ __global__ void kmeans_kernel(
 		}
 		__syncthreads();
 
-		for(int i=0; i<batch; i++){
+		for(int i=0; i<batchPerThread; i++){
 			int obj_pos = bx*blockDim.x + tx + i*blockDim.x*gridDim.x;
 			if(obj_pos<numObjs){
 				int idx = find_nearest_cluster(numClusters, numCoords, &objs[obj_pos*numCoords], clusters_s);
@@ -75,7 +75,7 @@ __global__ void kmeans_kernel(
 		}
 	}
 	else{
-		for(int i=0; i<batch; i++){
+		for(int i=0; i<batchPerThread; i++){
 			int obj_pos = bx*blockDim.x + tx + i*blockDim.x*gridDim.x;
 			if(obj_pos<numObjs){
 				int idx = find_nearest_cluster(numClusters, numCoords, &objs[obj_pos*numCoords], clusters);

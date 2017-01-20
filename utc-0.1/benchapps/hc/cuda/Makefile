@@ -3,6 +3,11 @@ bin = hc_main hc_main_v2
 kernelObj = hc_kernel.o
 default: $(bin)
 
+.PHONY: v1 v2
+v1: hc_main
+v2: hc_main_v2
+
+
 C++ = g++
 CCFLAGS = -O2
 
