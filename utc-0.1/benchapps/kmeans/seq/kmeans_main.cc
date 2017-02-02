@@ -1,6 +1,18 @@
 /*
  * kmeans_main.cc
  *
+ * The sequential k-means clustering program
+ *
+ * usage:
+ * 		compile with the Makefile
+ * 		run as: ./a.out -v -b -i file1 -o file2 -a 0.001 -n 10
+ * 			-v: print time info
+ * 			-b: inputfile is binary format
+ * 			-i: inputfile path
+ * 			-o: outpufile path
+ * 			-a: threshold value for convergence
+ * 			-n: number of clusters to class
+ *
  */
 
 #include <iostream>
@@ -48,23 +60,28 @@ int main(int argc, char **argv) {
     isBinaryFile      = 0;		/* 0 if the input file is in ASCII format, 1 for binary format */
     filename          = NULL;	/* Name of the input file */
     outfile           = NULL;
+    bool printTime 	  = false;
 
 	/* Parse command line options */
     int     opt;
 	extern char   *optarg;
 	extern int     optind;
-    while ( (opt=getopt(argc,argv,"o:i:n:b"))!= EOF) {
+    while ( (opt=getopt(argc,argv,"a:o:i:n:bv"))!= EOF) {
         switch (opt) {
+        	case 'v': printTime = true;
+        			  break;
             case 'i': filename=optarg;
                       break;
             case 'b': isBinaryFile = 1;
                       break;
             case 'n': numClusters = atoi(optarg);
                       break;
-            case 'h': usage(argv[0]);
-                      break;
             case 'o': outfile = optarg;
                       break;
+            case 'a': threshold = (FTYPE)atof(optarg);
+            		  break;
+            case 'h': usage(argv[0]);
+					  break;
             default: usage(argv[0]);
                       break;
         }
@@ -119,17 +136,17 @@ int main(int argc, char **argv) {
     free(clusters);
 
     /* Print performance numbers on stdout */
+    if(printTime){
+		printf("\n---- kMeans Clustering ----\n");
+		printf("Input file:     %s\n", filename);
+		printf("numObjs       = %d\n", numObjs);
+		printf("numCoords     = %d\n", numCoords);
+		printf("numClusters   = %d\n", numClusters);
+		printf("threshold     = %.4f\n", threshold);
 
-    printf("\n---- kMeans Clustering ----\n");
-    printf("Input file:     %s\n", filename);
-    printf("numObjs       = %d\n", numObjs);
-    printf("numCoords     = %d\n", numCoords);
-    printf("numClusters   = %d\n", numClusters);
-    printf("threshold     = %.4f\n", threshold);
-
-    printf("Iterations         = %d\n", iters);
-    printf("I/O time           = %10.4f sec\n", io_timing);
-    printf("Computation timing = %10.4f sec\n", clustering_timing);
-
+		printf("Iterations         = %d\n", iters);
+		printf("I/O time           = %10.4f sec\n", io_timing);
+		printf("Computation timing = %10.4f sec\n", clustering_timing);
+    }
     return(0);
 }

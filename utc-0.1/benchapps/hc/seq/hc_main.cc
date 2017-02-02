@@ -1,6 +1,15 @@
 /*
  * hc_main.cc
  *
+ * The sequential heat conduction program
+ *
+ * usage:
+ * 		compile with the Makefile
+ * 		run as: ./a.out -v -h 100 -w 80 -e 0.001
+ * 			-v: print time info
+ * 			-h: 2D domain height
+ * 			-w: 2D domain width
+ * 			-e: convergence accuracy
  */
 
 
@@ -161,7 +170,7 @@ int main(int argc, char**argv){
 		std::cout<<"\tDomain size: "<<WIDTH<<" X "<<HEIGHT<<std::endl;
 		std::cout<<"\tAccuracy: "<<EPSILON<<std::endl;
 		std::cout<<"\tIterations: "<<iters<<std::endl;
-		std::cout<<"\tTime info: "<<runtime<<"(s)"<<std::endl;
+		std::cout<<"\tTime info: "<<std::fixed<<std::setprecision(4)<<runtime<<"(s)"<<std::endl;
 	}
 
 }

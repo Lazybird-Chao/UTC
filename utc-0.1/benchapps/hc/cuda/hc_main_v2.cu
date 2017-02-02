@@ -1,6 +1,17 @@
 /*
- * hc_main_v2.cu
+ * hc_main.cc
  *
+ * The single GPU heat conduction program. Single cuda stream.
+ * In this program we have only one cuda kernels, the jacabi compute.
+ *
+ * usage:
+ * 		compile with the Makefile
+ * 		run as: ./a.out -v -h 100 -w 80 -e 0.001 -b 16
+ * 			-v: print time info
+ * 			-h: 2D domain height
+ * 			-w: 2D domain width
+ * 			-e: convergence accuracy
+ * 			-b: cuda block size.[16, 16, 1]
  */
 
 #include <iostream>

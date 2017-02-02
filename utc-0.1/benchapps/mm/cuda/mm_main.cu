@@ -1,6 +1,15 @@
 /*
  * mm_main.cc
  *
+ * The single GPU matrix multiply program. Use single cuda stream and explicit
+ * gpu memory.
+ *
+ * usage:
+ * 		compile with the Makefile
+ * 		run as: /a.out -v -s 100
+ * 		-v: print time info
+ * 		-s: the size of matrix, we assume a square matrix
+ * 		-b: cuda block size, should able to divide matrix size
  *
  */
 
@@ -19,12 +28,7 @@ int main(int argc, char **argv){
 	bool printTime = false;
 	int blockSize = 16;
 
-	/*
-	 * run as ./a.out -v -s 100
-	 * 		-v: print time info
-	 * 		-s: the size of matrix, we assume a square matrix
-	 * 		-b: cuda block size, can divide matrix size
-	 */
+
 	int opt;
 	extern char* optarg;
 	extern int optind;

@@ -20,4 +20,5 @@ $(bin): $(obj) $(helperObj)
 .PHONY: clean
 clean:
 	rm -f $(obj) $(bin) $(helperObj)
-	
+
+

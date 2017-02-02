@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <assert.h>
+#include <cuda_runtime.h>
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_timer.h"

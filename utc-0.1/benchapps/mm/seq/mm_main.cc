@@ -1,7 +1,13 @@
 /*
  * mm_main.cc
  *
+ * The sequential matrix multiply program
  *
+ * usage:
+ * 		compile with Makefile
+ * 		run as: ./a.out -v -s 100
+ * 				-v: print time info
+ * 				-s: the size of matrix , we assume a square matrix
  */
 
 #include <iostream>

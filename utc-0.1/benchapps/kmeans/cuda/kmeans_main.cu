@@ -1,12 +1,28 @@
 /*
  * kmeans_main.cc
  *
+ * The single GPU k-means clustering program. Single cuda stream, explicit gpu memory.
+ *
+ * usage:
+ * 		compile with the Makefile
+ * 		run as: ./a.out -v -b -i file1 -o file2 -a 0.001 -n 10
+ * 			-v: print time info
+ * 			-b: inputfile is binary format
+ * 			-i: inputfile path
+ * 			-o: outpufile path
+ * 			-a: threshold value for convergence
+ * 			-n: number of clusters to class
+ *
+ * 		Two extra variables can be changed to tun the program:
+ * 			blocksize: the cuda block size.[blocksize, 1,1]
+ * 			batchPerThread: the number of points that will be processed by one cuda thread
  */
 
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>
 #include <assert.h>
+#include <cuda_runtime.h>
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_timer.h"
@@ -69,27 +85,32 @@ int main(int argc, char **argv) {
     isBinaryFile      = 0;		/* 0 if the input file is in ASCII format, 1 for binary format */
     filename          = NULL;	/* Name of the input file */
     outfile           = NULL;
+    bool printTime 	  = false;
 
 	/* Parse command line options */
     int     opt;
 	extern char   *optarg;
 	extern int     optind;
-    while ( (opt=getopt(argc,argv,"o:i:n:b"))!= EOF) {
-        switch (opt) {
-            case 'i': filename=optarg;
-                      break;
-            case 'b': isBinaryFile = 1;
-                      break;
-            case 'n': numClusters = atoi(optarg);
-                      break;
-            case 'h': usage(argv[0]);
-                      break;
-            case 'o': outfile = optarg;
-                      break;
-            default: usage(argv[0]);
-                      break;
-        }
-    }
+	 while ( (opt=getopt(argc,argv,"a:o:i:n:bv"))!= EOF) {
+		switch (opt) {
+			case 'v': printTime = true;
+					  break;
+			case 'i': filename=optarg;
+					  break;
+			case 'b': isBinaryFile = 1;
+					  break;
+			case 'n': numClusters = atoi(optarg);
+					  break;
+			case 'o': outfile = optarg;
+					  break;
+			case 'a': threshold = (FTYPE)atof(optarg);
+					  break;
+			case 'h': usage(argv[0]);
+					  break;
+			default: usage(argv[0]);
+					  break;
+		}
+	}
 
     if (filename == NULL) usage(argv[0]);
 
