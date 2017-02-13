@@ -3,7 +3,7 @@ bin = mm_main
 default: $(bin)
 
 C++ = g++
-CCFLAGS = -O2
+CCFLAGS = -O2 -std=c++11
 
 
 COMMONDIR = ../../common

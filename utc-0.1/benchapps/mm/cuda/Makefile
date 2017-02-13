@@ -4,9 +4,9 @@ kernelObj = mm_kernel.o
 default: $(bin)
 
 C++ = g++
-CCFLAGS = -O2
+CCFLAGS = -O2 #-std=c++11
 
-
+# change the CUDA_DIR if nessary
 CUDA_DIR = /usr/local/cuda
 CUDA_INCLUDE = -I$(CUDA_DIR)/include
 CUDA_LIB := -Wl,-rpath,$(CUDA_DIR)/lib64 -L$(CUDA_DIR)/lib64 -lcudart
@@ -25,7 +25,7 @@ helperObj = helperObj.o
 $(helperObj):$(COMMONDIR)/helper_getopt.c
 	$(C++) -o $@  -c $<
 
-	
+# the need of "-ccbin g++-4.8" depends on the CUDA SDK version and g++ version	
 $(obj):mm_main.cu
 	$(NVCC) -o $@ -ccbin g++-4.8 $(CCFLAGS) $(CUDA_INCLUDE) -c $<
 #$(C++) -o $@ $(CCFLAGS) $(CUDA_INCLUDE) -c $<

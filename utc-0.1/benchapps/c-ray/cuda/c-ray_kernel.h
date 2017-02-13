@@ -11,12 +11,18 @@
  * required data structure
  */
 #define FTYPE double
-#if FTYPE=="double"
+#ifdef FTYPE
+#define SFLOAT 1
+#define DFLOAT 2
+#endif
+
+#if SFLOAT==1
 	typedef double3	 vec3_t;
 	typedef double2	 vec2_t;
 #else
 	typedef float3   vec2_t;
 	typedef float2	 vec2_t;
+#endif
 
 typedef struct ray{
 	vec3_t orig, dir;
@@ -91,8 +97,21 @@ typedef struct camera{
 
 
 
-
-
+/*
+ * cuda kernels
+ */
+__global__ void render_kernel(
+		int xres,
+		int yres,
+		unsigned int *pixels,
+		int rays_per_pixel,
+		sphere_array_t obj_array,
+		int obj_count,
+		vec3_t *lights,
+		int lnum,
+		vec2_t *urand,
+		int *irand,
+		camera_t cam);
 
 
 

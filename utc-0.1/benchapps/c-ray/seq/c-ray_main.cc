@@ -261,7 +261,7 @@ int main(int argc, char **argv){
 /* render a frame of xsz/ysz dimensions into the provided framebuffer */
 void render_scanline(int xsz, int ysz, int sl, uint32_t *fb, int samples){
 	int i, s;
-	FTYPE rcp_samples = 1.0 / (double)samples;
+	FTYPE rcp_samples = 1.0 / (FTYPE)samples;
 
 	for(i=0; i<xsz; i++) {
 		double r, g, b;
