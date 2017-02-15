@@ -187,14 +187,16 @@ int main(int argc, char **argv){
 
 	if((infile = fopen((const char*)infile_path, "rb"))==nullptr){
 		std::cerr<<"Error, cannot open scene file."<<std::endl;
+		return 1;
 	}
 	if((outfile = fopen((const char*)outfile_path, "wb"))==nullptr){
 		std::cerr<<"Error, cannot open output file."<<std::endl;
+		return 1;
 	}
 
 	if(!(pixels = (uint32_t*)malloc(xres * yres * sizeof *pixels))) {
 		perror("pixel buffer allocation failed");
-		return EXIT_FAILURE;
+		return 1;
 	}
 	/*
 	 * read the input scene file
@@ -238,8 +240,8 @@ int main(int argc, char **argv){
 		}
 		fflush(outfile);
 	}
-	if(infile != stdin) fclose(infile);
-	if(outfile != stdout) fclose(outfile);
+	if(infile != nullptr) fclose(infile);
+	if(outfile != nullptr) fclose(outfile);
 	if(obj_array)
 		free(obj_array);
 	free(pixels);
