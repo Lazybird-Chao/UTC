@@ -20,5 +20,6 @@
 *.project
 *.cproject
 /.cproject.back
-/.DS_Store
+*.DS_Store
 /.project.back
+*.ppm
