@@ -17,7 +17,7 @@
 #include <cuda_runtime.h>
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_timer.h"
-#include "../../common/helper_check.h"
+#include "../../common/helper_err.h"
 #include "mm_kernel.h"
 
 #define FTYPE float

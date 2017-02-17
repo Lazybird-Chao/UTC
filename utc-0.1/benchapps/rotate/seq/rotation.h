@@ -10,7 +10,7 @@
 #include "image.h"
 #include "cmath"
 
-#define PI 3.14169
+#define PI 3.14159
 #define PRECISION 3
 
 

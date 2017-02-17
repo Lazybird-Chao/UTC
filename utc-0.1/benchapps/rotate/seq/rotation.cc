@@ -122,7 +122,7 @@ void rotation(Image &In, Image &Out, int angle){
 *	filtering, using the sample position as a weight for color blend.
 */
 void filter(Pixel* colors, Pixel* dest, Coord* sample_pos) {
-	uint32_t r, g, b;
+	//uint32_t r, g, b;
 	Pixel sample_v_upper, sample_v_lower;
 	float x_weight = myround(sample_pos->x - floor(sample_pos->x), PRECISION);
 	float y_weight = myround(sample_pos->y - floor(sample_pos->y), PRECISION);

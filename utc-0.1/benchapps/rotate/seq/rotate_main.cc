@@ -61,14 +61,20 @@ int main(int argc, char* argv[]){
 
 	if(infile_path == NULL){
 		std::cerr<<"Error, need the input image file."<<std::endl;
+		return 1;
 	}
 
+
+	/*
+	 * create img object from the file
+	 */
 	Image srcImg;
-	// create img object from the file
 	srcImg.createImageFromFile(infile_path);
 	Image dstImg;
 
-	// do image rotation
+	/*
+	 * do image rotation
+	 */
 	double t1, t2;
 	t1 = getTime();
 	rotation(srcImg, dstImg, angle);
@@ -107,9 +113,11 @@ int main(int argc, char* argv[]){
 	srcImg.clean();
 	dstImg.clean();
 
+	std::cout<<"Test complete !!!"<<std::endl;
 	if(printTime){
-		std::cout<<"Input image size: "<<srcImg.getWidth()<<" X "<<srcImg.getHeight()<<std::endl;
-		std::cout<<"Rotation runtime: "<<std::fixed<<std::setprecision(4)<<runtime<<"(s)"<<std::endl;
+		std::cout<<"\tInput image size: "<<srcImg.getWidth()<<" X "<<srcImg.getHeight()<<std::endl;
+		std::cout<<"\tOutput image size: "<<dstImg.getWidth()<<" X "<<dstImg.getHeight()<<std::endl;
+		std::cout<<"\tRotation runtime: "<<std::fixed<<std::setprecision(4)<<runtime<<"(s)"<<std::endl;
 	}
 	return 0;
 

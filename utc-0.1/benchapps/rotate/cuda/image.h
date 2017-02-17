@@ -21,7 +21,7 @@
 *	-------------
 *	Structure representing the color of an RGB image pixel.
 */
-typedef struct __attribute__((aligned(4))) {
+typedef struct __attribute__((aligned(4))){
 	uint8_t r, g, b;
 } Pixel;
 
