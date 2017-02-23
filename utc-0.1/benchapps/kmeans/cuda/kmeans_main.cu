@@ -261,22 +261,22 @@ int main(int argc, char **argv) {
     free(clusters);
 
     /* Print performance numbers on stdout */
+    if(printTime){
+		printf("\n---- kMeans Clustering ----\n");
+		printf("Input file:     %s\n", filename);
+		printf("numObjs       = %d\n", numObjs);
+		printf("numCoords     = %d\n", numCoords);
+		printf("numClusters   = %d\n", numClusters);
+		printf("threshold     = %.4f\n", threshold);
 
-    printf("\n---- kMeans Clustering ----\n");
-    printf("Input file:     %s\n", filename);
-    printf("numObjs       = %d\n", numObjs);
-    printf("numCoords     = %d\n", numCoords);
-    printf("numClusters   = %d\n", numClusters);
-    printf("threshold     = %.4f\n", threshold);
-
-    printf("Iterations     	   = %d\n", loopcounters);
-    printf("I/O time           = %10.4f sec\n", io_timing);
-    printf("copyin time        = %10.4f sec\n", copyinTime);
-    printf("copyout time       = %10.4f sec\n", copyoutTime);
-    printf("gpu kernel time    = %10.4f sec\n", kernelTime);
-    printf("host compute time  = %10.4f sec\n", hostCompTime);
-    clustering_timing = copyinTime + copyoutTime + kernelTime + hostCompTime;
-    printf("Computation timing = %10.4f sec\n", clustering_timing);
-
+		printf("Iterations     	   = %d\n", loopcounters);
+		printf("I/O time           = %10.4f sec\n", io_timing);
+		printf("copyin time        = %10.4f sec\n", copyinTime);
+		printf("copyout time       = %10.4f sec\n", copyoutTime);
+		printf("gpu kernel time    = %10.4f sec\n", kernelTime);
+		printf("host compute time  = %10.4f sec\n", hostCompTime);
+		clustering_timing = copyinTime + copyoutTime + kernelTime + hostCompTime;
+		printf("Computation timing = %10.4f sec\n", clustering_timing);
+    }
     return(0);
 }

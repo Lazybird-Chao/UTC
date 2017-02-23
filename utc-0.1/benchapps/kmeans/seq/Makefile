@@ -3,8 +3,9 @@ bin = kmeans_main
 default: $(bin)
 
 C++ = g++
-CCFLAGS = -O2 -std=c++11
-LIB = -lm
+CCFLAGS = -O2  -std=c++11
+CCFLAGS += -Wno-deprecated -Wno-write-strings
+LIB = -lrt -lm
 
 COMMONDIR = ../../common
 helperObj = helperObj.o
