@@ -5,6 +5,7 @@
  *      Author: chao
  */
 
+#include "UtcGpuBasics.h"
 #include "GpuKernel.h"
 #include "GpuTaskUtilities.h"
 #include "CudaDeviceManager.h"
@@ -47,6 +48,10 @@ GpuKernel::~GpuKernel(){
 	if(m_argReferSizes != nullptr)
 			free(m_argReferSizes);
 	m_argReferSizes = nullptr;
+}
+
+UtcGpuContext * GpuKernel::getUtcGpuContext(){
+	return m_crtUtcGpuCtx;
 }
 
 int GpuKernel::setNumArgs(int numArgs){
@@ -108,8 +113,13 @@ int GpuKernel::setBlockDim(int d1, int d2, int d3){
 }
 
 int GpuKernel::launchKernel(const void* kernel_fun, bool async){
-	if(CudaDeviceManager::runtimeMajor < 7){
-		checkCudaRuntimeErrors(cudaConfigureCall(m_cudaGridDim, m_cudaBlockDim, m_sharedMemSize, m_cudaStream));
+	return launchKernel(kernel_fun, m_cudaStream, async);
+}
+
+int GpuKernel::launchKernel(const void* kernel_fun, cudaStream_t stream, bool async){
+	//if(CudaDeviceManager::runtimeMajor < 7){
+#if CUDA_MAJOR < 70
+		checkCudaRuntimeErrors(cudaConfigureCall(m_cudaGridDim, m_cudaBlockDim, m_sharedMemSize, stream));
 		size_t offset = 0;
 		for(int i=0; i< m_numArgs; i++){
 			checkCudaRuntimeErrors(cudaSetupArgument(m_args[i], m_argSizes[i], offset));
@@ -117,24 +127,29 @@ int GpuKernel::launchKernel(const void* kernel_fun, bool async){
 		}
 
 		checkCudaRuntimeErrors(cudaLaunch(kernel_fun));
-	}
-	else{
+#else
+	//}
+	//else{
 		checkCudaRuntimeErrors(cudaLaunchKernel(kernel_fun,
 												m_cudaGridDim,
 												m_cudaBlockDim,
 												m_args,
 												m_sharedMemSize,
-												m_cudaStream));
-	}
-
+												stream));
+	//}
+#endif
 	if(!async)
-		checkCudaRuntimeErrors(cudaStreamSynchronize(m_cudaStream));
+		checkCudaRuntimeErrors(cudaStreamSynchronize(stream));
 
 	return 0;
 }
 
 int GpuKernel::syncKernel(){
-	checkCudaRuntimeErrors(cudaStreamSynchronize(m_cudaStream));
+	return syncKernel(m_cudaStream);
+}
+
+int GpuKernel::syncKernel(cudaStream_t stream){
+	checkCudaRuntimeErrors(cudaStreamSynchronize(stream));
 	return 0;
 }
 

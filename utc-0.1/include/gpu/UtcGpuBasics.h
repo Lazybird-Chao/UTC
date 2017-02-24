@@ -29,7 +29,7 @@
 
 #define MAX_DEVICE_PER_NODE		4
 
-#define CUDA_MAJOR	55
+#define CUDA_MAJOR	65
 
 
 

@@ -218,8 +218,8 @@ static const char *_cudartGetErrorEnum(cudaError_t error)
 
 #if CUDA_MAJOR >= 60
         /* Since CUDA 6.0 */
-        case cudaErrorHardwareStackError:
-            return "cudaErrorHardwareStackError";
+        //case cudaErrorHardwareStackError:
+        //    return "cudaErrorHardwareStackError";
 
         case cudaErrorIllegalInstruction:
             return "cudaErrorIllegalInstruction";
@@ -245,11 +245,11 @@ static const char *_cudartGetErrorEnum(cudaError_t error)
         case cudaErrorInvalidGraphicsContext:
             return "cudaErrorInvalidGraphicsContext";
 
-        case cudaErrorStartupFailure:
-            return "cudaErrorStartupFailure";
+        //case cudaErrorStartupFailure:
+        //    return "cudaErrorStartupFailure";
 
-        case cudaErrorApiFailureBase:
-            return "cudaErrorApiFailureBase";
+        //case cudaErrorApiFailureBase:
+        //    return "cudaErrorApiFailureBase";
 # endif
 
 #if CUDA_MAJOR >= 80

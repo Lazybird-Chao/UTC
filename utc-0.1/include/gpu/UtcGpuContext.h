@@ -44,6 +44,12 @@ public:
 
 	cudaStream_t getBoundStream();
 
+	cudaStream_t getNewStream();
+	void destroyStream(cudaStream_t &stream);
+
+	cudaEvent_t getNewEvent();
+	void destroyEvent(cudaEvent_t &event);
+
 private:
 	// the actual related cuda context
 	CUcontext	m_cudaContextBound;

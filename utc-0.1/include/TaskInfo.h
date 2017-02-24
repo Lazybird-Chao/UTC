@@ -70,7 +70,7 @@ namespace iUtc{
     MPI_Group* mpigroupPtr = nullptr; // same value in one task
 
     MPI_Comm* worldCommPtr = nullptr;
-    MPI_Comm* worldGroupPtr = nullptr;
+    MPI_Group* worldGroupPtr = nullptr;
     std::map<int,int> *worldRankToGrouprRank;
 #endif
 

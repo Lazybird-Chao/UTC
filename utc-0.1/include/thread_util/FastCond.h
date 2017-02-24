@@ -66,7 +66,7 @@ public:
 		if (c.m != m)
 		{
 			/* Atomically set mutex inside cv */
-			cmpxchg(&(c.m), NULL, m);
+			cmpxchg(&(c.m), NULL, (unsigned long long)m);
 			if (c.m != m) return EINVAL;
 		}
 

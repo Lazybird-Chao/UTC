@@ -124,6 +124,26 @@ cudaStream_t UtcGpuContext::getBoundStream(){
 	return m_cudaStreamBound;
 }
 
+cudaStream_t UtcGpuContext::getNewStream(){
+	cudaStream_t stream;
+	checkCudaRuntimeErrors(cudaStreamCreateWithFlags(&stream, cudaStreamDefault));
+	return stream;
+}
+
+void UtcGpuContext::destroyStream(cudaStream_t &stream){
+	checkCudaRuntimeErrors(cudaStreamDestroy(stream));
+}
+
+cudaEvent_t UtcGpuContext::getNewEvent(){
+	cudaEvent_t event;
+	checkCudaRuntimeErrors(cudaEventCreate(&event));
+	return event;
+}
+
+void UtcGpuContext::destroyEvent(cudaEvent_t &event){
+	checkCudaRuntimeErrors(cudaEventDestroy(event));
+}
+
 }// end namespace iUtc
 
 

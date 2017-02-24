@@ -29,8 +29,6 @@ endif
 LINKFLAG =
 
 ###################
-BOOST_DIR = /shared/apps/boost/boost_1_58_0/INSTALL
-
 
 ifeq ($(DEFAULT_MPI), 1)
 	MPI_DIR = /opt/ibm/platform_mpi
@@ -42,10 +40,15 @@ ifeq ($(OPEN_MPI), 1)
 	MPI_LIB = -pthread -Wl,-rpath -Wl,/shared/apps/openmpi/openmpi-2.0.1/openmpi-2.0.1/INSTALL/lib -Wl,--enable-new-dtags -L/shared/apps/openmpi/openmpi-2.0.1/openmpi-2.0.1/INSTALL/lib -lmpi
 endif
 
+MPI_INCLUDE := -I$(MPI_DIR)/include
+
 ifeq ($(ENABLE_SCOPED_DATA), 1)
 	MPI_LIB += -loshmem
 endif
-				
+
+
+BOOST_DIR = /shared/apps/boost/boost_1_58_0/INSTALL
+BOOST_INCLUDE := -I$(BOOST_DIR)/include				
 BOOST_LIB = $(BOOST_DIR)/lib/libboost_thread.a \
 				$(BOOST_DIR)/lib/libboost_system.a \
 				$(BOOST_DIR)/lib/libboost_filesystem.a
@@ -71,17 +74,18 @@ endif
 #####################
 CUDA_DIR = /shared/apps/cuda7.5
 
-NVCC = nvcc
+#NVCC = nvcc
 
-GENCODE_SM20 = -gencode arch=compute_20,code=sm_20
-GENCODE_SM30 = -gencode arch=compute_30,code=sm_30
-GENCODE_SM35 = -gencode arch=compute_35,code=sm_35
+#GENCODE_SM20 = -gencode arch=compute_20,code=sm_20
+#GENCODE_SM30 = -gencode arch=compute_30,code=sm_30
+#GENCODE_SM35 = -gencode arch=compute_35,code=sm_35
 
-NVCCFLAG = $(GENCODE_SM35)
+#NVCCFLAG = $(GENCODE_SM35)
 
+CUDA_INCLUDE := -I$(CUDA_DIR)/include
 CUDA_LIB := -L$(CUDA_DIR)/lib64 -lcudart -L/usr/lib64 -lcuda
 
-NVLINKFLAG = $(GENCODE_SM35)
+#NVLINKFLAG = $(GENCODE_SM35)
 
 
 ifeq ($(ENABLE_GPU), 1)

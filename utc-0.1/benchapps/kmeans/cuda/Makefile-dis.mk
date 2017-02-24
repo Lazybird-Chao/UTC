@@ -34,7 +34,7 @@ kmeans_main.o:kmeans_main.cu
 	$(NVCC) -o $@  $(CCFLAGS) $(NVCCFLAGS) $(NWARNING)  $(CUDA_INCLUDE) -c $<
 
 kmeans_kernel.o:kmeans_kernel.cc
-	$(NVCC) -o $@ -x cu $(CCFLAGS) $(NVCCFLAGS) $(NwARNING)  $(CUDA_INCLUDE) -c $<
+	$(NVCC) -o $@ -x cu $(CCFLAGS) $(NVCCFLAGS) $(NWARNING)  $(CUDA_INCLUDE) -c $<
 
 tmplink.o:kmeans_main.o kmeans_kernel.o
 	$(NVCC) -o $@ $(NVLINKFLAGS) $^ 

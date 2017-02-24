@@ -344,7 +344,7 @@ public:
 
 		
 		long _counter=0;
-		struct timepsec rem;
+		//struct timepsec rem;
 		while (__builtin_expect(thr_p_[thread_id].head >= last_tail_ + Q_SIZE, 0))
 		{
 			auto min = tail_;

@@ -44,8 +44,12 @@ public:
 	int setSharedMemSize(size_t size);
 
 	int launchKernel(const void* kernel_fun, bool async = false);
+	int launchKernel(const void* kernel_fun, cudaStream_t stream, bool async = false);
 
 	int syncKernel();
+	int syncKernel(cudaStream_t stream);
+
+	UtcGpuContext *getUtcGpuContext();
 
 private:
 	bool m_useCudaUnifiedMemForArgTrans;

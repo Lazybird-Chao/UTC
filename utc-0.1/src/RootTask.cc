@@ -74,7 +74,7 @@ RootTask::RootTask(int WorldSize, int currentProcess)
 
     taskInfoPtr->worldCommPtr = &m_worldComm;
     taskInfoPtr->worldGroupPtr = &m_worldGroup;
-    taskInfoPtr->worldRankToGrouprRank = &m_worldRankToTaskGroupRank
+    taskInfoPtr->worldRankToGrouprRank = &m_worldRankToTaskGroupRank;
 #endif
 
     TaskManager::setTaskInfo(taskInfoPtr);    // reside in main thread of current process, same as
