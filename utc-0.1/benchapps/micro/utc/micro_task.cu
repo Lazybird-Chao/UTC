@@ -23,7 +23,7 @@ void microTest<T>::initImpl(int nscale, int blocksize, int nStreams, int loop, e
 		nsize = nscale*nscale*blocksize*nStreams*nStreams;
 		streamSize = nsize/nStreams/nStreams;
 
-		streams = new cudaStream_t[nStreams];
+		streams = new cudaStream_t[nStreams*nStreams];
 
 	}
 	intra_Barrier();
@@ -45,7 +45,7 @@ void microTest<T>::runImpl(double *runtime){
 
 	GpuKernel mykernel;
 	UtcGpuContext* cur_g_ctx = mykernel.getUtcGpuContext();
-	for(int i=0; i<nStreams; i++)
+	for(int i=0; i<nStreams*nStreams; i++)
 		streams[i] = cur_g_ctx->getNewStream();
 	/*
 	 * TODO: should use some wrapper utilities to create gpu memory,
@@ -254,7 +254,14 @@ void microTest<T>::kernel_pinned(double *runtime){
 template<typename T>
 void microTest<T>::kernel_umem(double *runtime){
 	Timer timer1;
-	checkCudaErr(cudaMallocManaged(&data_d, sizeof(T)*nsize));
+	if(getCurrentUtcGpuCtx()->getCurrentDeviceAttr(cudaDevAttrManagedMemory) ==1){
+		std::cout<<"using cuda managed for umem"<<std::endl;
+		checkCudaErr(cudaMallocManaged(&data_d, sizeof(T)*nsize));
+	}
+	else{
+		std::cout<<"using pinned zero-copy for umem"<<std::endl;
+		checkCudaErr(cudaMallocHost(&data_d, sizeof(T)*nsize));
+	}
 	memset(data_d, 0, sizeof(T)*nsize);
 
 	dim3 block(sqrt(blocksize), sqrt(blocksize));

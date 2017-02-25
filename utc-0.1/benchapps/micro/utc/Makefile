@@ -18,8 +18,8 @@ GENCODE_SM30 = -gencode arch=compute_30,code=sm_30
 GENCODE_SM35 = -gencode arch=compute_35,code=sm_35
 
 NVCC = nvcc
-NVCCFLAGS = -g -G $(GENCODE_SM20) --device-c
-NVLINKFLAGS = $(GENCODE_SM20) --device-link
+NVCCFLAGS = -g -G $(GENCODE_SM30) --device-c
+NVLINKFLAGS = $(GENCODE_SM30) --device-link
 
 
 #####################################################
@@ -37,7 +37,7 @@ UTC_LIB = $(UTC_HOMEDIR)/lib/libutc.a \
 		
 
 # when lib src file change, need rebuild libs
-LIBMK_FILE = for-lab.mk
+LIBMK_FILE = for-dis.mk
 .PHONY: utc_lib
 utc_lib:
 	cd $(UTC_HOMEDIR);$(MAKE) -f $(LIBMK_FILE)
@@ -55,10 +55,10 @@ $(mainobj): micro_main.cc
 	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
     
 $(taskobj): micro_task.cu
-	$(NVCC) -o $@ -ccbin g++-4.8 $(CCFLAGS) $(NVCCFLAGS) $(NWARNING) $(UTC_INCLUDE) $(MPI_INCLUDE) $(CUDA_INCLUDE) $(BOOST_INCLUDE) -c $<
+	$(NVCC) -o $@  $(CCFLAGS) $(NVCCFLAGS) $(NWARNING) $(UTC_INCLUDE) $(MPI_INCLUDE) $(CUDA_INCLUDE) $(BOOST_INCLUDE) -c $<
 
 $(kernelobj): micro_kernel.cc
-	$(NVCC) -o $@ -x cu -ccbin g++-4.8 $(CCFLAGS) $(NVCCFLAGS) $(NWARNING) $(CUDA_INCLUDE) -c $<
+	$(NVCC) -o $@ -x cu  $(CCFLAGS) $(NVCCFLAGS) $(NWARNING) $(CUDA_INCLUDE) -c $<
     
 tmplink.o: $(taskobj) $(kernelobj)
 	$(NVCC) -o $@ $(NVLINKFLAGS) $^

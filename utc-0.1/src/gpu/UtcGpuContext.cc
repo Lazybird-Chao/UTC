@@ -144,6 +144,16 @@ void UtcGpuContext::destroyEvent(cudaEvent_t &event){
 	checkCudaRuntimeErrors(cudaEventDestroy(event));
 }
 
+int UtcGpuContext::getCurrentDeviceAttr(cudaDeviceAttr attr){
+	return getCurrentDeviceAttr(attr, m_cudaDeviceId);
+}
+
+int UtcGpuContext::getCurrentDeviceAttr(cudaDeviceAttr attr, int cudaDevId){
+	int value;
+	checkCudaRuntimeErrors(cudaDeviceGetAttribute(&value, attr, cudaDevId));
+	return value;
+}
+
 }// end namespace iUtc
 
 

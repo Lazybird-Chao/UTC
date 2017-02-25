@@ -50,6 +50,9 @@ public:
 	cudaEvent_t getNewEvent();
 	void destroyEvent(cudaEvent_t &event);
 
+	int getCurrentDeviceAttr(cudaDeviceAttr attr);
+	int getCurrentDeviceAttr(cudaDeviceAttr attr, int cudaDevId);
+
 private:
 	// the actual related cuda context
 	CUcontext	m_cudaContextBound;
