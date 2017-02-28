@@ -110,6 +110,7 @@ void microTest<T>::kernel_pageable(double* runtime){
 	runtime[0] = totaltime;
 	runtime[1] = kerneltime;
 
+	std::cout<<"max err: "<<maxError(data, nsize);
 
 	/*
 	 * scheme type I, multiple streams
@@ -135,6 +136,8 @@ void microTest<T>::kernel_pageable(double* runtime){
 	float totaltime2;
 	checkCudaErr(cudaEventElapsedTime(&totaltime2, startEvent, stopEvent));
 	runtime[2] = (double)totaltime2/1000;
+
+	std::cout<<"max err: "<<maxError(data, nsize);
 
 	/*
 	 * scheme type II, multiple streams
@@ -163,6 +166,7 @@ void microTest<T>::kernel_pageable(double* runtime){
 	checkCudaErr(cudaEventElapsedTime(&totaltime3, startEvent, stopEvent));
 	runtime[3] = (double)totaltime3/1000;
 
+	std::cout<<"max err: "<<maxError(data, nsize);
 	checkCudaErr(cudaEventDestroy(startEvent));
 	checkCudaErr(cudaEventDestroy(stopEvent));
 
@@ -197,6 +201,8 @@ void microTest<T>::kernel_pinned(double *runtime){
 	runtime[0] = totaltime;
 	runtime[1] = kerneltime;
 
+	std::cout<<"max err: "<<maxError(data, nsize);
+
 	dim3 grid1(grid.x/nStreams, grid.y/nStreams);
 	cudaEvent_t startEvent, stopEvent;
 	checkCudaErr(cudaEventCreate(&startEvent));
@@ -219,6 +225,7 @@ void microTest<T>::kernel_pinned(double *runtime){
 	checkCudaErr(cudaEventElapsedTime(&totaltime2, startEvent, stopEvent));
 	runtime[2] = (double)totaltime2/1000;
 
+	std::cout<<"max err: "<<maxError(data, nsize);
 
 	memset(data, 0, sizeof(T)*nsize);
 	checkCudaErr(cudaEventRecord(startEvent, 0));
@@ -243,6 +250,8 @@ void microTest<T>::kernel_pinned(double *runtime){
 	float totaltime3;
 	checkCudaErr(cudaEventElapsedTime(&totaltime3, startEvent, stopEvent));
 	runtime[3] = (double)totaltime3/1000;
+
+	std::cout<<"max err: "<<maxError(data, nsize);
 
 	checkCudaErr(cudaEventDestroy(startEvent));
 	checkCudaErr(cudaEventDestroy(stopEvent));
@@ -273,6 +282,8 @@ void microTest<T>::kernel_umem(double *runtime){
 	double totaltime = timer1.stop();
 	runtime[0] = totaltime;
 
+	std::cout<<"max err: "<<maxError(data_d, nsize);
+
 	dim3 grid1(grid.x/nStreams, grid.y/nStreams);
 	cudaEvent_t startEvent, stopEvent;
 	checkCudaErr(cudaEventCreate(&startEvent));
@@ -289,7 +300,22 @@ void microTest<T>::kernel_umem(double *runtime){
 	checkCudaErr(cudaEventElapsedTime(&totaltime2, startEvent, stopEvent));
 	runtime[2] = (double)totaltime2/1000;
 
+	std::cout<<"max err: "<<maxError(data_d, nsize);
+	checkCudaErr(cudaEventDestroy(startEvent));
+	checkCudaErr(cudaEventDestroy(stopEvent));
 	cudaFree(data_d);
+}
+
+template<typename T>
+T microTest<T>::maxError(T* data, int n){
+	T maxE = 0;
+	for (int i = 0; i < n; i++) {
+	//if(a[i]!=1)
+		//printf ("a[%d]=%f\n",i,a[i]);
+	T error = (T)fabs(data[i]-1.0f);
+	if (error > maxE) maxE = error;
+	}
+	return maxE;
 }
 
 template class microTest<float>;

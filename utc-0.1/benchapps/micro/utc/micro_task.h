@@ -45,6 +45,8 @@ private:
 
 	void kernel_umem(double* runtime);
 
+	T maxError(T* data, int n);
+
 public:
 	void initImpl(int nscale, int blocksize, int nStreams, int loop, enum memtype_enum memtype);
 
