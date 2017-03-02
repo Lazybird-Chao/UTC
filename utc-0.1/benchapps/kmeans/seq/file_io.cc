@@ -32,7 +32,7 @@
 
 #include "kmeans.h"
 
-#define MAX_CHAR_PER_LINE 128
+#define MAX_CHAR_PER_LINE 1024
 
 
 /*

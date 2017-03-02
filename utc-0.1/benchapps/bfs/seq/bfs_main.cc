@@ -12,6 +12,13 @@
  *
  * This is the sequential version.
  *
+ * usage:
+ * 		Compile with Makefile.
+ * 		run as: ./a.out -v -i inputfile -o outputfile
+ * 			-v: print time info
+ * 			-i: the input graph data file path
+ * 			-o: output file path
+ *
  */
 
 #include <cstdlib>

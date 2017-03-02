@@ -10,8 +10,10 @@
 
 #include "bfs_comm_data.h"
 
+#define MAX_THREAD_PER_BLOCK 256
+#define MAX_WAVE_SIZE	(1024*1024)//(total_graph_nodes/100)
 
-extern __device__ int nextWaveSize_d;
+//__device__ extern int nextWaveSize_d;
 
 
 __global__ void bfs_singleblock(
@@ -20,7 +22,8 @@ __global__ void bfs_singleblock(
 		int* spath,
 		int frontWaveSize,
 		int* frontWave,
-		int* nextWave);
+		int* nextWave,
+		int* nextWaveSize_d);
 
 __global__ void bfs_multiblocks(
 		Node_t* nodes,
@@ -28,7 +31,9 @@ __global__ void bfs_multiblocks(
 		int* spath,
 		int frontWaveSize,
 		int* frontWave,
-		int* nextWave);
+		int* nextWave,
+		int* nextWaveSize_d);
+
 
 
 

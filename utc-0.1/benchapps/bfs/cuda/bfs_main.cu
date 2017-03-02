@@ -3,6 +3,20 @@
  *
  *  Created on: Feb 28, 2017
  *      Author: chao
+ *
+ * The gpu version of BFS algorithm.
+ * Similar to the sequential version, but use one cuda thread to process one
+ * graph node in the font-wave in every iteration. So for each iteration, the
+ * number of cuda threads of gpu kernel may change.
+ *
+ * usage:
+ * 		Compile with Makefile.
+ * 		run as: ./a.out -v -i inputfile -o outputfile
+ * 			-v: print time info
+ * 			-i: the input graph data file path
+ * 			-o: output file path
+ *
+ *
  */
 
 
@@ -66,15 +80,18 @@ int main(int argc, char*argv[]){
 	int source_nodeid;
 	initGraphFromFile(input_path, graph_nodes, graph_edges,
 			total_graph_nodes, total_graph_edges, source_nodeid);
+	//std::cout<<total_graph_nodes<<" "<<total_graph_edges<<std::endl;
 	int *shortestPath = new int[total_graph_nodes];
 	for(int i=0; i<total_graph_nodes; i++){
 		shortestPath[i] = INT_MAX;
 	}
+	shortestPath[source_nodeid] = 0;
 
-
+	double t1, t2;
 	/*
 	 * create gpu memory
 	 */
+	cudaSetDevice(0);
 	Node_t *graph_nodes_d;
 	Edge_t *graph_edges_d;
 	int *shortestPath_d;
@@ -83,29 +100,31 @@ int main(int argc, char*argv[]){
 	checkCudaErr(cudaMalloc(&graph_edges_d,
 			total_graph_edges*sizeof(Edge_t)));
 	checkCudaErr(cudaMalloc(&shortestPath_d,
-			total_graph_nodes*sizeof(Node_t)));
+			total_graph_nodes*sizeof(int)));
 
 	/*
 	 * copyin data
 	 */
+	t1 = getTime();
 	checkCudaErr(cudaMemcpy(graph_nodes_d,
 			graph_nodes,
 			total_graph_nodes*sizeof(Node_t),
 			cudaMemcpyHostToDevice));
 	checkCudaErr(cudaMemcpy(graph_edges_d,
-				graph_nodes,
+				graph_edges,
 				total_graph_edges*sizeof(Edge_t),
 				cudaMemcpyHostToDevice));
 	checkCudaErr(cudaMemcpy(shortestPath_d,
 				shortestPath,
 				total_graph_nodes*sizeof(int),
 				cudaMemcpyHostToDevice));
+	t2 = getTime();
+	double copyinTime =0;
+	copyinTime += t2-t1;
 
 	/*
 	 * call kernel to do bfs
 	 */
-#define MAX_THREAD_PER_BLOCK 256
-#define MAX_WAVE_SIZE	(total_graph_nodes/1000)
 	int* frontWave_d;
 	int* nextWave_d;
 	// allocal wave array, and assume the real wave size will not exceed
@@ -115,16 +134,32 @@ int main(int argc, char*argv[]){
 	checkCudaErr(cudaMalloc(&nextWave_d,
 			MAX_WAVE_SIZE*sizeof(int)));
 	int frontWaveSize;
+	int* nextWaveSize_d;
+	checkCudaErr(cudaMalloc((void**)&nextWaveSize_d, sizeof(int)));
+	std::cout<<"start bfs processing ..."<<std::endl;
 
 	//add source node id to frontwave to start
+	t1 = getTime();
 	checkCudaErr(cudaMemcpy(frontWave_d, &source_nodeid,
 			sizeof(int), cudaMemcpyHostToDevice));
+	t2= getTime();
+	copyinTime += t2-t1;
 	frontWaveSize = 1;
 
+	double kernelTime=0;
+	double copyoutTime=0;
 	while(frontWaveSize >0){
-		/*checkCudaErr(cudaMemcpyToSymbol(&nextWaveSize, 0,
-				sizeof(int), 0, cudaMemcpyHostToDevice));*/
+		int reset = 0;
+		t1=getTime();
+		/*checkCudaErr(cudaMemcpyToSymbol(nextWaveSize_d, &reset, sizeof(int),
+				0, cudaMemcpyHostToDevice));*/
+		checkCudaErr(cudaMemcpy(nextWaveSize_d, &reset, sizeof(int), cudaMemcpyHostToDevice));
+		t2 = getTime();
+		copyinTime += t2-t1;
+
+		t1 = getTime();
 		if(frontWaveSize > MAX_THREAD_PER_BLOCK){
+			//std::cout<<"go multiblock ..."<<std::endl;
 			dim3 block(MAX_THREAD_PER_BLOCK, 1 ,1);
 			dim3 grid((frontWaveSize+MAX_THREAD_PER_BLOCK-1)/MAX_THREAD_PER_BLOCK,1,1);
 			bfs_multiblocks<<<grid, block>>>(
@@ -133,9 +168,11 @@ int main(int argc, char*argv[]){
 					shortestPath_d,
 					frontWaveSize,
 					frontWave_d,
-					nextWave_d);
+					nextWave_d,
+					nextWaveSize_d);
 		}
 		else{
+			//std::cout<<"go single ..."<<std::endl;
 			dim3 block(MAX_THREAD_PER_BLOCK,1,1);
 			dim3 grid(1,1,1);
 			bfs_singleblock<<<grid, block>>>(
@@ -144,13 +181,21 @@ int main(int argc, char*argv[]){
 					shortestPath_d,
 					frontWaveSize,
 					frontWave_d,
-					nextWave_d);
+					nextWave_d,
+					nextWaveSize_d);
 		}
 		checkCudaErr(cudaGetLastError());
 		checkCudaErr(cudaDeviceSynchronize());
+		t2 = getTime();
+		kernelTime += t2 -t1;
 
-		checkCudaErr(cudaMemcpyFromSymbol(&frontWaveSize, &nextWaveSize_d,
-				sizeof(int), 0, cudaMemcpyDeviceToHost));
+		t1= getTime();
+		/*checkCudaErr(cudaMemcpyFromSymbol(&frontWaveSize, nextWaveSize_d,
+				sizeof(int), 0, cudaMemcpyDeviceToHost));*/
+		checkCudaErr(cudaMemcpy(&frontWaveSize, nextWaveSize_d, sizeof(int), cudaMemcpyDeviceToHost));
+		t2 = getTime();
+		copyoutTime += t2-t1;
+		//std::cout<<frontWaveSize<<std::endl;
 		int *tmp = frontWave_d;
 		frontWave_d = nextWave_d;
 		nextWave_d = tmp;
@@ -160,10 +205,12 @@ int main(int argc, char*argv[]){
 	/*
 	 * copy result back
 	 */
+	t1 = getTime();
 	checkCudaErr(cudaMemcpy(shortestPath, shortestPath_d,
 			total_graph_nodes*sizeof(int),
 			cudaMemcpyDeviceToHost));
-
+	t2 = getTime();
+	copyoutTime += t2-t1;
 	/*
 	 * write result
 	 */
@@ -180,14 +227,20 @@ int main(int argc, char*argv[]){
 	cudaFree(shortestPath_d);
 	cudaFree(frontWave_d);
 	cudaFree(nextWave_d);
+	cudaFree(nextWaveSize_d);
 
 	std::cout<<"Test complete !!!"<<std::endl;
 	if(printTime){
 		std::cout<<"\tgraph info:"<<std::endl;
 		std::cout<<"\t\tnodes: "<<total_graph_nodes<<std::endl;
 		std::cout<<"\t\tedges: "<<total_graph_edges<<std::endl;
-		std::cout<<"\t\tsource node id: "<<source_nodeid;
-		//std::cout<<"\ttime info: "<<std::fixed<<std::setprecision(4)<<1000*runtime<<"(ms)"<<std::endl;
+		std::cout<<"\t\tsource node id: "<<source_nodeid<<std::endl;
+		std::cout<<"\ttime info: "<<std::endl;
+		std::cout<<"\t\tTotal time: "<<std::fixed<<std::setprecision(4)
+					<<1000*(kernelTime+copyinTime+copyoutTime)<<"(ms)"<<std::endl;
+		std::cout<<"\t\tkernel time: "<<std::fixed<<std::setprecision(4)<<1000*kernelTime<<"(ms)"<<std::endl;
+		std::cout<<"\t\tcopyin time: "<<std::fixed<<std::setprecision(4)<<1000*copyinTime<<"(ms)"<<std::endl;
+		std::cout<<"\t\tcopyout time: "<<std::fixed<<std::setprecision(4)<<1000*copyoutTime<<"(ms)"<<std::endl;
 	}
 	return 0;
 
