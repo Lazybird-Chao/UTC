@@ -124,6 +124,10 @@ cudaStream_t UtcGpuContext::getBoundStream(){
 	return m_cudaStreamBound;
 }
 
+cudaStream_t UtcGpuContext::getDefaultStream(){
+	return m_cudaStreamBound;
+}
+
 cudaStream_t UtcGpuContext::getNewStream(){
 	cudaStream_t stream;
 	checkCudaRuntimeErrors(cudaStreamCreateWithFlags(&stream, cudaStreamDefault));

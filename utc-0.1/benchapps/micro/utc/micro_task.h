@@ -38,6 +38,7 @@ private:
 	int streamSize;
 
 	cudaStream_t *streams;
+	cudaStream_t mystream;
 
 	void kernel_pageable(double* runtime);
 

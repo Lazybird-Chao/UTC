@@ -43,6 +43,7 @@ public:
 	int getCudaDeviceId();
 
 	cudaStream_t getBoundStream();
+	cudaStream_t getDefaultStream();
 
 	cudaStream_t getNewStream();
 	void destroyStream(cudaStream_t &stream);

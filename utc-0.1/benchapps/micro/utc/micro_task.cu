@@ -45,6 +45,7 @@ void microTest<T>::runImpl(double *runtime){
 
 	GpuKernel mykernel;
 	UtcGpuContext* cur_g_ctx = mykernel.getUtcGpuContext();
+	mystream = cur_g_ctx->getDefaultStream();
 	for(int i=0; i<nStreams*nStreams; i++)
 		streams[i] = cur_g_ctx->getNewStream();
 	/*
@@ -98,7 +99,7 @@ void microTest<T>::kernel_pageable(double* runtime){
 				cudaMemcpyHostToDevice));
 
 	timer2.start();
-	micro_kernel<<<grid, block>>>(data_d, 0, nscale, loop);
+	micro_kernel<<<grid, block,0,mystream>>>(data_d, 0, nscale, loop);
 	checkCudaErr(cudaGetLastError());
 	checkCudaErr(cudaDeviceSynchronize());
 	double kerneltime = timer2.stop();
@@ -189,7 +190,7 @@ void microTest<T>::kernel_pinned(double *runtime){
 				cudaMemcpyHostToDevice));
 
 	timer2.start();
-	micro_kernel<<<grid, block>>>(data_d, 0, nscale, loop);
+	micro_kernel<<<grid, block,0,mystream>>>(data_d, 0, nscale, loop);
 	checkCudaErr(cudaGetLastError());
 	checkCudaErr(cudaDeviceSynchronize());
 	double kerneltime = timer2.stop();
@@ -276,7 +277,7 @@ void microTest<T>::kernel_umem(double *runtime){
 	dim3 block(sqrt(blocksize), sqrt(blocksize));
 	dim3 grid(sqrt(nsize)/block.x, sqrt(nsize)/block.y);
 	timer1.start();
-	micro_kernel<<<grid, block>>>(data_d, 0, nscale, loop);
+	micro_kernel<<<grid, block,0,mystream>>>(data_d, 0, nscale, loop);
 	checkCudaErr(cudaGetLastError());
 	checkCudaErr(cudaDeviceSynchronize());
 	double totaltime = timer1.stop();
