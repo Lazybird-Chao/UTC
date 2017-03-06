@@ -159,5 +159,9 @@ int main(int argc, char**argv){
 
 	}
 
+	microBench.finish();
+
+	return 0;
+
 }
 
