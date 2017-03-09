@@ -6,21 +6,21 @@
  */
 
 #include "bodysystem.h"
+#include "bodysystem_kernel.h"
 #include <cstring>
 
 template <typename T>
 BodySystem<T>::BodySystem(unsigned int numBodies)
     : m_numBodies(numBodies),
       m_bInitialized(false),
-      m_force(0),
       m_softeningSquared(.00125f),
       m_damping(0.995f)
 {
     m_pos = 0;
     m_vel = 0;
-    m_pos_d =0;
+    m_pos_old_d =0;
+    m_pos_new_d = 0;
     m_vel_d = 0;
-    m_force_d = 0;
 
     _initialize(numBodies);
 }
@@ -66,7 +66,7 @@ void BodySystem<T>::update(dim3 grid, dim3 block, T deltaTime)
     //assert(m_bInitialized);
 
 	int ntiles = m_numBodies/block.x;
-    _integrateNBodySystem<<<grid, block>>>(
+    _integrateNBodySystem_kernel<T><<<grid, block>>>(
     		m_pos_old_d,
     		m_pos_new_d,
     		m_vel_d,
@@ -81,7 +81,7 @@ void BodySystem<T>::update(dim3 grid, dim3 block, T deltaTime)
 template<typename T>
 void BodySystem<T>::update(dim3 grid, dim3 block, int threadsperBody, T deltaTime){
 	int ntiles = m_numBodies/block.x;
-	_integrateNBodySystemSmall<<<grid, block>>>(
+	_integrateNBodySystemSmall_kernel<T><<<grid, block>>>(
 	    		m_pos_old_d,
 	    		m_pos_new_d,
 	    		m_vel_d,
@@ -158,12 +158,6 @@ void BodySystem<T>::setDeviceVelArray(T* vel)
 	//memcpy(m_vel, vel, m_numBodies*4*sizeof(T));
 	m_vel_d = vel;
 }
-
-template <typename T>
-void BodySystem<T>::setDeviceForceArray(T* force){
-	m_force_d = force;
-}
-
 
 
 

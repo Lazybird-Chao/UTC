@@ -8,6 +8,7 @@
 #include "bodysystem.h"
 #include "nbody.h"
 #include <cstring>
+#include <iostream>
 
 template <typename T>
 BodySystem<T>::BodySystem(unsigned int numBodies)
@@ -126,6 +127,8 @@ void BodySystem<T>::_computeNBodyGravitation()
         m_force[indexForce  ] = acc[0];
         m_force[indexForce+1] = acc[1];
         m_force[indexForce+2] = acc[2];
+        /*if(i==1)
+        	std::cout<<acc[0]<<" "<<acc[1]<<" "<<acc[2]<<std::endl;*/
     }
 }
 

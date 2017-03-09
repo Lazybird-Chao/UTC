@@ -9,7 +9,7 @@
 #define BENCHAPPS_NBODY_SEQ_NBODY_H_
 
 #include <algorithm>
-#include <cmath>
+#include <math.h>
 
 enum NBodyConfig
 {

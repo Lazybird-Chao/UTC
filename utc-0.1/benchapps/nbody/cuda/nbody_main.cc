@@ -1,8 +1,18 @@
 /*
  * nbody_main.cc
  *
- *  Created on: Mar 6, 2017
  *      Author: chao
+ *
+ *
+ * usage:
+ * 		compile with Makefile.
+ * 		run as: ./a.out -v -i 0 -l 100 -o 10 -n 1024 -b
+ * 			-v: print time info
+ * 			-i: select which input parameter for simulation, 7 preset parameter sets for choosing.
+ * 			-l: the number of iterations to run
+ * 			-o: the interval of iterations to gather new position data
+ * 			-n: total number of bodies for simulation
+ * 			-b: the cuda block size
  */
 
 
@@ -56,7 +66,7 @@ int main(int argc, char* argv[]){
 	bool printTime = false;
 	int paraSelect  = 0;
 	int iteration = 100;
-	int outInterval = iteration;
+	int outInterval = 0;
 	int numBodies = 1024;
 
 	int blocksize = 256;
@@ -94,6 +104,8 @@ int main(int argc, char* argv[]){
 			break;
 		}
 	}
+	if(outInterval==0)
+		outInterval = iteration;
 
 	if(paraSelect > 6)
 		paraSelect = 0;
@@ -150,7 +162,7 @@ int main(int argc, char* argv[]){
 	/*
 	 * create bodysystem
 	 */
-	BodySystem<FTYPE> nbody(numBodies);
+	BodySystem<FTYPE> nbody((unsigned int)numBodies);
 	nbody.setDamping(activeParams.m_damping);
 	nbody.setSoftening(activeParams.m_softening);
 	nbody.setPosArray(body_pos);
@@ -197,7 +209,7 @@ int main(int argc, char* argv[]){
 	double copyoutTime = 0;
 	dim3 block(blocksize, 1,1);
 	int threadsperBody = 1;
-	if(numBodies/bloskzie >= mingridsize)
+	if(numBodies/blocksize >= mingridsize)
 		threadsperBody = 1;
 	else
 		threadsperBody = blocksize*mingridsize/numBodies; //should keep this dividable
@@ -211,6 +223,7 @@ int main(int argc, char* argv[]){
 		else{
 			nbody.update(grid, block, activeParams.m_timestep);
 		}
+		nbody.update(grid, block, activeParams.m_timestep);
 		checkCudaErr(cudaGetLastError());
 		checkCudaErr(cudaDeviceSynchronize());
 		t2 = getTime();
@@ -229,10 +242,10 @@ int main(int argc, char* argv[]){
 								cudaMemcpyDeviceToHost));
 			t2 = getTime();
 			copyoutTime += t2-t1;
-			FTYPE *tmp = nbody.getDeviceOldPosArray();
-			nbody.setDeviceOldPosArray(nbody.getDeviceNewPosArray());
-			nbody.setDeviceNewPosArray(tmp);
 		}
+		FTYPE *tmp = nbody.getDeviceOldPosArray();
+		nbody.setDeviceOldPosArray(nbody.getDeviceNewPosArray());
+		nbody.setDeviceNewPosArray(tmp);
 	}
 
 	/*
@@ -246,10 +259,10 @@ int main(int argc, char* argv[]){
 	for(int i=0; i<iteration/outInterval + 1; i++){
 		fprintf(fp, "%f\n", i*activeParams.m_timestep);
 		for(int j=0; j<numBodies; j++){
-			fprintf(fp, "%f ", body_outBuffer[i*numBodies*4 + j*4 + 0]);
-			fprintf(fp, "%f ", body_outBuffer[i*numBodies*4 + j*4 +1]);
-			fprintf(fp, "%f ", body_outBuffer[i*numBodies*4 + j*4 +2]);
-			fprintf(fp, "%f\n", body_outBuffer[i*numBodies*4 + j*4 +3]);
+			fprintf(fp, "%.5f ", body_outBuffer[i*numBodies*4 + j*4 + 0]);
+			fprintf(fp, "%.5f ", body_outBuffer[i*numBodies*4 + j*4 +1]);
+			fprintf(fp, "%.5f ", body_outBuffer[i*numBodies*4 + j*4 +2]);
+			fprintf(fp, "%.5f\n", body_outBuffer[i*numBodies*4 + j*4 +3]);
 		}
 	}
 	fclose(fp);
@@ -270,6 +283,7 @@ int main(int argc, char* argv[]){
 		std::cout<<"\t\tTotal bodies : "<<numBodies<<std::endl;
 		std::cout<<"\t\tIterations: "<<iteration<<std::endl;
 		std::cout<<"\t\tOutput frames: "<<iteration/outInterval + 1<<std::endl;
+		std::cout<<"\t\tThreads per body: "<<threadsperBody<<std::endl;
 		std::cout<<"\ttime info: "<<std::endl;
 		std::cout<<"\t\ttotal runtime: "<<std::fixed<<std::setprecision(4)
 				<<1000*(kernelTime+copyinTime+copyoutTime)

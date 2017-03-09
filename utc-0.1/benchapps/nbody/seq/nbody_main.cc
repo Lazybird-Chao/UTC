@@ -69,7 +69,7 @@ int main(int argc, char* argv[]){
 	bool printTime = false;
 	int paraSelect  = 0;
 	int iteration = 100;
-	int outInterval = iteration;
+	int outInterval = 0;
 	int numBodies = 1024;
 
 	/*
@@ -101,6 +101,8 @@ int main(int argc, char* argv[]){
 			break;
 		}
 	}
+	if(outInterval ==0)
+		outInterval = iteration;
 
 	if(paraSelect > 6)
 		paraSelect = 0;
@@ -193,10 +195,10 @@ int main(int argc, char* argv[]){
 	for(int i=0; i<iteration/outInterval + 1; i++){
 		fprintf(fp, "%f\n", i*activeParams.m_timestep);
 		for(int j=0; j<numBodies; j++){
-			fprintf(fp, "%f ", body_outBuffer[i*numBodies*4 + j*4 + 0]);
-			fprintf(fp, "%f ", body_outBuffer[i*numBodies*4 + j*4 +1]);
-			fprintf(fp, "%f ", body_outBuffer[i*numBodies*4 + j*4 +2]);
-			fprintf(fp, "%f\n", body_outBuffer[i*numBodies*4 + j*4 +3]);
+			fprintf(fp, "%.5f ", body_outBuffer[i*numBodies*4 + j*4 + 0]);
+			fprintf(fp, "%.5f ", body_outBuffer[i*numBodies*4 + j*4 +1]);
+			fprintf(fp, "%.5f ", body_outBuffer[i*numBodies*4 + j*4 +2]);
+			fprintf(fp, "%.5f\n", body_outBuffer[i*numBodies*4 + j*4 +3]);
 		}
 	}
 	fclose(fp);
