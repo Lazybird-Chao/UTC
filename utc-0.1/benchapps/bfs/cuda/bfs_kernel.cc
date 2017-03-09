@@ -105,7 +105,9 @@ __global__ void bfs_multiblocks(
 	volatile __shared__ int nextPos;
 	volatile __shared__ int goffset;
 	__shared__ int counter;
-	__shared__ int nextWave_s[2048];
+	__shared__ int nextWave_s[2048];//for large graph, this may be spill, but
+									// we can't allocate too much, it will limit the
+									// number of active blocks on one SM
 
 	/*if(tx==0 && nextWaveSize_d !=0)
 		printf("%d %d %d\n", bx, tid, nextWaveSize_d);*/

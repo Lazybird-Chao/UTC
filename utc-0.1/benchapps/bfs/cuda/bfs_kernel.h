@@ -10,7 +10,7 @@
 
 #include "bfs_comm_data.h"
 
-#define MAX_THREAD_PER_BLOCK 256
+#define MAX_THREAD_PER_BLOCK 256   //change this smaller when graph is large
 #define MAX_WAVE_SIZE	(1024*1024)//(total_graph_nodes/100)
 
 //__device__ extern int nextWaveSize_d;

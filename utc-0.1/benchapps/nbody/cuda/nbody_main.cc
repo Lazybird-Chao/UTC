@@ -223,7 +223,7 @@ int main(int argc, char* argv[]){
 		else{
 			nbody.update(grid, block, activeParams.m_timestep);
 		}
-		nbody.update(grid, block, activeParams.m_timestep);
+		//nbody.update(grid, block, activeParams.m_timestep);
 		checkCudaErr(cudaGetLastError());
 		checkCudaErr(cudaDeviceSynchronize());
 		t2 = getTime();
