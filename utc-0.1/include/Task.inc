@@ -331,7 +331,22 @@ void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7
 }
 
 
+template<class T>
+template <typename... Args>
+void Task<T>::run(Args... args)
+{
+    // no task threads on this process, just return.
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
+    m_userTaskRunFunctionHandle = std::bind(&T::runImpl, m_userTaskObjPtr, args...);
+    m_realTaskInstance->runImpl(m_userTaskRunFunctionHandle);
+    return;
+}
 
+/*
 template<class T>
 void Task<T>::run()
 {
@@ -361,6 +376,51 @@ void Task<T>::run(T1 arg1)
     return;
 }
 
+template<class T>
+template<typename T1, typename T2>
+void Task<T>::run(T1 arg1, T2 arg2)
+{
+    // no task threads on this process, just return.
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
+    m_userTaskRunFunctionHandle = std::bind(&T::runImpl, m_userTaskObjPtr, arg1, arg2);
+    m_realTaskInstance->runImpl(m_userTaskRunFunctionHandle);
+    return;
+}
+
+template<class T>
+template<typename T1, typename T2, typename T3>
+void Task<T>::run(T1 arg1, T2 arg2, T3 arg3)
+{
+    // no task threads on this process, just return.
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
+    m_userTaskRunFunctionHandle = std::bind(&T::runImpl, m_userTaskObjPtr, arg1, arg2, arg3);
+    m_realTaskInstance->runImpl(m_userTaskRunFunctionHandle);
+    return;
+}
+
+template<class T>
+template<typename T1, typename T2, typename T3, typename T4>
+void Task<T>::run(T1 arg1, T2 arg2, T3 arg3, T4 arg4)
+{
+    // no task threads on this process, just return.
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
+    m_userTaskRunFunctionHandle = std::bind(&T::runImpl, m_userTaskObjPtr, arg1, arg2, arg3, arg4);
+    m_realTaskInstance->runImpl(m_userTaskRunFunctionHandle);
+    return;
+}
+*/
 
 template<class T>
 void Task<T>::wait(){

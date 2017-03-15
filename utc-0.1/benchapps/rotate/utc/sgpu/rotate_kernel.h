@@ -1,21 +1,12 @@
 /*
  * rotate_kernel.h
  *
+ *  Created on: Mar 15, 2017
  *      Author: chao
- *
- * cuda implementation of image rotation.
- * For simple, we can use one cuda thread to deal with one pixel of the
- * dst-image.
- * To deal with very large image, we let one thread compute batchx*batchy
- * pixels. So the cuda block size will change from (bxsize, bysize) to
- * (bxsize*batchx, bysize*batchy)
- *
  */
 
 #ifndef ROTATE_KERNEL_H_
 #define ROTATE_KERNEL_H_
-
-#include "image.h"
 
 #define PI 3.14159
 #define PRECISION 3
@@ -36,5 +27,7 @@ __device__ __host__ inline void rotatePoint(float2 &pt, float2 &target, int angl
 	target.x = pt.x * cos(rad) - pt.y * sin(rad);
 	target.y = pt.x * sin(rad) + pt.y * cos(rad);
 }
+
+
 
 #endif /* ROTATE_KERNEL_H_ */

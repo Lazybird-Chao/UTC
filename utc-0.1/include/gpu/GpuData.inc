@@ -12,7 +12,7 @@
 #include "GpuTaskUtilites.h"
 #include <iostream>
 
-template<typename T>
+
 namespace iUtc{
 
 template <typename T>
@@ -41,10 +41,12 @@ GpuData<T>::GpuData(size_t size_x, size_t size_y, size_t size_z, MemType memtype
 	case MemType::pageable:
 		m_hostPtr = new T[m_size[0]*m_size[1]*m_size[2]];
 		checkCudaDriverErrors(cudaMalloc(&m_devicePtr, m_size_inbytes));
+		m_status = MemStatus::host;
 		break;
 	case MemType::pinned:
 		checkCudaDriverErrors(cudaMallocHost(&m_hostPtr, m_size_inbytes));
 		checkCudaDriverErrors(cudaMalloc(&m_devicePtr, m_size_inbytes));
+		m_status = MemStatus::host;
 		break;
 	case MemType::unified:
 		if(getCurrentUtcGpuCtx()->getCurrentDeviceAttr(cudaDevAttrManagedMemory) ==1){
@@ -56,11 +58,13 @@ GpuData<T>::GpuData(size_t size_x, size_t size_y, size_t size_z, MemType memtype
 			checkCudaErr(cudaMallocHost(&m_devicePtr, m_size_inbytes));
 		}
 		m_hostPtr = m_devicePtr;
+		m_status = MemStatus::synced;
 		break;
 	default:
 		std::cerr<<"ERROR, undefined gpu memory type !!!"<<std::endl;
 		break;
 	}
+
 }
 
 template <typename T>
