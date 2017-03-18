@@ -1,32 +1,38 @@
 /*
- * rotate_main.cc
+ * yuvconvert_main.cc
  *
- *  Created on: Mar 15, 2017
+ *  Created on: Mar 17, 2017
  *      Author: chao
  */
 
+#include <cstring>
 #include <iostream>
+#include <cstdlib>
 #include <iomanip>
-#include <fstream>
-#include <cerrno>
+#include <cuda_runtime.h>
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_err.h"
 #include "Utc.h"
 #include "UtcGpu.h"
 
+#include "image.h"
+#include "task.h"
+#include "./sgpu/yuv_task_sgpu.h"
+
+
 using namespace iUtc;
 
 int main(int argc, char** argv){
 	bool printTime = false;
-	int nthreads;
-	int nprocess;
+	int nthreads=1;
+	int nprocess=1;
 
 	MemType memtype = MemType::pageable;
 	int mtype = 0;
-	char *infile_path=NULL;
-	char *outfile_path=NULL;
-	int angle=0;
+	char *infile_path = NULL;
+	char *outfile_path = NULL;
+	int iterations=1;
 
 	/* initialize UTC context */
 	UtcContext &ctx = UtcContext::getContext(argc, argv);
@@ -35,7 +41,7 @@ int main(int argc, char** argv){
 	int     opt;
 	extern char   *optarg;
 	extern int     optind;
-	while ( (opt=getopt(argc,argv,"a:i:o:vt:p:"))!= EOF) {
+	while ( (opt=getopt(argc,argv,"l:i:o:vn:p:m:"))!= EOF) {
 		switch (opt) {
 			case 'v': printTime = true;
 					  break;
@@ -44,12 +50,12 @@ int main(int argc, char** argv){
 			case 'p': nprocess = atoi(optarg);
 					  break;
 			case 'm': mtype = atoi(optarg);
-			  	  	  break;
+					  break;
 			case 'i': infile_path=optarg;
 					  break;
 			case 'o': outfile_path = optarg;
 					  break;
-			case 'a': angle = atoi(optarg);
+			case 'l': iterations = atoi(optarg);
 					  break;
 			case ':':
 				std::cerr<<"Option -"<<(char)optopt<<" requires an operand\n"<<std::endl;
@@ -73,17 +79,19 @@ int main(int argc, char** argv){
 	}
 
 	if(mtype==0)
-		memtype = pageable;
+		memtype = MemType::pageable;
 	else if(mtype==1)
-		memtype = pinmem;
+		memtype = MemType::pinned;
 	else if(mtype ==2)
-		memtype = umem;
+		memtype = MemType::unified;
 	else
 		std::cerr<<"wrong memory type for -m !!!"<<std::endl;
+
 	if(infile_path == NULL){
 		std::cerr<<"Error, need the input image file."<<std::endl;
 		return 1;
 	}
+
 
 	/*
 	 * create image object from the file
@@ -94,14 +102,14 @@ int main(int argc, char** argv){
 	readImg.wait();
 
 	/*
-	 * do rotation
+	 * do converter
 	 */
-	Image dstImg;
+	yuv_color_t dstImg;
 	double runtime[4];
-	Task<Rotate> rotate(ProcList(0), TaskType::gpu_task);
-	rotate.init(&srcImg, &dstImg);
-	rotate.run(rumtime, srcImg, dstImg, MemType::pageable);
-	rotate.wait();
+	Task<YUVconvertSGPU> yuvconvert(ProcList(0), TaskType::gpu_task);
+	yuvconvert.init(&srcImg, &dstImg);
+	yuvconvert.run(runtime, iterations, MemType::pageable);
+	yuvconvert.wait();
 
 	/*
 	 * out put the image
@@ -111,20 +119,19 @@ int main(int argc, char** argv){
 		writeImg.run(&dstImg, outfile_path);
 		writeImg.wait();
 	}
-
 	srcImg.clean();
-	dstImg.clean();
+	free(dstImg.y);
+	free(dstImg.u);
+	free(dstImg.v);
 
 	std::cout<<"Test complete !!!"<<std::endl;
 	if(printTime){
 		std::cout<<"\tInput image size: "<<srcImg.getWidth()<<" X "<<srcImg.getHeight()<<std::endl;
-		std::cout<<"\tOutput image size: "<<dstImg.getWidth()<<" X "<<dstImg.getHeight()<<std::endl;
 		std::cout<<"\tTime info: "<<std::endl;
-		std::cout<<"\t\tmemcpy in time: "<<std::fixed<<std::setprecision(4)<<runtime[1]<<"(s)"<<std::endl;
-		std::cout<<"\t\tmemcpy out time: "<<std::fixed<<std::setprecision(4)<<runtime[2]<<"(s)"<<std::endl;
-		std::cout<<"\t\tkernel run time: "<<std::fixed<<std::setprecision(4)<<runtime[3]<<"(s)"<<std::endl;
+		std::cout<<"\t\tmemcpy in time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[1]<<"(s)"<<std::endl;
+		std::cout<<"\t\tmemcpy out time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[2]<<"(s)"<<std::endl;
+		std::cout<<"\t\tkernel run time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[3]<<"(s)"<<std::endl;
 	}
-
 	return 0;
 
 }

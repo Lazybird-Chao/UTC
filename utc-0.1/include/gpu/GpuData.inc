@@ -9,53 +9,67 @@
 #define INCLUDE_GPU_GPUDATA_INC_
 
 #include "cuda_runtime.h"
-#include "GpuTaskUtilites.h"
 #include <iostream>
 
 
 namespace iUtc{
 
 template <typename T>
-GpuData<T>::GpuData(size_t size, MemType memtype = MemType::pagable){
+GpuData<T>::GpuData(unsigned long size, MemType memtype ){
 	m_dim = 1;
-	GpuData(size, 1, 1, memtype);
+	m_size[0] = size;
+	m_size[1] = 1;
+	m_size[2] = 1;
+	m_size_inbytes = m_size[0]*m_size[1]*m_size[2]*sizeof(T);
+
+	initmem(memtype);
 }
 
 template <typename T>
-GpuData<T>::GpuData(size_t size_x, size_t size_y, MemType memtype = MemType::pagable){
-	m_dim =2;
-	GpuData(size_x, size_y, 1, memtype);
+GpuData<T>::GpuData(unsigned long size_x, unsigned long size_y, MemType memtype){
+	m_dim = 2;
+	m_size[0] = size_x;
+	m_size[1] = size_y;
+	m_size[2] = 1;
+	m_size_inbytes = m_size[0]*m_size[1]*m_size[2]*sizeof(T);
+
+	initmem(memtype);
 }
 
 template <typename T>
-GpuData<T>::GpuData(size_t size_x, size_t size_y, size_t size_z, MemType memtype = MemType::pagable){
+GpuData<T>::GpuData(unsigned long size_x, unsigned long size_y, unsigned long size_z, MemType memtype){
+	m_dim = 3;
 	m_size[0] = size_x;
 	m_size[1] = size_y;
 	m_size[2] = size_z;
-
 	m_size_inbytes = m_size[0]*m_size[1]*m_size[2]*sizeof(T);
-	m_dim = 3;
-	m_memtype = memtype;
 
+	initmem(memtype);
+
+}
+
+template<typename T>
+int GpuData<T>::initmem(MemType memtype){
+	m_memtype = memtype;
 	switch (m_memtype){
 	case MemType::pageable:
 		m_hostPtr = new T[m_size[0]*m_size[1]*m_size[2]];
-		checkCudaDriverErrors(cudaMalloc(&m_devicePtr, m_size_inbytes));
+		checkCudaRuntimeErrors(cudaMalloc(&m_devicePtr, m_size_inbytes));
 		m_status = MemStatus::host;
 		break;
 	case MemType::pinned:
-		checkCudaDriverErrors(cudaMallocHost(&m_hostPtr, m_size_inbytes));
-		checkCudaDriverErrors(cudaMalloc(&m_devicePtr, m_size_inbytes));
+		checkCudaRuntimeErrors(cudaMallocHost(&m_hostPtr, m_size_inbytes));
+		checkCudaRuntimeErrors(cudaMalloc(&m_devicePtr, m_size_inbytes));
 		m_status = MemStatus::host;
 		break;
 	case MemType::unified:
 		if(getCurrentUtcGpuCtx()->getCurrentDeviceAttr(cudaDevAttrManagedMemory) ==1){
 			//std::cout<<"using cuda managed for umem"<<std::endl;
-			checkCudaErr(cudaMallocManaged(&m_devicePtr, m_size_inbytes));
+			checkCudaRuntimeErrors(cudaMallocManaged(&m_devicePtr, m_size_inbytes));
 		}
 		else{
 			//std::cout<<"using pinned zero-copy for umem"<<std::endl;
-			checkCudaErr(cudaMallocHost(&m_devicePtr, m_size_inbytes));
+			checkCudaRuntimeErrors(cudaMallocHost(&m_devicePtr, m_size_inbytes));
 		}
 		m_hostPtr = m_devicePtr;
 		m_status = MemStatus::synced;
@@ -64,7 +78,7 @@ GpuData<T>::GpuData(size_t size_x, size_t size_y, size_t size_z, MemType memtype
 		std::cerr<<"ERROR, undefined gpu memory type !!!"<<std::endl;
 		break;
 	}
-
+	return 0;
 }
 
 template <typename T>
@@ -73,14 +87,14 @@ GpuData<T>::~GpuData(){
 	switch (m_memtype){
 	case MemType::pageable:
 		delete[] m_hostPtr;
-		checkCudaDriverErrors(cudaFree(m_devicePtr));
+		checkCudaRuntimeErrors(cudaFree(m_devicePtr));
 		break;
 	case MemType::pinned:
-		checkCudaDriverErrors(cudaFree(m_hostPtr));
-		checkCudaDriverErrors(cudaFree(m_devicePtr));
+		checkCudaRuntimeErrors(cudaFree(m_hostPtr));
+		checkCudaRuntimeErrors(cudaFree(m_devicePtr));
 		break;
 	case MemType::unified:
-		checkCudaDriverErrors(cudaFree(m_devicePtr));
+		checkCudaRuntimeErrors(cudaFree(m_devicePtr));
 		break;
 	}
 	m_hostPtr = m_devicePtr = NULL;

@@ -31,9 +31,9 @@ enum class MemStatus{
 template <typename T>
 class GpuData{
 private:
-	size_t m_size[3];
-	size_t m_size_inbytes;
-	int dim;
+	unsigned long m_size[3];
+	unsigned long m_size_inbytes;
+	int m_dim;
 	MemType m_memtype;
 
 	T *m_hostPtr;
@@ -41,12 +41,14 @@ private:
 
 	MemStatus m_status; //
 
+	int initmem(MemType memtype);
+
 public:
 	typedef T _Type;
 
-	GpuData(size_t size, MemType memtype = MemType::pagable);
-	GpuData(size_t size_x, size_t size_y, MemType memtype = MemType::pagable);
-	GpuData(size_t size_x, size_t size_y, size_t size_z, MemType memtype = MemType::pagable);
+	GpuData(unsigned long size, MemType memtype = MemType::pageable);
+	GpuData(unsigned long size_x, unsigned long size_y, MemType memtype = MemType::pageable);
+	GpuData(unsigned long size_x, unsigned long size_y, unsigned long size_z, MemType memtype = MemType::pageable);
 
 	~GpuData();
 
@@ -56,29 +58,33 @@ public:
 	T *getH(){
 		return m_hostPtr;
 	}
+	T *getD(){
+		return m_devicePtr;
+	}
+
 	T *getH(bool isModified){
 		if(isModified)
 			m_status = MemStatus::host;
 		return m_hostPtr;
 	}
-	T *getD(bool bool isModified ){
+	T *getD(bool isModified ){
 		if(isModified)
 			m_status = MemStatus::device;
 		return m_devicePtr;
 	}
 
-	T* getH(size_t offset){
+	T* getH(unsigned long offset){
 		return &m_hostPtr[offset];
 	}
-	T* getD(size_t offset){
+	T* getD(unsigned long offset){
 		return &m_devicePtr[offset];
 	}
-	T* getH(size_t offset, bool isModified){
+	T* getH(unsigned long offset, bool isModified){
 		if(isModified)
 			m_status = MemStatus::host;
 		return &m_hostPtr[offset];
 	}
-	T* getD(size_t offset, bool isModified){
+	T* getD(unsigned long offset, bool isModified){
 		if(isModified)
 			m_status = MemStatus::device;
 		return &m_hostPtr[offset];
@@ -98,7 +104,7 @@ public:
 	void syncH(){
 		if(m_memtype == MemType::unified)
 			return;
-		checkCudaDriverErrors(cudaMemcpy(m_devicePtr, m_hostPtr,
+		checkCudaRuntimeErrors(cudaMemcpy(m_devicePtr, m_hostPtr,
 				m_size_inbytes, cudaMemcpyHostToDevice));
 		m_status = MemStatus::synced;
 	}
@@ -106,7 +112,7 @@ public:
 	void syncD(){
 		if(m_memtype == MemType::unified)
 			return;
-		checkCudaDriverErrors(cudaMemcpy(m_hostPtr, m_devicePtr,
+		checkCudaRuntimeErrors(cudaMemcpy(m_hostPtr, m_devicePtr,
 				m_size_inbytes, cudaMemcpyDeviceToHost));
 		m_status = MemStatus::synced;
 	}
@@ -115,38 +121,38 @@ public:
 		if(m_memtype == MemType::unified)
 			return;
 		if(m_status == MemStatus::host)
-			checkCudaDriverErrors(cudaMemcpy(m_devicePtr, m_hostPtr,
+			checkCudaRuntimeErrors(cudaMemcpy(m_devicePtr, m_hostPtr,
 						m_size_inbytes, cudaMemcpyHostToDevice));
 		else if(m_status == MemStatus::device)
-			checkCudaDriverErrors(cudaMemcpy(m_devicePtr, m_hostPtr,
+			checkCudaRuntimeErrors(cudaMemcpy(m_devicePtr, m_hostPtr,
 						m_size_inbytes, cudaMemcpyHostToDevice));
 		m_status = MemStatus::synced;
 	}
 
-	void syncH(size_t offset, size_t size){
+	void syncH(unsigned long offset, unsigned long size){
 		if(m_memtype == MemType::unified)
 			return;
-		checkCudaDriverErrors(cudaMemcpy(&m_devicePtr[offset], &m_hostPtr[offset],
+		checkCudaRuntimeErrors(cudaMemcpy(&m_devicePtr[offset], &m_hostPtr[offset],
 				size, cudaMemcpyHostToDevice));
 		m_status = MemStatus::synced;
 	}
 
-	void syncD(size_t offset, size_t size){
+	void syncD(unsigned long offset, unsigned long size){
 		if(m_memtype == MemType::unified)
 			return;
-		checkCudaDriverErrors(cudaMemcpy(&m_hostPtr[offset], &m_devicePtr[offset],
+		checkCudaRuntimeErrors(cudaMemcpy(&m_hostPtr[offset], &m_devicePtr[offset],
 				size, cudaMemcpyDeviceToHost));
 		m_status = MemStatus::synced;
 	}
 
-	void sync(size_t offset, size_t size){
+	void sync(unsigned long offset, unsigned long size){
 		if(m_memtype == MemType::unified)
 			return;
 		if(m_status == MemStatus::host)
-			checkCudaDriverErrors(cudaMemcpy(&m_devicePtr[offset], &m_hostPtr[offset],
+			checkCudaRuntimeErrors(cudaMemcpy(&m_devicePtr[offset], &m_hostPtr[offset],
 						size, cudaMemcpyHostToDevice));
 		else if(m_status == MemStatus::device)
-			checkCudaDriverErrors(cudaMemcpy(&m_devicePtr[offset], &m_hostPtr[offset],
+			checkCudaRuntimeErrors(cudaMemcpy(&m_devicePtr[offset], &m_hostPtr[offset],
 						size, cudaMemcpyHostToDevice));
 		m_status = MemStatus::synced;
 	}
@@ -157,17 +163,48 @@ public:
 	T at(int index){
 		return m_hostPtr[index];
 	}
-	void put(size_t index, const T value){
+	void put(unsigned long index, const T value){
 		m_hostPtr[index] = value;
 	}
 
-	size_t getSize(){
+	unsigned long getSize(){
 		return m_size[0]*m_size[1]*m_size[2];
 	}
 
-	size_t getBSize(){
+	unsigned long getBSize(){
+		//std::cout<<m_size_inbytes<<std::endl;
 		return m_size_inbytes;
 	}
+
+
+	/*
+	 * host memory content init and fetch
+	 */
+	void initH(int value=0){
+		memset(m_hostPtr, value, m_size_inbytes);
+	}
+	void initD(int value=0){
+		checkCudaRuntimeErrors(cudaMemset(m_devicePtr, value, m_size_inbytes));
+	}
+
+	void initH(const T* other){
+		memcpy(m_hostPtr, other, m_size_inbytes);
+	}
+	void initD(const T* other){
+		checkCudaRuntimeErrors(cudaMemcpy(m_devicePtr, other,
+				m_size_inbytes, cudaMemcpyDefault));
+	}
+
+	void fetchH(T* dest){
+		memcpy(dest, m_hostPtr, m_size_inbytes);
+	}
+	void fetchD(T* dest){
+		checkCudaRuntimeErrors(cudaMemcpy(dest, m_devicePtr,
+				m_size_inbytes, cudaMemcpyDefault));
+	}
+
+
+
 
 };
 

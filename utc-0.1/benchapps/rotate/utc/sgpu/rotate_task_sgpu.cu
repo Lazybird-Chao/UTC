@@ -5,45 +5,18 @@
  *      Author: chao
  */
 #include "rotate_task_sgpu.h"
+#include "rotate_kernel.h"
+#include "../../../common/helper_err.h"
 #include <iostream>
-#include <fstream>
 
-void ImageCreate::runImpl(Image* srcImg, char* infile_path){
-	srcImg->createImageFromFile(infile_path);
-}
 
-void ImageOut::runImpl(Image * img, char* outfile_path){
-	std::fstream out;
-	out.open(outfile_path, std::fstream::out);
-	if(!out.is_open()){
-		std::cerr<<"Error, cannot create output file!"<<std::endl;
-		return 1;
-	}
-	if(img->getDepth() == 3){
-		out<<"P6\n";
-	}
-	else{
-		std::cerr<<"Error, unsupported image file format!"<<std::endl;
-		return 1;
-	}
-	out << img->getWidth() << " " << img->getHeight() << "\n" << img->getMaxcolor() << "\n";
-	for(int i = 0; i < img->getHeight(); i++) {
-		for(int j = 0; j < img->getWidth(); j++) {
-			Pixel p = img->getPixelAt(j, i);
-			out.put(p.r);
-			out.put(p.g);
-			out.put(p.b);
-		}
-	}
-	out.close();
 
-}
-
-void Rotate::initImpl(Image* srcImg, Image* dstImg){
+void RotateSGPU::initImpl(Image* srcImg, Image* dstImg, int angle){
 	if(__localThreadId ==0){
 		std::cout<<"begin init ...\n";
 		this->srcImg = srcImg;
 		this->dstImg = dstImg;
+		this->angle = angle;
 
 		/*
 		 * compute the out image's size
@@ -91,15 +64,17 @@ void Rotate::initImpl(Image* srcImg, Image* dstImg){
 	}
 }
 
-void Rotate::runImpl(int angle, double *runtime, MemType memtype){
+void RotateSGPU::runImpl(double *runtime, MemType memtype){
 	if(__localThreadId == 0){
-		std::cout<<"begin run ..."<<std::endl;
+		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}
 
 	Timer timer;
 	GpuData<Pixel> sImg(srcImg->getWidth()*srcImg->getHeight(), memtype);
 	GpuData<Pixel> dImg(dstImg->getWidth()*dstImg->getHeight(), memtype);
+	//std::cout<<srcImg->getWidth()<<" "<<srcImg->getHeight()<<" "<<sizeof(Pixel)<<" "<<sImg.getBSize()<<std::endl;
 	memcpy(sImg.getH(true), srcImg->getPixelBuffer(), sImg.getBSize());
+	//std::cout<<srcImg->getWidth()<<" "<<srcImg->getHeight()<<sImg.getBSize()<<std::endl;
 
 	/*
 	 * copy data in
@@ -112,12 +87,13 @@ void Rotate::runImpl(int angle, double *runtime, MemType memtype){
 	 * invoke kernel
 	 */
 	timer.start();
-	int blocksize = 16;
+	int blocksize_x = 16;
+	int blocksize_y = 16;
 	int batchx = 1;
 	int batchy = 1;
-	dim3 block(blocksize, blocksize, 1);
-	dim3 grid((outW+blocksize*batchx-1)/(blocksize*batchx),
-				(outH+blocksize*batchy-1)/(blocksize*batchy),
+	dim3 block(blocksize_x, blocksize_y, 1);
+	dim3 grid((dstImg->getWidth()+blocksize_x*batchx-1)/(blocksize_x*batchx),
+				(dstImg->getHeight()+blocksize_y*batchy-1)/(blocksize_y*batchy),
 				1);
 	rotate_kernel<<<grid, block>>>(sImg.getD(),
 									srcImg->getWidth(),

@@ -8,6 +8,8 @@
 #ifndef ROTATE_KERNEL_H_
 #define ROTATE_KERNEL_H_
 
+#include "../image.h"
+
 #define PI 3.14159
 #define PRECISION 3
 

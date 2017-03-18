@@ -11,37 +11,22 @@
 #include "Utc.h"
 #include "UtcGpu.h"
 
-#include "image.h"
+#include "../image.h"
 
 using namespace iUtc;
 
-class ImageCreate: public UserTaskBase{
-private:
 
 
-public:
-
-	void runImpl(Image* srcImg, char *infile_path);
-
-};
-
-
-class ImageOut: public UserTaskBase{
-public:
-	void runImpl(Image* img, char *outfile_path);
-};
-
-
-
-class Rotate: public UserTaskBase{
+class RotateSGPU: public UserTaskBase{
 private:
 	Image *srcImg;
 	Image *dstImg;
+	int angle;
 
 public:
-	void initImpl(Image* srcImg, Image* dstImg);
+	void initImpl(Image* srcImg, Image* dstImg, int angle);
 
-	void runImpl(int angle, double *runtime, MemType memtype=MemType::pageable);
+	void runImpl(double *runtime, MemType memtype=MemType::pageable);
 };
 
 

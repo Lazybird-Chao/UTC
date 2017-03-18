@@ -1,5 +1,5 @@
 mainobj = rotate_main.o image.o
-taskobj = rotate_task_sgpu.o
+taskobj = task.o rotate_task_sgpu.o
 kernelobj = rotate_kernel.o
 
 bin = rotate
@@ -46,16 +46,19 @@ helperObj = helperObj.o
 $(helperObj):$(COMMONDIR)/helper_getopt.c
 	$(C++) -o $@  -c $<
 
-rotate_main.o: rotate_main.cc image.h rotate_task_sgpu.h
+rotate_main.o: rotate_main.cc image.h task.h ./sgpu/rotate_task_sgpu.h
 	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
 	
 image.o: image.cc image.h
 	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
+	
+task.o: task.cc task.h
+	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
     
-$(taskobj): rotate_task_sgpu.cu rotate_task_sgpu.h rotate_kernel.h
+rotate_task_sgpu.o: ./sgpu/rotate_task_sgpu.cu ./sgpu/rotate_task_sgpu.h ./sgpu/rotate_kernel.h
 	$(NVCC) -o $@  $(CCFLAGS) $(NVCCFLAGS) $(NWARNING) $(UTC_INCLUDE) $(MPI_INCLUDE) $(CUDA_INCLUDE) $(BOOST_INCLUDE) -c $<
 
-$(kernelobj): rotate_kernel.cc rotate_kernel.h
+$(kernelobj): ./sgpu/rotate_kernel.cc ./sgpu/rotate_kernel.h
 	$(NVCC) -o $@ -x cu  $(CCFLAGS) $(NVCCFLAGS) $(NWARNING) $(CUDA_INCLUDE) -c $<
     
 tmplink.o: $(taskobj) $(kernelobj)

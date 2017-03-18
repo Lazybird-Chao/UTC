@@ -11,7 +11,7 @@
  * 			-v: print time info
  * 			-i: input image file path
  * 			-o: output image file path
- * 			-a: the angle to will be rotated
+ * 			-a: the angle to be rotated
  */
 
 
