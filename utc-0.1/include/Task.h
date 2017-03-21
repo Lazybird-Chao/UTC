@@ -54,6 +54,9 @@ public:
 
 
 	//
+	template <typename... Args>
+	void init(Args... args);
+	/*
 	void init();
 
 	template<typename T1>
@@ -85,6 +88,7 @@ public:
 
 	template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9, typename T10>
 	void init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10);
+	*/
 
 	//
 	template <typename... Args>
@@ -113,10 +117,15 @@ public:
 	void finish();
 
 	//
+	template<typename... Args>
+	void exec(void (T::*user_fun)(Args...), Args... args);
+
+	/*
 	void exec(void (T::*user_fun)());
 
 	template<typename T1>
 	void exec(void (T::*user_fun)(T1), T1 arg1);
+	*/
 
 	//
 	int setUserTaskObj(T &userTaskObj);

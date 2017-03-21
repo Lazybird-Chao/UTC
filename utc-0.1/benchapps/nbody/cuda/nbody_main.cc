@@ -30,7 +30,7 @@
 #include "nbody.h"
 #include "bodysystem.h"
 
-#define FTYPE float
+#define FTYPE double
 
 struct NBodyParams
 {

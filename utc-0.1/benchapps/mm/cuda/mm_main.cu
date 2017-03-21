@@ -14,6 +14,7 @@
  */
 
 #include <iostream>
+#include <iomanip>
 #include <cuda_runtime.h>
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_timer.h"
@@ -55,10 +56,10 @@ int main(int argc, char **argv){
 		std::cerr<<"matrix size is illegal"<<std::endl;
 		exit(1);
 	}
-	if(matrixSize%blockSize != 0){
+	/*if(matrixSize%blockSize != 0){
 		std::cerr<<"matrix size should be multiply of block size"<<std::endl;
 		exit(1);
-	}
+	}*/
 
 	/*
 	 * create matrix and initialize with random number
@@ -115,7 +116,14 @@ int main(int argc, char **argv){
 	t1 = getTime();
 	cudaLaunchKernel((void*)&gpuMatrixKernel, grid, block, (void**)kernel_args, 0, 0);
 	*/
-	gpuMatrixKernel<<<grid, block>>>(matrixA_d, matrixB_d, matrixC_d, matrixSize, blockSize);
+	gpuMatrixKernel<<<grid, block>>>(
+			matrixA_d,
+			matrixB_d,
+			matrixC_d,
+			matrixSize,
+			matrixSize,
+			matrixSize,
+			blockSize);
 	cudaDeviceSynchronize();
 	checkCudaErr(cudaGetLastError());
 	t2 = getTime();
@@ -129,6 +137,16 @@ int main(int argc, char **argv){
 	t2 = getTime();
 	double copyoutTime = t2 - t1;
 
+	/*for(int i=0; i<matrixSize; i++){
+		for(int j=0; j<matrixSize; j++){
+			FTYPE tmp = 0;
+			for(int k=0; k<matrixSize; k++){
+				tmp += matrixA[i*matrixSize+k]*matrixB[k*matrixSize + j];
+			}
+			if(fabs((tmp-matrixC[i*matrixSize +j])/tmp)>0.00001)
+				std::cout<<tmp<<"  "<<matrixC[i*matrixSize +j]<<std::endl;
+		}
+	}*/
 
 	free(matrixA);
 	free(matrixB);
@@ -143,10 +161,10 @@ int main(int argc, char **argv){
 		std::cout<<"\tMatrix size: "<<matrixSize<<" X "<<matrixSize<<std::endl;
 		std::cout<<"\tcuda Block size: "<<blockSize<<std::endl;
 		std::cout<<"\tTime info: "<<std::endl;
-		std::cout<<"\t\tmemory create time: "<<memcreateTime<<" s"<<std::endl;
-		std::cout<<"\t\tmemcpy in time: "<<copyinTime<<"(s)"<<std::endl;
-		std::cout<<"\t\tmemcpy out time: "<<copyoutTime<<"(s)"<<std::endl;
-		std::cout<<"\t\tkernel run time: "<<kernelTime<<"(s)"<<std::endl;
+		//std::cout<<"\t\tmemory create time: "<<memcreateTime<<" s"<<std::endl;
+		std::cout<<"\t\tmemcpy in time: "<<std::fixed<<std::setprecision(4)<<copyinTime<<"(s)"<<std::endl;
+		std::cout<<"\t\tmemcpy out time: "<<std::fixed<<std::setprecision(4)<<copyoutTime<<"(s)"<<std::endl;
+		std::cout<<"\t\tkernel run time: "<<std::fixed<<std::setprecision(4)<<kernelTime<<"(s)"<<std::endl;
 
 	}
 

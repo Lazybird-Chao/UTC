@@ -8,7 +8,7 @@
  *
  *usage:
  *		compile with the Makefile
- *		run as: ./a.out -v -i in.ppm -o out -a 20  -l 100
+ *		run as: ./a.out -v -i in.ppm -o out  -l 100
  *			-v: print time info
  *			-i: input image file
  *			-o: output image file path

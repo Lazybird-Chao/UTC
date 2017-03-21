@@ -3,6 +3,17 @@
  *
  *  Created on: Mar 17, 2017
  *      Author: chao
+ *
+ * usage:
+ * 		compile with the Makefile
+ *		run as: ./a.out -v -i in.ppm -o out  -l 100
+ *			-v: print time info
+ *			-t: number of threads (not useful here)
+ * 			-p: number of process (not useful here)
+ * 			-m: gpu memory type (0:pageable, 1:pinned, 2:unified)
+ *			-i: input image file
+ *			-o: output image file path
+ *			-l: iterations of the kernel
  */
 
 #include <cstring>
@@ -41,7 +52,7 @@ int main(int argc, char** argv){
 	int     opt;
 	extern char   *optarg;
 	extern int     optind;
-	while ( (opt=getopt(argc,argv,"l:i:o:vn:p:m:"))!= EOF) {
+	while ( (opt=getopt(argc,argv,"l:i:o:vt:p:m:"))!= EOF) {
 		switch (opt) {
 			case 'v': printTime = true;
 					  break;
@@ -116,7 +127,7 @@ int main(int argc, char** argv){
 	 */
 	if(outfile_path != NULL){
 		Task<ImageOut> writeImg(ProcList(0));
-		writeImg.run(&dstImg, outfile_path);
+		writeImg.run(&dstImg, srcImg.getWidth(), srcImg.getHeight(), outfile_path);
 		writeImg.wait();
 	}
 	srcImg.clean();
@@ -128,9 +139,9 @@ int main(int argc, char** argv){
 	if(printTime){
 		std::cout<<"\tInput image size: "<<srcImg.getWidth()<<" X "<<srcImg.getHeight()<<std::endl;
 		std::cout<<"\tTime info: "<<std::endl;
-		std::cout<<"\t\tmemcpy in time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[1]<<"(s)"<<std::endl;
-		std::cout<<"\t\tmemcpy out time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[2]<<"(s)"<<std::endl;
-		std::cout<<"\t\tkernel run time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[3]<<"(s)"<<std::endl;
+		std::cout<<"\t\tmemcpy in time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[1]<<"(ms)"<<std::endl;
+		std::cout<<"\t\tmemcpy out time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[2]<<"(ms)"<<std::endl;
+		std::cout<<"\t\tkernel run time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[3]<<"(ms)"<<std::endl;
 	}
 	return 0;
 

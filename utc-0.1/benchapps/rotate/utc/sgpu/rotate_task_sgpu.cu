@@ -73,13 +73,14 @@ void RotateSGPU::runImpl(double *runtime, MemType memtype){
 	GpuData<Pixel> sImg(srcImg->getWidth()*srcImg->getHeight(), memtype);
 	GpuData<Pixel> dImg(dstImg->getWidth()*dstImg->getHeight(), memtype);
 	//std::cout<<srcImg->getWidth()<<" "<<srcImg->getHeight()<<" "<<sizeof(Pixel)<<" "<<sImg.getBSize()<<std::endl;
-	memcpy(sImg.getH(true), srcImg->getPixelBuffer(), sImg.getBSize());
+
 	//std::cout<<srcImg->getWidth()<<" "<<srcImg->getHeight()<<sImg.getBSize()<<std::endl;
 
 	/*
 	 * copy data in
 	 */
 	timer.start();
+	memcpy(sImg.getH(true), srcImg->getPixelBuffer(), sImg.getBSize());
 	sImg.syncH();
 	double copyinTime = timer.stop();
 
@@ -113,9 +114,8 @@ void RotateSGPU::runImpl(double *runtime, MemType memtype){
 	 */
 	timer.start();
 	dImg.syncD();
-	double copyoutTime = timer.stop();
-
 	memcpy(dstImg->getPixelBuffer(), dImg.getH(), dImg.getBSize());
+	double copyoutTime = timer.stop();
 
 	runtime[1] = copyinTime;
 	runtime[2] = copyoutTime;

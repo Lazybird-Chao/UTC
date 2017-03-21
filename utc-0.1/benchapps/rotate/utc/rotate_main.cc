@@ -12,6 +12,7 @@
  * 			-v: print time info
  * 			-t: number of threads (not useful here)
  * 			-p: number of process (not useful here)
+ * 			-m: gpu memory type (0:pageable, 1:pinned, 2:unified)
  * 			-i: input image file path
  * 			-o: output image file path
  * 			-a: the angle to be rotated
@@ -52,7 +53,7 @@ int main(int argc, char** argv){
 	int     opt;
 	extern char   *optarg;
 	extern int     optind;
-	while ( (opt=getopt(argc,argv,"a:i:o:vt:p:"))!= EOF) {
+	while ( (opt=getopt(argc,argv,"a:i:o:vt:p:m:"))!= EOF) {
 		switch (opt) {
 			case 'v': printTime = true;
 					  break;

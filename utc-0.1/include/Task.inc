@@ -185,6 +185,26 @@ Task<T>::~Task()
 }
 
 template<class T>
+template<typename... Args>
+void Task<T>::init(Args... args)
+{
+    // no task threads on this process, just return
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
+
+	//set up user task's init function
+	m_userTaskInitFunctionHandle = std::bind(&T::initImpl, m_userTaskObjPtr, args...);
+
+	m_realTaskInstance->initImpl(m_userTaskInitFunctionHandle);
+
+	return;
+}
+
+/*
+template<class T>
 void Task<T>::init()
 {
     // no task threads on this process, just return
@@ -329,6 +349,7 @@ void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7
 	m_realTaskInstance->initImpl(m_userTaskInitFunctionHandle);
 	return;
 }
+*/
 
 
 template<class T>
@@ -472,6 +493,18 @@ void Task<T>::finish()
 }
 
 template<class T>
+template<typename... Args>
+void Task<T>::exec(void (T::*user_fun)(Args...), Args... args){
+	if(m_numLocalThreads ==0)
+		return;
+	m_userTaskExecHandle = std::bind(user_fun, m_userTaskObjPtr, args...);
+
+	m_realTaskInstance->execImpl(m_userTaskExecHandle);
+	return;
+}
+
+/*
+template<class T>
 void Task<T>::exec(void (T::*user_fun)()){
 	if(m_numLocalThreads ==0)
 		return;
@@ -490,6 +523,9 @@ void Task<T>::exec(void (T::*user_fun)(T1), T1 arg1){
 	m_realTaskInstance->execImpl(m_userTaskExecHandle);
 	return;
 }
+*/
+
+
 
 /*
  * TODO: we also need to update the task artifact(CPU task or GPU task)

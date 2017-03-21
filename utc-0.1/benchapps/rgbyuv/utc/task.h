@@ -26,7 +26,7 @@ public:
 
 class ImageOut: public UserTaskBase{
 public:
-	void runImpl(yuv_color_t* img, char *outfile_path);
+	void runImpl(yuv_color_t* img, int w, int h, char *outfile_path);
 };
 
 

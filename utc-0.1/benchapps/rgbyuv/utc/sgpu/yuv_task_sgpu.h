@@ -23,7 +23,7 @@ private:
 public:
 	void initImpl(Image* srcImg, yuv_color_t *dstImg);
 
-	void runImpl(double *runtime, int loop, MemType memtype = MmeType::pageable);
+	void runImpl(double *runtime, int loop, MemType memtype = MemType::pageable);
 
 };
 
