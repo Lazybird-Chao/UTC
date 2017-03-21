@@ -42,13 +42,23 @@ private:
 	MemStatus m_status; //
 
 	int initmem(MemType memtype);
+	int clean();
+	bool iscleaned;
+	bool isinitialized;
 
 public:
 	typedef T _Type;
 
+	GpuData(MemType memtype = MemType::pageable);
 	GpuData(unsigned long size, MemType memtype = MemType::pageable);
 	GpuData(unsigned long size_x, unsigned long size_y, MemType memtype = MemType::pageable);
 	GpuData(unsigned long size_x, unsigned long size_y, unsigned long size_z, MemType memtype = MemType::pageable);
+
+	int initMem(unsigned long size_x, MemType memtype= MemType::pageable);
+	int initMem(unsigned long size_x, unsigned long size_y, MemType memtype= MemType::pageable);
+	int initMem(unsigned long size_x, unsigned long size_y, unsigned long size_z, MemType memtype= MemType::pageable);
+
+	void cleanMem();
 
 	~GpuData();
 

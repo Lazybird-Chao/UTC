@@ -15,6 +15,10 @@
 	#include "PrivateScopedDataBase.h"
 #endif
 
+#if ENABLE_GPU_TASK
+	#include "UtcGpuContext.h"
+	#include <cuda_runtime.h>
+#endif
 
 #include <vector>
 #include <map>
@@ -42,7 +46,9 @@ public:
 #endif
 
 	void preInit(int lrank, int trank, int prank, int numLocalThreads,
-			int numProcesses, int numTotalThreads, std::map<int,int> *worldRankTranslate);
+			int numProcesses, int numTotalThreads,
+			std::map<int,int> *worldRankTranslate,
+			void *gpuCtx);
 	void preExit();
 
 	/* useful data members */
@@ -55,6 +61,14 @@ public:
 	std::map<int,int> *__worldRankTranslate=nullptr;
 
 	FastBarrier __fastIntraSync;
+	FastMutex __fastLock;
+	iUtc::SpinLock __fastSpinLock;
+
+#if ENABLE_GPU_TASK
+	static thread_local cudaStream_t __streamId;
+	static thread_local int __deviceId;
+
+#endif
 
 private:
 	/* other useful member functions */

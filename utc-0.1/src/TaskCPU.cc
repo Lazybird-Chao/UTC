@@ -4,7 +4,8 @@
 
 namespace iUtc{
 
-TaskCPU::TaskCPU(int numLocalThreads,
+TaskCPU::TaskCPU(TaskType taskType,
+				int numLocalThreads,
 				 int currentProcessRank,
 				 int numProcesses,
 				 int numTotalThreads,
@@ -18,6 +19,7 @@ TaskCPU::TaskCPU(int numLocalThreads,
 				 boost::thread_specific_ptr<ThreadPrivateData>* threadPrivateData,
 				 UserTaskBase* realUserTaskObj){
 
+	m_taskType = taskType;
 	m_numLocalThreads = numLocalThreads;
 	m_currentProcessRank = currentProcessRank;
 	m_numProcesses = numProcesses;
@@ -214,7 +216,7 @@ void TaskCPU::threadImpl(ThreadRank_t trank,
 							m_numLocalThreads,
 							m_numProcesses,
 							m_numTotalThreads,
-							m_commonTaskInfo->worldRankToGrouprRank);
+							m_commonTaskInfo->worldRankToGrouprRank, nullptr);
 
 	while(1){
 		std::unique_lock<std::mutex> LCK1(m_jobExecMutex);

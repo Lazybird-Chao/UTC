@@ -14,6 +14,11 @@
 thread_local int UserTaskBase::__localThreadId = -1;
 thread_local int UserTaskBase::__globalThreadId = -1;
 thread_local int UserTaskBase::__processId = -1;
+
+#if ENABLE_GPU_TASK
+thread_local cudaStream_t UserTaskBase::__streamId = nullptr;
+thread_local int UserTaskBase::__deviceId = -1;
+#endif
 UserTaskBase::UserTaskBase(){
 
 #if ENABLE_SCOPED_DATA
@@ -60,7 +65,8 @@ void UserTaskBase::preInit(int lrank,
 							int numLocalThreads,
 							int numProcesses,
 							int numTotalThreads,
-							std::map<int,int> *worldRankTranslate){
+							std::map<int,int> *worldRankTranslate,
+							void* gpuCtx){
 	__localThreadId = lrank;
 	__globalThreadId = trank;
 	__processId = prank;
@@ -70,6 +76,14 @@ void UserTaskBase::preInit(int lrank,
 	__worldRankTranslate = worldRankTranslate;
 
 	__fastIntraSync.init(numLocalThreads);
+
+#if ENABLE_GPU_TASK
+	iUtc::UtcGpuContext *gCtx = (iUtc::UtcGpuContext*)gpuCtx;
+	if(gCtx){
+		__streamId = gCtx->getBoundStream();
+		__deviceId = gCtx->getCudaDeviceId();
+	}
+#endif
 
 #if ENABLE_SCOPED_DATA
 	if(__psDataRegistry.size()>0){

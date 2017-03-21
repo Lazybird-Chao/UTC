@@ -14,6 +14,18 @@
 
 namespace iUtc{
 
+template<typename T>
+GpuData<T>::GpuData(MemType memtype){
+	m_dim = 0;
+	m_size[0] = 0;
+	m_size[1] = 0;
+	m_size[2] = 0;
+	m_size_inbytes = 0;
+	isinitialized = false;
+	iscleaned = false;
+	m_hostPtr = m_devicePtr = NULL;
+}
+
 template <typename T>
 GpuData<T>::GpuData(unsigned long size, MemType memtype ){
 	m_dim = 1;
@@ -21,7 +33,8 @@ GpuData<T>::GpuData(unsigned long size, MemType memtype ){
 	m_size[1] = 1;
 	m_size[2] = 1;
 	m_size_inbytes = m_size[0]*m_size[1]*m_size[2]*sizeof(T);
-
+	isinitialized = false;
+	iscleaned = false;
 	initmem(memtype);
 }
 
@@ -32,7 +45,8 @@ GpuData<T>::GpuData(unsigned long size_x, unsigned long size_y, MemType memtype)
 	m_size[1] = size_y;
 	m_size[2] = 1;
 	m_size_inbytes = m_size[0]*m_size[1]*m_size[2]*sizeof(T);
-
+	isinitialized = false;
+	iscleaned = false;
 	initmem(memtype);
 }
 
@@ -43,7 +57,8 @@ GpuData<T>::GpuData(unsigned long size_x, unsigned long size_y, unsigned long si
 	m_size[1] = size_y;
 	m_size[2] = size_z;
 	m_size_inbytes = m_size[0]*m_size[1]*m_size[2]*sizeof(T);
-
+	isinitialized = false;
+	iscleaned = false;
 	initmem(memtype);
 
 }
@@ -78,12 +93,46 @@ int GpuData<T>::initmem(MemType memtype){
 		std::cerr<<"ERROR, undefined gpu memory type !!!"<<std::endl;
 		break;
 	}
+	isinitialized = true;
+	iscleaned = false;
+	return 0;
+}
+
+template<typename T>
+int GpuData<T>::initMem(unsigned long size_x, MemType memtype){
+	m_dim = 1;
+	return initMem(size_x, 1, 1, memtype);
+}
+
+template<typename T>
+int GpuData<T>::initMem(unsigned long size_x, unsigned long size_y, MemType memtype){
+	m_dim = 2;
+	return initMem(size_x, size_y, 1, memtype);
+}
+
+template<typename T>
+int GpuData<T>::initMem(unsigned long size_x, unsigned long size_y, unsigned long size_z, MemType memtype){
+	if(m_dim==0)
+		m_dim = 3;
+	if(!isinitialized){
+		m_size[0] = size_x;
+		m_size[1] = size_y;
+		m_size[2] = size_z;
+		m_size_inbytes = m_size[0]*m_size[1]*m_size[2]*sizeof(T);
+		initmem(memtype);
+	}
 	return 0;
 }
 
 template <typename T>
 GpuData<T>::~GpuData(){
+	if(!iscleaned)
+		cleanMem();
+	m_hostPtr = m_devicePtr = NULL;
+}
 
+template <typename T>
+void GpuData<T>::cleanMem(){
 	switch (m_memtype){
 	case MemType::pageable:
 		delete[] m_hostPtr;
@@ -97,9 +146,8 @@ GpuData<T>::~GpuData(){
 		checkCudaRuntimeErrors(cudaFree(m_devicePtr));
 		break;
 	}
-	m_hostPtr = m_devicePtr = NULL;
+	iscleaned = true;
 }
-
 
 }
 #endif /* INCLUDE_GPU_GPUDATA_INC_ */

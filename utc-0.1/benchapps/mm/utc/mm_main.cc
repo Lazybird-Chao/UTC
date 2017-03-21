@@ -3,6 +3,16 @@
  *
  *  Created on: Mar 20, 2017
  *      Author: Chao
+ *
+ * usage:
+ * 		compile with the Makefile
+ * 		run as: /a.out -v -s 100
+ * 		-v: print time info
+ * 		-t: number of threads
+ * 		-p: number of processes(nodes)
+ * 		-m: gpu memtype
+ * 		-s: the size of matrix, we assume a square matrix
+ * 		-b: cuda block size, should able to divide matrix size
  */
 
 #include <iostream>
@@ -15,9 +25,10 @@
 using namespace iUtc;
 
 #include "task.h"
+#include "sgpu/mm_task_sgpu.h"
 
 
-#define FTYPE double
+#define FTYPE float
 
 int main(int argc, char**argv){
 	bool printTime = false;
@@ -100,9 +111,31 @@ int main(int argc, char**argv){
 	 * do computation
 	 */
 	double runtime[4];
+	Task<MatrixMulSGPU<FTYPE>> mm(ProcList(0), TaskType::gpu_task);
+	mm.init(matrixA, matrixB, matrixC, matrixSize, matrixSize, matrixSize);
+	mm.run(runtime, blockSize, memtype);
+	mm.wait();
 
 
-
+	/*
+	int error =0;
+	for(int i=0; i<matrixSize; i++){
+		for(int j=0; j<matrixSize; j++){
+			FTYPE tmp = 0;
+			for(int k=0; k<matrixSize; k++){
+				tmp += matrixA[i*matrixSize+k]*matrixB[k*matrixSize + j];
+			}
+			if(fabs((tmp-matrixC[i*matrixSize +j])/tmp)>0.00001){
+				error++;
+				//std::cout<<tmp<<"  "<<matrixC[i*matrixSize +j]<<std::endl;
+			}
+		}
+	}
+	if(error == 0)
+		std::cout<<"no errors in results\n";
+	else
+		std::cout<<"errors: "<<error<<std::endl;
+	*/
 
 	delete matrixA;
 	delete matrixB;

@@ -19,6 +19,9 @@
 
 #define ENABLE_CONCURRENT_CUDA_KERNEL	1
 
+#if ENABLE_CONCURRENT_CUDA_KERNEL
+	#define USING_NONBLOCKING_STREAM	0
+#endif
 
 /*
  *  1	cudaCtxMapToThread,

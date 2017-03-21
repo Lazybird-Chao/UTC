@@ -661,7 +661,8 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 	if(m_numLocalThreads!=0)  // there are threads need to be created on current process
 	{
 		if(tType==TaskType::cpu_task){
-			m_realTaskInstance = new TaskCPU(m_numLocalThreads,
+			m_realTaskInstance = new TaskCPU(tType,
+											m_numLocalThreads,
 											m_processRank,
 											m_numProcesses,
 											m_numTotalThreads,
@@ -677,7 +678,8 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 		}
 		else if(tType==TaskType::gpu_task){
 #if ENABLE_GPU_TASK
-			m_realTaskInstance = new TaskGPU(m_numLocalThreads,
+			m_realTaskInstance = new TaskGPU(tType,
+											m_numLocalThreads,
 											m_processRank,
 											m_numProcesses,
 											m_numTotalThreads,

@@ -2,6 +2,7 @@
 #define UTC_TASK_CPU_H_
 
 #include "UtcBasics.h"
+#include "TaskBase.h"
 #include "TaskArtifact.h"
 #include "TaskInfo.h"
 #include "UserTaskBase.h"
@@ -20,7 +21,8 @@ namespace iUtc{
 
 class TaskCPU : public TaskArtifact{
 public:
-	TaskCPU(int numLocalThreads,
+	TaskCPU(TaskType taskType,
+			int numLocalThreads,
 				 int currentProcessRank,
 				 int numProcesses,
 				 int numTotalThreads,
@@ -63,6 +65,8 @@ public:
 
 private:
 	//
+	TaskType m_taskType;
+
 	std::vector<std::thread> m_taskThreads;
 
 	int m_numLocalThreads;

@@ -15,7 +15,8 @@
 
 namespace iUtc{
 
-TaskGPU::TaskGPU(int numLocalThreads,
+TaskGPU::TaskGPU(TaskType taskType,
+				int numLocalThreads,
 				 int currentProcessRank,
 				 int numProcesses,
 				 int numTotalThreads,
@@ -29,6 +30,7 @@ TaskGPU::TaskGPU(int numLocalThreads,
 				 boost::thread_specific_ptr<ThreadPrivateData>* threadPrivateData,
 				 UserTaskBase* realUserTaskObj){
 
+	m_taskType = taskType;
 	m_numLocalThreads = numLocalThreads;
 	m_currentProcessRank = currentProcessRank;
 	m_numProcesses = numProcesses;
@@ -246,12 +248,14 @@ void TaskGPU::threadImpl(ThreadRank_t trank,
 	//std::cout<<trank<<" "<<ERROR_LINE<<std::endl;
 
 	/****** setup the gpu context *****/
+#if ENABLE_GPU_TASK
 	m_allLocalThreadUtcGpuContexPtr[lrank] = new UtcGpuContext(gpuToBind, m_cudaCtxMode);
 	UtcGpuContext *myUtcGpuContext = m_allLocalThreadUtcGpuContexPtr[lrank];
-#if ENABLE_GPU_TASK
+
 	taskInfoPtr->gpuSpecInfo.utcGpuCtx = myUtcGpuContext;
-#endif
+
 	myUtcGpuContext->ctxInit();
+#endif
 
 
 	// do preInit()
@@ -266,7 +270,8 @@ void TaskGPU::threadImpl(ThreadRank_t trank,
 							m_numLocalThreads,
 							m_numProcesses,
 							m_numTotalThreads,
-							m_commonTaskInfo->worldRankToGrouprRank);
+							m_commonTaskInfo->worldRankToGrouprRank,
+							(void*)myUtcGpuContext);
 
 	while(1){
 		std::unique_lock<std::mutex> LCK1(m_jobExecMutex);

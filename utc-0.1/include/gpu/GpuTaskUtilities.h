@@ -19,7 +19,7 @@ namespace iUtc{
 
 	int getCurrentCudaDeviceId();
 
-	//cudaStream_t* getCurrentCudaStreamId();
+	cudaStream_t getCurrentStream();
 
 	//CUcontext* getCurrentCudaCtx();
 

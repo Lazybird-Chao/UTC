@@ -45,6 +45,8 @@ public:
 	cudaStream_t getBoundStream();
 	cudaStream_t getDefaultStream();
 
+	int setNonblockingDefaultStream();
+
 	cudaStream_t getNewStream();
 	void destroyStream(cudaStream_t &stream);
 

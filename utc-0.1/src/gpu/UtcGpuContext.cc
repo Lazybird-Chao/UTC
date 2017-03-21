@@ -58,8 +58,14 @@ void UtcGpuContext::ctxInit(){
 		 */
 		if(ENABLE_CONCURRENT_CUDA_KERNEL){
 			// cudaStreamDefault, cudaStreamNonBlocking
-			checkCudaRuntimeErrors(cudaStreamCreateWithFlags(&m_cudaStreamBound, cudaStreamDefault));
-
+			if(USING_NONBLOCKING_STREAM){
+				checkCudaRuntimeErrors(
+					cudaStreamCreateWithFlags(&m_cudaStreamBound, cudaStreamNonBlocking));
+			}
+			else{
+				//checkCudaRuntimeErrors(cudaStreamCreateWithFlags(&m_cudaStreamBound, cudaStreamDefault));
+				m_cudaStreamBound = cudaStreamPerThread;
+			}
 			/* create stream with flag and priority
 			 */
 			 /*int hp, lp;
@@ -74,7 +80,7 @@ void UtcGpuContext::ctxInit(){
 											*/
 		}
 		else
-			m_cudaStreamBound = 0; // stream 0 or default stream
+			m_cudaStreamBound = cudaStreamLegacy; // stream 0 or default legacy stream
 		break;
 	default:
 		break;
@@ -82,6 +88,16 @@ void UtcGpuContext::ctxInit(){
 
 	return;
 }// end ctxInit
+
+int UtcGpuContext::setNonblockingDefaultStream(){
+	/*
+	 * when update the default stream for a task thread, you may also
+	 * need update "__streamId" pre-built var
+	 */
+	checkCudaRuntimeErrors(
+			cudaStreamCreateWithFlags(&m_cudaStreamBound, cudaStreamNonBlocking));
+	return 0;
+}
 
 void UtcGpuContext::ctxDestroy(){
 	switch(m_cudaCtxMapMode){
@@ -101,8 +117,10 @@ void UtcGpuContext::ctxDestroy(){
 			/*
 			 * may need to call stream sync before destroy it
 			 */
-			//cudaStreamSynchronize(m_cudaStreamBound);
-			checkCudaRuntimeErrors(cudaStreamDestroy(m_cudaStreamBound));
+			cudaStreamSynchronize(m_cudaStreamBound);
+			if(m_cudaStreamBound != cudaStreamLegacy &&
+					m_cudaStreamBound != cudaStreamPerThread)
+				checkCudaRuntimeErrors(cudaStreamDestroy(m_cudaStreamBound));
 		}
 	}
 }// end ctxDestroy

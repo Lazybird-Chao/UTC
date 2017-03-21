@@ -9,6 +9,7 @@
 #define UTC_GPU_TASKGPU_H_
 
 #include "UtcGpuBasics.h"
+#include "TaskBase.h"
 #include "TaskArtifact.h"
 #include "TaskInfo.h"
 #include "UserTaskBase.h"
@@ -26,7 +27,8 @@
 namespace iUtc{
 	class TaskGPU: public TaskArtifact{
 	public:
-		TaskGPU(int numLocalThreads,
+		TaskGPU(TaskType taskType,
+				int numLocalThreads,
 				 int currentProcessRank,
 				 int numProcesses,
 				 int numTotalThreads,
@@ -72,6 +74,8 @@ namespace iUtc{
 
 	private:
 		//
+		TaskType m_taskType;
+
 		std::vector<std::thread> m_taskThreads;
 
 		int m_numLocalThreads;
