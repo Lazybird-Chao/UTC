@@ -41,7 +41,7 @@ utc_lib:
     
 #######################################################
 
-COMMONDIR = ../../../common
+COMMONDIR = ../../common
 helperObj = helperObj.o
 $(helperObj):$(COMMONDIR)/helper_getopt.c
 	$(C++) -o $@  -c $<
@@ -58,7 +58,7 @@ $(kernelobj): ./sgpu/mm_kernel.cc ./sgpu/mm_kernel.h
 tmplink.o: $(taskobj) $(kernelobj)
 	$(NVCC) -o $@ $(NVLINKFLAGS) $^
     
-$(bin): $(mainobj) $(taskobj) $(kernelobj) tmplink.o
+$(bin): $(mainobj) $(taskobj) $(kernelobj) tmplink.o $(helperObj)
 	$(C++) -o $@ $^ $(UTC_LIB) $(MPI_LIB) $(CUDA_LIB) $(BOOST_LIB)
 
 .PHONY: clean

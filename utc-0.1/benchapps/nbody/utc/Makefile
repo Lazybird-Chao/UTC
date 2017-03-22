@@ -41,7 +41,7 @@ utc_lib:
     
 #######################################################
 
-COMMONDIR = ../../../common
+COMMONDIR = ../../common
 helperObj = helperObj.o
 $(helperObj):$(COMMONDIR)/helper_getopt.c
 	$(C++) -o $@  -c $<
