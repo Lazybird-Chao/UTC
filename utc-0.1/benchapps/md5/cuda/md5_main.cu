@@ -123,7 +123,7 @@ int initialize(config_t *configArgs){
 		}
 	}*/
 	// for cuda memory coalease, we store one buffer in a colum,
-	// no a row
+	// not a row
 	for(int i=0; i<configArgs->numinputs; i++){
 		uint8_t *p = &(configArgs->inputs[i]);
 		for(int j = 0; j<configArgs->size; j++){

@@ -261,6 +261,7 @@ int main(int argc, char **argv) {
     free(clusters);
 
     /* Print performance numbers on stdout */
+    std::cout<<"Test complete !!!"<<std::endl;
     if(printTime){
 		printf("\n---- kMeans Clustering ----\n");
 		printf("Input file:     %s\n", filename);
