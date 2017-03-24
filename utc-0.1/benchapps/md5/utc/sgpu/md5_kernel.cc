@@ -87,7 +87,7 @@ __device__ void *body_with_global(MD5_CTX *ctx, void *data, int offset, unsigned
 
 	// each thread has a 64 Bytes data_block on shared memory
 	// assume 256 threads per block, change if needed
-//#define __blocksize 256
+#define __blocksize 256
 	__shared__ unsigned int data_block[16*__blocksize];
 	unsigned int* ptr_s = &data_block[threadIdx.x];
 

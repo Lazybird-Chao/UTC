@@ -16,6 +16,7 @@
  */
 
 #include <iostream>
+#include <iomanip>
 #include <math.h>
 #include <cstdlib>
 #include <cuda_runtime.h>
@@ -30,7 +31,7 @@
 #define T_SRC0 550.0
 #define ITERMAX 100		// not used
 
-void init_domain(float *domain_ptr, int h, int w){
+void init_domain(FTYPE *domain_ptr, int h, int w){
 	for (int j = 0; j < (int)floor(h/H); j++) {
 		for (int i = 0; i < (int) floor (w / H); i++) {
 			domain_ptr[j*((int) floor (w / H)) + i] = 0.0;
@@ -48,11 +49,12 @@ FTYPE get_convergence_sqd(FTYPE *sqd_array, int w){
 
 
 int main(int argc, char**argv){
-	int WIDTH = 20;
-	int HEIGHT = 20;
+	int WIDTH = 400;
+	int HEIGHT = 600;
 	FTYPE EPSILON = 0.1;
 	bool printTime = false;
 	int blockSize = 16;
+	bool output = false;
 
 	/*
 	 * run as ./a.out -v -h 100 -w 80 -e 0.001
@@ -65,7 +67,7 @@ int main(int argc, char**argv){
 	int opt;
 	extern char* optarg;
 	extern int optind, optopt;
-	opt=getopt(argc, argv, "vh:w:e:b:");
+	opt=getopt(argc, argv, "vh:w:e:b:o");
 	while(opt!=EOF){
 		switch(opt){
 		case 'v':
@@ -83,6 +85,9 @@ int main(int argc, char**argv){
 		case 'b':
 			blockSize = atoi(optarg);
 			break;
+		case 'o':
+			output = true;
+			break;
 		case ':':
 			std::cerr<<"Option -"<<(char)optopt<<" requires an operand\n"<<std::endl;
 			break;
@@ -92,7 +97,7 @@ int main(int argc, char**argv){
 		default:
 			break;
 		}
-		opt=getopt(argc, argv, "vh:w:e:");
+		opt=getopt(argc, argv, "vh:w:e:b:o");
 	}
 	if(WIDTH<=0 || HEIGHT<=0){
 		std::cerr<<"illegal width or height"<<std::endl;
@@ -102,7 +107,7 @@ int main(int argc, char**argv){
 	FTYPE *U_Curr = (FTYPE*)malloc(sizeof(FTYPE)*(int)floor(HEIGHT/H)*(int)floor(WIDTH/H));
 	FTYPE *U_Next = (FTYPE*)malloc(sizeof(FTYPE)*(int)floor(HEIGHT/H)*(int)floor(WIDTH/H));
 	init_domain(U_Curr, HEIGHT, WIDTH);
-	init_domain(U_Next, HEIGHT, WIDTH);
+	//init_domain(U_Next, HEIGHT, WIDTH);
 	FTYPE *converge_sqd = (FTYPE*)malloc(sizeof(FTYPE)*(int)floor(WIDTH/H));
 
 	cudaSetDevice(0);
@@ -137,8 +142,8 @@ int main(int argc, char**argv){
 	int gridh = ((int) floor(HEIGHT/H) + blockSize-1)/blockSize;
 	dim3 jacobiGrid(gridw, gridh, 1);
 	dim3 jacobiBlock(blockSize, blockSize, 1);
-	dim3 convergeGrid(gridw,1,1);
-	dim3 convergeBlock(blockSize,1,1);
+	dim3 convergeBlock(blockSize*blockSize,1,1);
+	dim3 convergeGrid(((int)floor (WIDTH / H)+convergeBlock.x-1)/convergeBlock.x,1,1);
 
 	double kernelrunTime=0;
 	double hostcompTime = 0;
@@ -148,10 +153,10 @@ int main(int argc, char**argv){
 		if(iters % 1000 ==0)
 			std::cout<<"iteration: "<<iters<<" ..."<<std::endl;
 		t1 = getTime();
-		/* jacobi iterate */
+
 		jacobi_kernel<<<jacobiGrid, jacobiBlock>>>(
 				U_Curr_d, U_Next_d, (int)floor(HEIGHT/H), (int)floor(WIDTH/H));
-		/*check if convergence */
+
 		get_convergence_sqd_kernel<<<convergeGrid, convergeBlock>>>(
 				U_Curr_d, U_Next_d, converge_sqd_d,
 				(int)floor(HEIGHT/H), (int)floor(WIDTH/H));
@@ -188,6 +193,18 @@ int main(int argc, char**argv){
 	t2 = getTime();
 	copyoutTime += t2 -t1;
 
+	if(output){
+		char ofile[30] = "output.txt";
+		FILE *fp = fopen(ofile, "w");
+		for(int i=0; i<HEIGHT; i++){
+			for(int j=0; j<WIDTH; j++){
+				fprintf(fp, "%.5f ", U_Next[i*WIDTH +j]);
+			}
+			fprintf(fp,"\n");
+		}
+		fclose(fp);
+	}
+
 	free(U_Curr);
 	free(U_Next);
 	cudaFree(U_Curr_d);
@@ -195,16 +212,19 @@ int main(int argc, char**argv){
 	cudaFree(converge_sqd_d);
 	cudaDeviceReset();
 
+	double totaltime = copyinTime+copyoutTime+kernelrunTime+hostcompTime;
+
 	std::cout<<"Test complete !!!"<<std::endl;
 	if(printTime){
 		std::cout<<"\tDomain size: "<<WIDTH<<" X "<<HEIGHT<<std::endl;
 		std::cout<<"\tAccuracy: "<<EPSILON<<std::endl;
 		std::cout<<"\tIterations: "<<iters<<std::endl;
 		std::cout<<"\tTime info: "<<std::endl;
-		std::cout<<"\t\tmemcpy in time: "<<copyinTime<<"(s)"<<std::endl;
-		std::cout<<"\t\tmemcpy out time: "<<copyoutTime<<"(s)"<<std::endl;
-		std::cout<<"\t\tkernel run time: "<<kernelrunTime<<"(s)"<<std::endl;
-		std::cout<<"\t\thost compute time: "<<hostcompTime<<"(s)"<<std::endl;
+		std::cout<<"\t\ttotal time: "<<std::fixed<<std::setprecision(4)<<totaltime<<std::endl;
+		std::cout<<"\t\tmemcpy in time: "<<std::fixed<<std::setprecision(4)<<copyinTime<<"(s)"<<std::endl;
+		std::cout<<"\t\tmemcpy out time: "<<std::fixed<<std::setprecision(4)<<copyoutTime<<"(s)"<<std::endl;
+		std::cout<<"\t\tkernel run time: "<<std::fixed<<std::setprecision(4)<<kernelrunTime<<"(s)"<<std::endl;
+		std::cout<<"\t\thost compute time: "<<std::fixed<<std::setprecision(4)<<hostcompTime<<"(s)"<<std::endl;
 	}
 
 }

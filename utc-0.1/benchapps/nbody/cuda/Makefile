@@ -4,7 +4,7 @@ kernelObj =  body_kernel.o
 default: $(bin)
 
 C++ = g++
-CCFLAGS = -O2 -g -std=c++11
+CCFLAGS = -O2 -std=c++11
 NWARNING = -w 
 
 #CUDA_DIR = /usr/local/cuda
@@ -17,9 +17,14 @@ GENCODE_SM30 = -gencode arch=compute_30,code=sm_30
 GENCODE_SM35 = -gencode arch=compute_35,code=sm_35
 
 NVCC = nvcc
-NVCCFLAGS = -g -G $(GENCODE_SM35) --device-c
+NVCCFLAGS = $(GENCODE_SM35) --device-c
 NVLINKFLAGS = $(GENCODE_SM35) --device-link
 
+DEBUG = 0
+ifeq ($(DEBUG), 1)
+	NVCCFLAGS += -g -G
+	CCFLAGS += -g
+endif
 
 COMMONDIR = ../../common
 helperObj = helperObj.o

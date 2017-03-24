@@ -11,7 +11,32 @@
 #include "md5.h"
 #include "Utc.h"
 
+dataSet_t datasets[] ={
+	{64, 64*8, 0},//0
+	{64, 64*16, 0},
+	{64, 64*32, 0},
+	{64, 64*64, 0},
 
+	{1024*64, 512, 2}, //4
+	{1024*64, 1024, 2},
+	{1024*64, 2048, 2},
+	{1024*64, 4096, 2},
+
+	{1024*128, 512, 3}, //8
+	{1024*128, 1024, 3},
+	{1024*128, 2048, 3},
+	{1024*128, 4096, 3},
+
+	{128, 1024*512, 4}, //12
+	{128, 1024*1024, 4},
+	{128, 1024*2048, 4},
+	{128, 1024*4096, 4},
+
+	{1024, 1024*512, 4}, //16
+	{1024, 1024*1024, 4},
+	{1024, 1024*2048, 4},
+	{1024, 1024*4096, 4},
+};
 
 class RandomInput : public UserTaskBase{
 public:
@@ -27,15 +52,16 @@ public:
 		configArgs->inputs = (uint8_t*)calloc(configArgs->numinputs*configArgs->size, sizeof(uint8_t));
 		configArgs->out = (uint8_t*)calloc(configArgs->numinputs, DIGEST_SIZE);
 		if(configArgs->inputs ==NULL || configArgs->out==NULL)
-			return 1;
+			return;
 		// generate random data
 		srand(datasets[index].rseed);
 		// for cuda memory coalease, we store one buffer in a colum,
 		// not a row
 		for(int i=0; i<configArgs->numinputs; i++){
 			uint8_t *p = &(configArgs->inputs[i]);
+			int key = rand();
 			for(int j = 0; j<configArgs->size; j++){
-				p[j*configArgs->numinputs] = rand() % 255;
+				p[j*configArgs->numinputs] = (key+j) % 255;
 			}
 		}
 	}

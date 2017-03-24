@@ -5,6 +5,10 @@ default: $(bin)
 C++ = g++
 CCFLAGS = -O2 -std=c++11
 
+DEBUG = 0
+ifeq ($(DEBUG), 1)
+	CCFLAGS += -g
+endif
 
 COMMONDIR = ../../common
 helperObj = helperObj.o

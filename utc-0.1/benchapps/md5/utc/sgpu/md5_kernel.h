@@ -19,8 +19,6 @@ typedef struct __attribute__((aligned(4))){
 } MD5_CTX;
 
 
-#define __blocksize 256
-
 __global__ void md5_process(
 		uint8_t *inputs,
 		uint8_t *out,

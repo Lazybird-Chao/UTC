@@ -18,9 +18,13 @@ GENCODE_SM30 = -gencode arch=compute_30,code=sm_30
 GENCODE_SM35 = -gencode arch=compute_35,code=sm_35
 
 NVCC = nvcc
-NVCCFLAGS = -g -G $(GENCODE_SM20) --device-c
+NVCCFLAGS = $(GENCODE_SM20) --device-c
 
-
+DEBUG = 0
+ifeq ($(DEBUG), 1)
+	NVCCFLAGS += -g -G
+	CCFLAGS += -g
+endif
 
 COMMONDIR = ../../common
 helperObj = helperObj.o

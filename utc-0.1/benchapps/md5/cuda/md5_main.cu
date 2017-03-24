@@ -126,8 +126,9 @@ int initialize(config_t *configArgs){
 	// not a row
 	for(int i=0; i<configArgs->numinputs; i++){
 		uint8_t *p = &(configArgs->inputs[i]);
+		int key = rand();
 		for(int j = 0; j<configArgs->size; j++){
-			p[j*configArgs->numinputs] = rand() % 255;
+			p[j*configArgs->numinputs] = (key+j) % 255;
 		}
 	}
 	return 0;
@@ -170,7 +171,7 @@ void run(config_t * args, double *runtime) {
 	 * call kernel for iteration
 	 */
 	 //check '__blocksize' in kernels, to make sure it's no small than the value here
-	int blocksize = 128;
+	int blocksize = 256;
 	dim3 block(blocksize, 1,1);
 	dim3 grid((args->numinputs + block.x-1)/blocksize, 1, 1);
 	t1 = getTime();

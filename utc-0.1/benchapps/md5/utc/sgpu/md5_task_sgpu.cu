@@ -8,6 +8,7 @@
 #include "md5_task_sgpu.h"
 #include "md5_kernel.h"
 #include "../md5.h"
+#include "../../../common/helper_err.h"
 
 void MD5SGPU::initImpl(config_t* args){
 	if(__localThreadId ==0){
@@ -32,7 +33,10 @@ void MD5SGPU::runImpl(double* runtime, int blocksize, MemType memtype){
 	 */
 	GpuData<uint8_t> inputs(md5Config->numinputs*md5Config->size, memtype);
 	GpuData<uint8_t> out(md5Config->numinputs*DIGEST_SIZE, memtype);
-
+	//std::cout<<md5Config->numinputs<<" "<<md5Config->size<<std::endl;
+	//cudaDeviceProp prop;
+	//cudaGetDeviceProperties(&prop, __deviceId);
+	//std::cout<<prop.unifiedAddressing<<std::endl;
 	/*
 	 * copy in
 	 */
@@ -43,8 +47,8 @@ void MD5SGPU::runImpl(double* runtime, int blocksize, MemType memtype){
 	/*
 	 * call kernel
 	 */
-	if(blocksize > __blocksize)
-		blocksize = __blocksize;
+	//if(blocksize > __blocksize)
+	//	blocksize = __blocksize;
 	dim3 block(blocksize, 1, 1);
 	dim3 grid((md5Config->numinputs + block.x -1)/block.x, 1, 1);
 	timer.start();
@@ -56,6 +60,7 @@ void MD5SGPU::runImpl(double* runtime, int blocksize, MemType memtype){
 				md5Config->size);
 		checkCudaErr(cudaGetLastError());
 		checkCudaErr(cudaStreamSynchronize(__streamId));
+		checkCudaErr(cudaDeviceSynchronize());
 	}
 	double kernelTime = timer.stop();
 
@@ -64,6 +69,7 @@ void MD5SGPU::runImpl(double* runtime, int blocksize, MemType memtype){
 	 */
 	timer.start();
 	out.fetch(md5Config->out);
+	double copyoutTime = timer.stop();
 
 	runtime[0] = kernelTime + copyinTime + copyoutTime;
 	runtime[1] = kernelTime;

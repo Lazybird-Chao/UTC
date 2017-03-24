@@ -23,12 +23,11 @@ void MatrixMulSGPU<T>::initImpl(T *mA, T *mB, T *mC, int M, int N, int P){
 		sizeN = N;
 		sizeP = P;
 	}
-
-
 	intra_Barrier();
 	if(__localThreadId ==0){
 		std::cout<<"task: "<<getCurrentTask()->getName()<<" finish initImpl.\n";
 	}
+
 }
 
 template<typename T>

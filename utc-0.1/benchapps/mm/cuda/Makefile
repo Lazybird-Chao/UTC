@@ -19,7 +19,10 @@ GENCODE_SM35 = -gencode arch=compute_35,code=sm_35
 NVCC = nvcc
 NVCCFLAGS = -O2 $(GENCODE_SM35)
 
-
+DEBUG = 0
+ifeq ($(DEBUG), 1)
+	CCFLAGS += -g
+endif
 
 COMMONDIR = ../../common
 helperObj = helperObj.o

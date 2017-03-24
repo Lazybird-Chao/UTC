@@ -114,8 +114,9 @@ int initialize(config_t *configArgs){
 	srand(datasets[index].rseed);
 	for(int i=0; i<configArgs->numinputs; i++){
 		uint8_t *p = &(configArgs->inputs[i*configArgs->size]);
+		int key = rand();
 		for(int j = 0; j<configArgs->size; j++)
-			*p++ = rand() % 255;
+			*p++ = (key+j) % 255;
 	}
 	return 0;
 }

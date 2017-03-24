@@ -14,6 +14,7 @@
 
 
 #include <iostream>
+#include <iomanip>
 #include <math.h>
 #include <cstdlib>
 #include "../../common/helper_getopt.h"
@@ -37,7 +38,9 @@ FTYPE get_convergence_sqd(FTYPE *current_ptr, FTYPE *next_ptr, int h, int w){
 	FTYPE sum = 0.0;
 	for(int i=0; i<(int)floor(h/H); i++){
 		for(int j=0; j<(int) floor (w / H); j++){
-			sum += pow(current_ptr[i*((int) floor (w / H)) + j]-next_ptr[i*w+j],2);
+			//sum += pow(current_ptr[i*((int) floor (w / H)) + j]-next_ptr[i*w+j],2);
+			sum += (current_ptr[i*((int) floor (w / H)) + j]-next_ptr[i*w+j]) *
+					(current_ptr[i*((int) floor (w / H)) + j]-next_ptr[i*w+j]);
 		}
 	}
 	return sum;
@@ -88,10 +91,11 @@ void jacobi(FTYPE *current_ptr, FTYPE *next_ptr, int h, int w){
 }
 
 int main(int argc, char**argv){
-	int WIDTH = 20;
-	int HEIGHT = 20;
+	int WIDTH = 400;
+	int HEIGHT = 600;
 	FTYPE EPSILON = 0.1;
 	bool printTime = false;
+	bool output = false;
 
 	/*
 	 * run as ./a.out -v -h 100 -w 80 -e 0.001
@@ -103,7 +107,7 @@ int main(int argc, char**argv){
 	int opt;
 	extern char* optarg;
 	extern int optind, optopt;
-	opt=getopt(argc, argv, "vh:w:e:");
+	opt=getopt(argc, argv, "vh:w:e:o");
 	while(opt!=EOF){
 		switch(opt){
 		case 'v':
@@ -118,6 +122,9 @@ int main(int argc, char**argv){
 		case 'e':
 			EPSILON = atof(optarg);
 			break;
+		case 'o':
+			output = true;
+			break;
 		case ':':
 			std::cerr<<"Option -"<<(char)optopt<<" requires an operand\n"<<std::endl;
 			break;
@@ -127,7 +134,7 @@ int main(int argc, char**argv){
 		default:
 			break;
 		}
-		opt=getopt(argc, argv, "vh:w:e:");
+		opt=getopt(argc, argv, "vh:w:e:o");
 	}
 	if(WIDTH<=0 || HEIGHT<=0){
 		std::cerr<<"illegal width or height"<<std::endl;
@@ -161,6 +168,18 @@ int main(int argc, char**argv){
 	}
 	t2 = getTime();
 	double runtime = t2 -t1;
+
+	if(output){
+		char* ofile = "output.txt";
+		FILE *fp = fopen(ofile, "w");
+		for(int i=0; i<HEIGHT; i++){
+			for(int j=0; j<WIDTH; j++){
+				fprintf(fp, "%.5f ", U_Next[i*WIDTH +j]);
+			}
+			fprintf(fp,"\n");
+		}
+		fclose(fp);
+	}
 
 	free(U_Curr);
 	free(U_Next);

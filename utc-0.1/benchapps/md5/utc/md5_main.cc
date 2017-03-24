@@ -74,7 +74,7 @@ int main(int argc, char* argv[]){
 		default:
 			break;
 		}
-		opt=getopt(argc, argv, "vi:c:o");
+		opt=getopt(argc, argv, "vi:c:ob:");
 	}
 	int procs = ctx.numProcs();
 	int myproc = ctx.getProcRank();
@@ -112,6 +112,7 @@ int main(int argc, char* argv[]){
 	Task<MD5SGPU> md5(ProcList(0), TaskType::gpu_task);
 	md5.init(&configArgs);
 	md5.run(runtime, blocksize, memtype);
+	md5.wait();
 
 
 	/*

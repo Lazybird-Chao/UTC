@@ -4,7 +4,7 @@ default: $(bin)
 
 C++ = g++
 CCFLAGS = -O2 -g -std=c++11
-LIB = -lm
+LIB = -lm -lrt
 
 COMMONDIR = ../../common
 helperObj = helperObj.o

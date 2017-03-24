@@ -1,8 +1,8 @@
-mainobj = yuvconvert_main.o image.o
-taskobj = task.o yuv_task_sgpu.o
-kernelobj = yuvconvert_kernel.o
+mainobj = hc_main.o
+taskobj = hc_task_sgpu.o
+kernelobj = hc_kernel.o
 
-bin = yuvconvert
+bin = hc
 default:$(bin)
 
 C++ = g++
@@ -14,7 +14,7 @@ GENCODE_SM30 = -gencode arch=compute_30,code=sm_30
 GENCODE_SM35 = -gencode arch=compute_35,code=sm_35
 
 NVCC = nvcc
-NVCCFLAGS = $(GENCODE_SM35) --device-c
+NVCCFLAGS =  $(GENCODE_SM35) --device-c
 NVLINKFLAGS = $(GENCODE_SM35) --device-link
 
 DEBUG = 0
@@ -52,26 +52,20 @@ helperObj = helperObj.o
 $(helperObj):$(COMMONDIR)/helper_getopt.c
 	$(C++) -o $@  -c $<
 
-yuvconvert_main.o: yuvconvert_main.cc image.h task.h ./sgpu/yuv_task_sgpu.h
-	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
-	
-image.o: image.cc image.h
-	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
-	
-task.o: task.cc task.h
+hc_main.o: hc_main.cc ./sgpu/hc_task_sgpu.h  task.h
 	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
     
-yuv_task_sgpu.o: ./sgpu/yuv_task_sgpu.cu ./sgpu/yuv_task_sgpu.h ./sgpu/yuvconvert_kernel.h
-	$(NVCC) -o $@  $(CCFLAGS) $(NVCCFLAGS) $(NWARNING) $(UTC_INCLUDE) $(MPI_INCLUDE) $(CUDA_INCLUDE) $(BOOST_INCLUDE) -c $<
+hc_task_sgpu.o: ./sgpu/hc_task_sgpu.cu ./sgpu/hc_task_sgpu.h ./sgpu/hc_kernel.h
+	$(NVCC) -o $@  $(CCFLAGS) $(NVCCFLAGS)  $(NWARNING) $(UTC_INCLUDE) $(MPI_INCLUDE) $(CUDA_INCLUDE) $(BOOST_INCLUDE) -c $<
 
-$(kernelobj): ./sgpu/yuvconvert_kernel.cc ./sgpu/yuvconvert_kernel.h
-	$(NVCC) -o $@ -x cu  $(CCFLAGS) $(NVCCFLAGS) $(NWARNING) $(CUDA_INCLUDE) -c $<
+$(kernelobj): ./sgpu/hc_kernel.cc ./sgpu/hc_kernel.h
+	$(NVCC) -o $@  -x cu $(CCFLAGS) $(NVCCFLAGS)  $(NWARNING) $(CUDA_INCLUDE) -c $<
     
 tmplink.o: $(taskobj) $(kernelobj)
 	$(NVCC) -o $@ $(NVLINKFLAGS) $^
     
-$(bin): $(mainobj) $(taskobj) $(kernelobj) tmplink.o
-	$(C++) -o $@ $^ $(UTC_LIB) $(MPI_LIB) $(CUDA_LIB) $(BOOST_LIB)
+$(bin): $(mainobj) $(taskobj) $(kernelobj)  $(helperObj) tmplink.o
+	$(C++) -o $@ $^  $(UTC_LIB) $(MPI_LIB) $(CUDA_LIB) $(BOOST_LIB)
 
 .PHONY: clean
 clean:
