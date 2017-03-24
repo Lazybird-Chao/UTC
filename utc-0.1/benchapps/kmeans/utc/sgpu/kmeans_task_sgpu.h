@@ -9,6 +9,9 @@
 #define KMEANS_TASK_SGPU_H_
 
 #include "Utc.h"
+#include "UtcGpu.h"
+
+using namespace iUtc;
 
 template<typename T>
 class kmeansSGPU: public UserTaskBase{
@@ -20,7 +23,7 @@ private:
 	T* clusters;
 
 public:
-	void initImpl(T* objects, T* clusters, int numObjs, int numCoords, int numClusters)
+	void initImpl(T* objects, T* clusters, int numObjs, int numCoords, int numClusters);
 
 	void runImpl(double *runtime, T threshold, int* loop, MemType memtype);
 

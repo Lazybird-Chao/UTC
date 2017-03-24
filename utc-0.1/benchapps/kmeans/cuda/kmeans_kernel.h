@@ -8,7 +8,7 @@
 #ifndef BENCHAPPS_KMEANS_CUDA_KMEANS_KERNEL_H_
 #define BENCHAPPS_KMEANS_CUDA_KMEANS_KERNEL_H_
 
-#define FTYPE float
+#include "typeconfig.h"
 
 
 __global__ void kmeans_kernel(

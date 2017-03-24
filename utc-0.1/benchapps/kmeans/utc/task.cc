@@ -17,7 +17,7 @@
 template <typename T>
 void ClusterDataInit<T>::runImpl(int isBinaryFile,
 			char* filename,
-			T *objects,
+			T **objects,
 			int *numObjs,
 			int *numCoords){
 	float *objs;
@@ -102,12 +102,12 @@ void ClusterDataInit<T>::runImpl(int isBinaryFile,
 		free(line);
 	}
 	if(sizeof(T) == sizeof(float))
-		objects = objs;
+		*objects = (T*)objs;
 	else{
-		objects = (double*)malloc((*numObjs) * (*numCoords)* sizeof(double*));
+		*objects = (T*)malloc((*numObjs) * (*numCoords)* sizeof(double));
 		for (i=0; i< (*numObjs); i++){
 			for (j=0; j<(*numCoords); j++){
-				objects[i*(*numCoords) +j] = objs[i*(*numCoords) +j];
+				(*objects)[i*(*numCoords) +j] = objs[i*(*numCoords) +j];
 			}
 		}
 		free(objs);
@@ -126,12 +126,13 @@ void Output<T>::runImpl(char* filename, T *clusters, int numClusters, int numCoo
 	for(int j = 0; j < numClusters; j++) {
 		fprintf(fp, "Cluster %d: ", j);
 		for(l = 0; l < numCoords; l++)
-			fprintf(fp, "%f ", clusters[j][l]);
+			fprintf(fp, "%f ", clusters[j*numCoords + l]);
 		fprintf(fp, "\n");
 	}
 	fclose(fp);
 }
-
+template class Output<float>;
+template class Output<double>;
 
 
 

@@ -27,9 +27,9 @@
 #include <stdint.h>
 #include <cuda_runtime.h>
 
-#include "../../../common/helper_getopt.h"
-#include "../../../common/helper_timer.h"
-#include "../../../common/helper_err.h"
+#include "../../common/helper_getopt.h"
+#include "../../common/helper_timer.h"
+#include "../../common/helper_err.h"
 
 #include "c-ray_kernel_v2.h"
 
@@ -49,6 +49,10 @@ camera_t cam;
 sphere_array_t obj_array; // used to replace the obj_list
 int obj_count;
 
+__device__  global_vars g_vars_d;
+__device__  vec3_t lights_d[MAX_LIGHTS];
+__device__  vec2_t urand_d[NRAN];
+__device__  int irand_d[NRAN];
 
 void load_scene(FILE *fp);
 
@@ -181,9 +185,8 @@ int main(int argc, char**argv){
 		//std::cout<<stacksize<<std::endl;  //defaut is 1024
 		stacksize = 1024*4;
 		cudaThreadSetLimit(cudaLimitStackSize, stacksize);
-		int blocksize = 8;
-		dim3 block(blocksize, blocksize, 1);
-		dim3 grid((xres+blocksize-1)/blocksize, (yres+blocksize-1)/blocksize,1);
+		dim3 block(16, 8, 1);
+		dim3 grid((xres+block.x-1)/block.x, (yres+block.y-1)/block.y,1);
 		double kernelrunTime = 0;
 		t1= getTime();
 		render_kernel<<<grid, block>>>(
@@ -233,12 +236,15 @@ int main(int argc, char**argv){
 		}
 		free(pixels);
 
+		double totaltime = kernelrunTime + copyinTime + copyoutTime;
 		if(printTime){
 			std::cout<<"Scene info:"<<std::endl;
 			std::cout<<"\tNumber of objects: "<<obj_count<<std::endl;
 			std::cout<<"\tNumber of lights: "<<lnum<<std::endl;
 			std::cout<<"\tTracing depth: "<<MAX_RAY_DEPTH<<std::endl;
+			std::cout<<"\tRays per pixel: "<<rays_per_pixel<<std::endl;
 			std::cout<<"Output image: "<<xres<<" X "<<yres<<std::endl;
+			std::cout<<"Total time: "<<std::fixed<<std::setprecision(4)<<totaltime<<std::endl;
 			std::cout<<"Kernel Runtime: "<<std::fixed<<std::setprecision(4)<<kernelrunTime<<"(s)"<<std::endl;
 			std::cout<<"copy in time: "<<std::fixed<<std::setprecision(4)<<copyinTime<<"(s)"<<std::endl;
 			std::cout<<"copy out time: "<<std::fixed<<std::setprecision(4)<<copyoutTime<<"(s)"<<std::endl;

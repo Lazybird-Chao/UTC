@@ -251,6 +251,7 @@ int main(int argc, char **argv){
 		std::cout<<"\tNumber of objects: "<<obj_count<<std::endl;
 		std::cout<<"\tNumber of lights: "<<lnum<<std::endl;
 		std::cout<<"\tTracing depth: "<<MAX_RAY_DEPTH<<std::endl;
+		std::cout<<"\tRays per pixel: "<<rays_per_pixel<<std::endl;
 		std::cout<<"Output image: "<<xres<<" X "<<yres<<std::endl;
 		std::cout<<"Runtime: "<<std::fixed<<std::setprecision(4)<<runtime<<"(s)"<<std::endl;
 	}

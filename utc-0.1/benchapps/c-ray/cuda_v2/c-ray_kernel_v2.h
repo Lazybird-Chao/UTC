@@ -12,18 +12,26 @@
  * required data structure
  */
 #define FTYPE double
-#ifdef FTYPE
-#define SFLOAT 1
-#define DFLOAT 2
-#endif
 
-#if SFLOAT==1
-	typedef double3	 vec3_t;
-	typedef double2	 vec2_t;
-#else
-	typedef float3   vec2_t;
-	typedef float2	 vec2_t;
-#endif
+
+typedef struct vec3{
+	FTYPE x,y,z;
+public:
+	vec3(){
+	}
+	__host__ __device__ vec3(FTYPE a, FTYPE b, FTYPE c){
+		x=a;
+		y=b;
+		z=c;
+	}
+}	vec3_t;
+
+typedef struct vec2{
+	FTYPE x,y;
+public:
+	vec2(){
+	}
+}	vec2_t;
 
 typedef struct ray{
 	vec3_t orig, dir;
@@ -54,8 +62,12 @@ typedef struct spoint{
 }	spoint_t;
 
 typedef struct camera{
-	vec3_t	pos, targ;
+	vec3_t	pos;
+	vec3_t targ;
 	FTYPE	fov;
+public:
+	camera(){
+	}
 }	camera_t;
 
 struct global_vars{
@@ -66,6 +78,9 @@ struct global_vars{
 	int rays_per_pixel;
 	FTYPE aspect;
 	camera_t cam;
+public:
+	global_vars(){
+	}
 };
 
 
@@ -111,10 +126,10 @@ struct global_vars{
 /*
  * global vars for device functions
  */
-extern __device__ __const__ struct global_vars g_vars_d;
-extern __device__ __const__ vec3_t lights_d[MAX_LIGHTS];
-extern __device__ __const__ vec2_t urand_d[NRAN];
-extern __device__ __const__ int irand_d[NRAN];
+extern __device__  global_vars g_vars_d;
+extern __device__  vec3_t lights_d[MAX_LIGHTS];
+extern __device__  vec2_t urand_d[NRAN];
+extern __device__  int irand_d[NRAN];
 
 
 /*

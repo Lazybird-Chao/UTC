@@ -97,13 +97,12 @@ int main(int argc, char**argv){
 	int numObjs;
 	int numCoords;
 	Task<ClusterDataInit<FTYPE>> clusterInit(ProcList(0));
-	clusterInit.run(isBinaryFile, filename, objects, &numObjs, &numCoords);
+	clusterInit.run(isBinaryFile, filename, &objects, &numObjs, &numCoords);
 	clusterInit.wait();
 
 	/*
 	 * do cluster
 	 */
-
 	FTYPE *clusters = new FTYPE[numClusters*numCoords];
 	/* Pick first numClusters elements of objects[] as initial cluster centers */
 	for (int i=0; i < numClusters; i++)
@@ -147,7 +146,7 @@ int main(int argc, char**argv){
 		printf("gpu kernel time    = %10.4f sec\n", runtime[1]);
 		printf("host compute time  = %10.4f sec\n", runtime[4]);
 		//clustering_timing = copyinTime + copyoutTime + kernelTime + hostCompTime;
-		printf("Computation timing = %10.4f sec\n", runtime[0]);
+		printf("Total time = %10.4f sec\n", runtime[0]);
 	}
 	return(0);
 

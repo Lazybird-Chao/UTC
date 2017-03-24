@@ -93,19 +93,19 @@ __global__ void kmeans_kernel(
 
 template
 __global__ void kmeans_kernel<float>(
-		T *objs,
+		float *objs,
 		int numCoords,
 		int numObjs,
 		int numClusters,
-		T *clusters,
+		float *clusters,
 		int *membership,
 		int batchPerThread);
 template
 __global__ void kmeans_kernel<double>(
-		T *objs,
+		double *objs,
 		int numCoords,
 		int numObjs,
 		int numClusters,
-		T *clusters,
+		double *clusters,
 		int *membership,
 		int batchPerThread);

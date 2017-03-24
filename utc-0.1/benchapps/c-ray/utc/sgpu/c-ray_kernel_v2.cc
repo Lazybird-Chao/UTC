@@ -9,15 +9,13 @@
 #include "c-ray_kernel_v2.h"
 #include "c-ray_kernel_device_v2.h"
 
-__device__ __const__ struct global_vars g_vars_d;
-__device__ __const__ vec3_t lights_d[MAX_LIGHTS];
-__device__ __const__ vec2_t urand_d[NRAN];
-__device__ __const__ int irand_d[NRAN];
 
 
 __global__ void render_kernel(
 		unsigned int *pixels,
-		sphere_array_t obj_array){
+		vec3_t *pos,
+		material_t *mat,
+		FTYPE *rad){
 
 	int bx = blockIdx.x;
 	int by = blockIdx.y;
@@ -32,6 +30,10 @@ __global__ void render_kernel(
 	/*
 	 * load obj_array.pos to shared memory
 	 */
+	sphere_array_t obj_array;
+	obj_array.pos = pos;
+	obj_array.mat = mat;
+	obj_array.rad = rad;
 	vec3_t *obj_pos_array=NULL;
 	if(g_vars_d.obj_count<=256){
 		__shared__ vec3_t obj_pos_array_s[256];
@@ -39,13 +41,13 @@ __global__ void render_kernel(
 		for(int i=0; i< (g_vars_d.obj_count+blockDim.x*blockDim.y-1)/(blockDim.x*blockDim.y); i++){
 			if(ty*blockDim.x + tx + i*blockDim.x*blockDim.y < g_vars_d.obj_count){
 				obj_pos_array_s[ty*blockDim.x + tx + i*blockDim.x*blockDim.y]=
-						obj_array.pos[ty*blockDim.x + tx + i*blockDim.x*blockDim.y];
+						pos[ty*blockDim.x + tx + i*blockDim.x*blockDim.y];
 			}
 		}
 		__syncthreads();
 	}
 	else
-		obj_pos_array = obj_array.pos;
+		obj_pos_array = pos;
 
 	int row = by*blockDim.y + ty;
 	int colum = bx*blockDim.x + tx;

@@ -15,7 +15,7 @@ class ClusterDataInit: public UserTaskBase{
 public:
 	void runImpl(int isBinaryFile,
 			char* filename,
-			T *objects,
+			T **objects,
 			int *numObjs,
 			int *numCoords);
 };

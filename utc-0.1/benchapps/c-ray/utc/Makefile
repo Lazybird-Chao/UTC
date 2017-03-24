@@ -1,8 +1,8 @@
-mainobj = kmeans_main.o
-taskobj = kmeans_task_sgpu.o task.o
-kernelobj = kmeans_kernel.o
+mainobj = c-ray_main.o
+taskobj = c-ray_task_sgpu.o
+kernelobj = c-ray_kernel.o
 
-bin = kmeans
+bin = c-ray
 default:$(bin)
 
 C++ = g++
@@ -14,13 +14,13 @@ GENCODE_SM30 = -gencode arch=compute_30,code=sm_30
 GENCODE_SM35 = -gencode arch=compute_35,code=sm_35
 
 NVCC = nvcc
-NVCCFLAGS = $(GENCODE_SM35) --device-c
+NVCCFLAGS =  $(GENCODE_SM35) --device-c
 NVLINKFLAGS = $(GENCODE_SM35) --device-link
 
 DEBUG = 0
 ifeq ($(DEBUG), 1)
-	CCFLAGS += -g
 	NVCCFLAGS += -g -G
+	CCFLAGS += -g
 endif
 
 #####################################################
@@ -52,24 +52,21 @@ helperObj = helperObj.o
 $(helperObj):$(COMMONDIR)/helper_getopt.c
 	$(C++) -o $@  -c $<
 
-kmeans_main.o: kmeans_main.cc task.h ./sgpu/kmeans_task_sgpu.h
-	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
-task.o: task.cc task.h
+c-ray_main.o: c-ray_main.cc ./sgpu/c-ray_task_sgpu.h  task.h
 	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
     
-kmeans_task_sgpu.o: ./sgpu/kmeans_task_sgpu.cu ./sgpu/kmeans_task_sgpu.h ./sgpu/kmeans_kernel.h
-	$(NVCC) -o $@  $(CCFLAGS) $(NVCCFLAGS) $(NWARNING) $(UTC_INCLUDE) $(MPI_INCLUDE) $(CUDA_INCLUDE) $(BOOST_INCLUDE) -c $<
+c-ray_task_sgpu.o: ./sgpu/c-ray_task_sgpu.cu ./sgpu/c-ray_task_sgpu.h ./sgpu/c-ray_kernel_v2.h
+	$(NVCC) -o $@  $(CCFLAGS) $(NVCCFLAGS)  $(NWARNING) $(UTC_INCLUDE) $(MPI_INCLUDE) $(CUDA_INCLUDE) $(BOOST_INCLUDE) -c $<
 
-$(kernelobj): ./sgpu/kmeans_kernel.cc ./sgpu/kmeans_kernel.h
-	$(NVCC) -o $@  -x cu $(CCFLAGS) $(NVCCFLAGS) $(NWARNING) $(CUDA_INCLUDE) -c $<
+$(kernelobj): ./sgpu/c-ray_kernel_v2.cc ./sgpu/c-ray_kernel_v2.h ./sgpu/c-ray_kernel_device_v2.h
+	$(NVCC) -o $@  -x cu $(CCFLAGS) $(NVCCFLAGS)  $(NWARNING) $(CUDA_INCLUDE) -c $<
     
-tmplink.o: kmeans_task_sgpu.o $(kernelobj)
+tmplink.o: $(taskobj) $(kernelobj)
 	$(NVCC) -o $@ $(NVLINKFLAGS) $^
     
-$(bin): $(mainobj) $(taskobj) $(kernelobj) tmplink.o $(helperObj)
-	$(C++) -o $@ $^ $(UTC_LIB) $(MPI_LIB) $(CUDA_LIB) $(BOOST_LIB)
+$(bin): $(mainobj) $(taskobj) $(kernelobj)  $(helperObj) tmplink.o
+	$(C++) -o $@ $^  $(UTC_LIB) $(MPI_LIB) $(CUDA_LIB) $(BOOST_LIB)
 
 .PHONY: clean
 clean:
 	rm -f $(mainobj) $(taskobj) $(kernelobj) tmplink.o $(bin)
-

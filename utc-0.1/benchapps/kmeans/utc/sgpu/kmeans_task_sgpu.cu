@@ -6,9 +6,8 @@
  */
 
 #include "kmeans_task_sgpu.h"
-#include "Utc.h"
-
-using namespace iUtc;
+#include "kmeans_kernel.h"
+#include "../../../common/helper_err.h"
 
 #define MAX_ITERATION 300
 
@@ -40,8 +39,8 @@ void kmeansSGPU<T>::runImpl(double *runtime, T threshold, int* loopcounters, Mem
 	Timer timer;
 
 	T *new_clusters = new T[numClusters*numCoords];
-	T *new_clustersize = new int[numClusters];
-	T *membership = new int[numObjs];
+	int *new_clustersize = new int[numClusters];
+	int *membership = new int[numObjs];
 	/* Initialize membership, no object belongs to any cluster yet */
 	for (int i = 0; i < numObjs; i++)
 		membership[i] = -1;
@@ -71,7 +70,7 @@ void kmeansSGPU<T>::runImpl(double *runtime, T threshold, int* loopcounters, Mem
 	dim3 block(blocksize, 1, 1);
 	dim3 grid(gridsize, 1, 1);
 	int changedObjs =0;
-	loopcounters = 0;
+	int loops = 0;
 	do{
 		timer.start();
 		clusters_d.sync();
@@ -123,9 +122,9 @@ void kmeansSGPU<T>::runImpl(double *runtime, T threshold, int* loopcounters, Mem
 		}
 		hostCompTime += timer.stop();
 
-	}while(loopcounters++ < MAX_ITERATION && (T)changedObjs/numObjs > threshold );
+	}while(loops++ < MAX_ITERATION && (T)changedObjs/numObjs > threshold );
 	clusters_d.fetch(clusters);
-
+	*loopcounters = loops;
 	delete new_clustersize;
 	delete new_clusters;
 	delete membership;

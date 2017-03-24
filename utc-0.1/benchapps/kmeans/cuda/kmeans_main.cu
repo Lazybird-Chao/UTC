@@ -31,7 +31,8 @@
 #include "file_io.h"
 #include "kmeans_kernel.h"
 
-#define FTYPE float
+#include "typeconfig.h"
+
 #define PREC 300 // max iteration times
 
 
@@ -41,7 +42,7 @@
 *	Prints information on how to call the program.
 */
 static void usage(char *argv0) {
-    char *help =
+    char help[1000] =
         "Usage: %s [switches] -i filename -n num_clusters [OPTIONS]\n"
         "       -i filename    : file containing data to be clustered\n"
         "       -b             : input file is in binary format (default no)\n"
@@ -277,7 +278,7 @@ int main(int argc, char **argv) {
 		printf("gpu kernel time    = %10.4f sec\n", kernelTime);
 		printf("host compute time  = %10.4f sec\n", hostCompTime);
 		clustering_timing = copyinTime + copyoutTime + kernelTime + hostCompTime;
-		printf("Computation timing = %10.4f sec\n", clustering_timing);
+		printf("Total time = %10.4f sec\n", clustering_timing);
     }
     return(0);
 }
