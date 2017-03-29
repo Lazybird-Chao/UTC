@@ -40,13 +40,15 @@ void MatrixMulSGPU<T>::runImpl(double *runtime, int blockSize, MemType memtype){
 	GpuData<T> mA(sizeM*sizeN, memtype);
 	GpuData<T> mB(sizeN*sizeP, memtype);
 	GpuData<T> mC(sizeM*sizeP, memtype);
+	mA.initH(matrixA);
+	mB.initH(matrixB);
 
 	/*
 	 * copy data in
 	 */
 	timer.start();
-	mA.init(matrixA);
-	mB.init(matrixB);
+	mA.sync();
+	mB.sync();
 	double copyinTime = timer.stop();
 
 	/*

@@ -12,9 +12,13 @@ void print_time(int timerCount, double* timeVal){
 	timeRecord.open(filename, std::ios::in);
 
 	double *totalTimeVal = (double*)malloc(sizeof(double)*timerCount);
+	double *maxTimeVal = (double*)malloc(sizeof(double)*timerCount);
+	double *minTimeVal = (double*)malloc(sizeof(double)*timerCount);
 	double *lineTimeVal[100];
 	for(int i=0; i<timerCount; i++){
 		totalTimeVal[i]=0.0;
+		maxTimeVal[i] = 0.0;
+		minTimeVal[i] = 1000000.0;
 	}
 	//std::cout<<timeRecord.is_open()<<std::endl;
 	int line=0;
@@ -28,6 +32,11 @@ void print_time(int timerCount, double* timeVal){
 			for(int i=0; i<timerCount; i++){
 				timeRecord>>lineTimeVal[line][i];
 				totalTimeVal[i]+=lineTimeVal[line][i];
+				if(maxTimeVal[i]<lineTimeVal[line][i])
+					maxTimeVal[i] = lineTimeVal[line][i];
+				if(minTimeVal[i]>lineTimeVal[line][i])
+					minTimeVal[i] = lineTimeVal[line][i];
+
 			}
 			timeRecord.getline(lineend, 100);
 			line++;
@@ -48,6 +57,10 @@ void print_time(int timerCount, double* timeVal){
 		//std::cout<<j;
 		timeRecord<<std::fixed<<std::setprecision(4)<<std::setw(10)<<timeVal[j];
 		totalTimeVal[j]+=timeVal[j];
+		if(maxTimeVal[j]<timeVal[j])
+			maxTimeVal[j] = timeVal[j];
+		if(minTimeVal[j]>timeVal[j])
+			minTimeVal[j] = timeVal[j];
 	}
 	timeRecord<<std::endl;
 	line++;
@@ -58,6 +71,14 @@ void print_time(int timerCount, double* timeVal){
 	}
 	for(int i=0; i<timerCount; i++){
 		timeRecord<<std::fixed<<std::setprecision(4)<<std::setw(10)<<totalTimeVal[i];
+	}
+	timeRecord<<"\nMax:\n";
+	for(int i=0; i<timerCount; i++){
+		timeRecord<<std::fixed<<std::setprecision(4)<<std::setw(10)<<maxTimeVal[i];
+	}
+	timeRecord<<"\nMin:\n";
+	for(int i=0; i<timerCount; i++){
+		timeRecord<<std::fixed<<std::setprecision(4)<<std::setw(10)<<minTimeVal[i];
 	}
 	timeRecord<<std::endl<<std::endl;
 
@@ -74,9 +95,13 @@ void print_time(int timerCount, double* timeVal){
 	FILE *timeRecord;
 	timeRecord=fopen(filename,"r");
 	double *totalTimeVal = (double*)malloc(sizeof(double)*timerCount);
+	double *maxTimeVal = (double*)malloc(sizeof(double)*timerCount);
+		double *minTimeVal = (double*)malloc(sizeof(double)*timerCount);
 		double *lineTimeVal[100];
 		for(int i=0; i<timerCount; i++){
 			totalTimeVal[i]=0.0;
+			maxTimeVal[i] = 0.0;
+			minTimeVal[i] = 1000000.0;
 		}
 		//std::cout<<timeRecord.is_open()<<std::endl;
 		int line=0;
@@ -90,6 +115,10 @@ void print_time(int timerCount, double* timeVal){
 				for(int i=0; i<timerCount; i++){
 					fscanf(timeRecord, "%lf",&lineTimeVal[line][i]);
 					totalTimeVal[i]+=lineTimeVal[line][i];
+					if(maxTimeVal[i]<lineTimeVal[line][i])
+						maxTimeVal[i] = lineTimeVal[line][i];
+					if(minTimeVal[i]>lineTimeVal[line][i])
+						minTimeVal[i] = lineTimeVal[line][i];
 				}
 				//fgets(lineend, 100, timeRecord);
 				line++;
@@ -110,6 +139,10 @@ void print_time(int timerCount, double* timeVal){
 				//std::cout<<j;
 				fprintf(timeRecord, "%.4lf\t\t",timeVal[j]);
 				totalTimeVal[j]+=timeVal[j];
+				if(maxTimeVal[j]<timeVal[j])
+					maxTimeVal[j] = timeVal[j];
+				if(minTimeVal[j]>timeVal[j])
+					minTimeVal[j] = timeVal[j];
 			}
 			fprintf(timeRecord, "\n");
 			line++;
@@ -120,6 +153,14 @@ void print_time(int timerCount, double* timeVal){
 			}
 			for(int i=0; i<timerCount; i++){
 				fprintf(timeRecord, "%.4lf\t\t",totalTimeVal[i]);
+			}
+			fprintf(timeRecord, "\nMax\n");
+			for(int i=0; i<timerCount; i++){
+				fprintf(timeRecord, "%.4lf\t\t",maxTimeVal[i]);
+			}
+			fprintf(timeRecord, "\nMin\n");
+			for(int i=0; i<timerCount; i++){
+				fprintf(timeRecord, "%.4lf\t\t",minTimeVal[i]);
 			}
 			fprintf(timeRecord, "\n");
 

@@ -33,6 +33,7 @@ void MD5SGPU::runImpl(double* runtime, int blocksize, MemType memtype){
 	 */
 	GpuData<uint8_t> inputs(md5Config->numinputs*md5Config->size, memtype);
 	GpuData<uint8_t> out(md5Config->numinputs*DIGEST_SIZE, memtype);
+	inputs.initH(md5Config->inputs);
 	//std::cout<<md5Config->numinputs<<" "<<md5Config->size<<std::endl;
 	//cudaDeviceProp prop;
 	//cudaGetDeviceProperties(&prop, __deviceId);
@@ -41,7 +42,7 @@ void MD5SGPU::runImpl(double* runtime, int blocksize, MemType memtype){
 	 * copy in
 	 */
 	timer.start();
-	inputs.init(md5Config->inputs);
+	inputs.sync();
 	double copyinTime = timer.stop();
 
 	/*

@@ -72,6 +72,7 @@ void RotateSGPU::runImpl(double *runtime, MemType memtype){
 	Timer timer;
 	GpuData<Pixel> sImg(srcImg->getWidth()*srcImg->getHeight(), memtype);
 	GpuData<Pixel> dImg(dstImg->getWidth()*dstImg->getHeight(), memtype);
+	sImg.initH(srcImg->getPixelBuffer());
 	//std::cout<<srcImg->getWidth()<<" "<<srcImg->getHeight()<<" "<<sizeof(Pixel)<<" "<<sImg.getBSize()<<std::endl;
 
 	//std::cout<<srcImg->getWidth()<<" "<<srcImg->getHeight()<<sImg.getBSize()<<std::endl;
@@ -80,7 +81,7 @@ void RotateSGPU::runImpl(double *runtime, MemType memtype){
 	 * copy data in
 	 */
 	timer.start();
-	memcpy(sImg.getH(true), srcImg->getPixelBuffer(), sImg.getBSize());
+	//memcpy(sImg.getH(true), srcImg->getPixelBuffer(), sImg.getBSize());
 	sImg.syncH();
 	double copyinTime = timer.stop();
 
@@ -88,7 +89,7 @@ void RotateSGPU::runImpl(double *runtime, MemType memtype){
 	 * invoke kernel
 	 */
 	timer.start();
-	int blocksize_x = 16;
+	int blocksize_x = 32;
 	int blocksize_y = 16;
 	int batchx = 1;
 	int batchy = 1;
@@ -96,7 +97,7 @@ void RotateSGPU::runImpl(double *runtime, MemType memtype){
 	dim3 grid((dstImg->getWidth()+blocksize_x*batchx-1)/(blocksize_x*batchx),
 				(dstImg->getHeight()+blocksize_y*batchy-1)/(blocksize_y*batchy),
 				1);
-	rotate_kernel<<<grid, block>>>(sImg.getD(),
+	rotate_kernel<<<grid, block, 0, __streamId>>>(sImg.getD(),
 									srcImg->getWidth(),
 									srcImg->getHeight(),
 									dImg.getD(true),
@@ -106,7 +107,8 @@ void RotateSGPU::runImpl(double *runtime, MemType memtype){
 									batchx,
 									batchy);
 	checkCudaErr(cudaGetLastError());
-	checkCudaErr(cudaDeviceSynchronize());
+	//checkCudaErr(cudaDeviceSynchronize());
+	checkCudaErr(cudaStreamSynchronize(__streamId));
 	double kernelTime = timer.stop();
 
 	/*
@@ -114,8 +116,11 @@ void RotateSGPU::runImpl(double *runtime, MemType memtype){
 	 */
 	timer.start();
 	dImg.syncD();
-	memcpy(dstImg->getPixelBuffer(), dImg.getH(), dImg.getBSize());
+	//Pixel tmp = dImg.at(1000);
+	//std::cout<<tmp.r<<std::endl;
 	double copyoutTime = timer.stop();
+	memcpy(dstImg->getPixelBuffer(), dImg.getH(), dImg.getBSize());
+
 
 	runtime[1] = copyinTime;
 	runtime[2] = copyoutTime;

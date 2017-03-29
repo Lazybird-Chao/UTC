@@ -298,6 +298,7 @@ public:
 		}
 	}
 
+
 	/* dest should be a device pointer*/
 	void moveH(T* dest){
 		checkCudaRuntimeErrors(cudaMemcpy(dest, m_hostPtr,

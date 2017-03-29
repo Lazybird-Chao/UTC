@@ -25,6 +25,7 @@
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_err.h"
+#include "../../common/helper_printtime.h"
 #include "Utc.h"
 #include "UtcGpu.h"
 
@@ -122,7 +123,7 @@ int main(int argc, char** argv){
 	double runtime[4];
 	Task<RotateSGPU> rotate(ProcList(0), TaskType::gpu_task);
 	rotate.init(&srcImg, &dstImg, angle);
-	rotate.run(runtime, MemType::pageable);
+	rotate.run(runtime, memtype);
 	rotate.wait();
 
 	/*
@@ -141,11 +142,16 @@ int main(int argc, char** argv){
 	if(printTime){
 		std::cout<<"\tInput image size: "<<srcImg.getWidth()<<" X "<<srcImg.getHeight()<<std::endl;
 		std::cout<<"\tOutput image size: "<<dstImg.getWidth()<<" X "<<dstImg.getHeight()<<std::endl;
+		std::cout<<"\tMemtype: "<<mtype<<std::endl;
 		std::cout<<"\tTime info: "<<std::endl;
 		std::cout<<"\t\tmemcpy in time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[1]<<"(ms)"<<std::endl;
 		std::cout<<"\t\tmemcpy out time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[2]<<"(ms)"<<std::endl;
 		std::cout<<"\t\tkernel run time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[3]<<"(ms)"<<std::endl;
 	}
+
+	for(int i=0; i<4; i++)
+		runtime[i] *= 1000;
+	print_time(4, runtime);
 
 	return 0;
 

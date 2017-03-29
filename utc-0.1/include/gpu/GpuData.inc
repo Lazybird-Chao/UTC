@@ -139,7 +139,7 @@ void GpuData<T>::cleanMem(){
 		checkCudaRuntimeErrors(cudaFree(m_devicePtr));
 		break;
 	case MemType::pinned:
-		checkCudaRuntimeErrors(cudaFree(m_hostPtr));
+		checkCudaRuntimeErrors(cudaFreeHost(m_hostPtr));
 		checkCudaRuntimeErrors(cudaFree(m_devicePtr));
 		break;
 	case MemType::unified:

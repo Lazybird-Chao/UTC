@@ -44,6 +44,9 @@ void craySGPU::runImpl(double *runtime, MemType memtype){
 	GpuData<vec3_t> obj_array_pos(g_vars.obj_count);
 	GpuData<material_t> obj_array_mat(g_vars.obj_count);
 	GpuData<FTYPE> obj_array_rad(g_vars.obj_count);
+	obj_array_pos.initH(obj_array.pos);
+	obj_array_mat.initH(obj_array.mat);
+	obj_array_rad.initH(obj_array.rad);
 
 	vec2_t urand[NRAN];
 	int irand[NRAN];
@@ -55,9 +58,9 @@ void craySGPU::runImpl(double *runtime, MemType memtype){
 	 * data in
 	 */
 	timer.start();
-	obj_array_pos.init(obj_array.pos);
-	obj_array_mat.init(obj_array.mat);
-	obj_array_rad.init(obj_array.rad);
+	obj_array_pos.sync();
+	obj_array_mat.sync();
+	obj_array_rad.sync();
 
 
 	checkCudaErr(

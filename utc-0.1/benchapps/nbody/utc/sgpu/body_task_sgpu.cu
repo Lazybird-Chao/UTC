@@ -52,13 +52,15 @@ void BodySystemSGPU<T>::runImpl(double* runtime,
 
 	GpuData<T> posBuffer[2] = {GpuData<T>(m_numBodies*4, memtype), GpuData<T>(m_numBodies*4, memtype)};
 	GpuData<T> velBuffer(m_numBodies*4, memtype);
+	posBuffer[0].initH(m_pos);
+	velBuffer.initH(m_vel);
 
 	/*
 	 * copyin data
 	 */
 	timer.start();
-	posBuffer[0].init(m_pos);
-	velBuffer.init(m_vel);
+	posBuffer[0].sync();
+	velBuffer.sync();
 	double copyinTime = timer.stop();
 
 	/*

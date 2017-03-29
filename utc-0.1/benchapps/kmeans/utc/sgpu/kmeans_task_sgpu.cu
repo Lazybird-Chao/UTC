@@ -53,10 +53,12 @@ void kmeansSGPU<T>::runImpl(double *runtime, T threshold, int* loopcounters, Mem
 	GpuData<T> objs_d(numObjs*numCoords);
 	GpuData<int> memship_d(numObjs);
 	GpuData<T> clusters_d(numClusters*numCoords);
+	objs_d.initH(objects);
+	clusters_d.initH(clusters);
 
 	timer.start();
-	objs_d.init(objects);
-	clusters_d.init(clusters);
+	objs_d.sync();
+	clusters_d.sync();
 	double copyinTime = timer.stop();
 
 	std::cout<<"Start clustering..."<<std::endl;

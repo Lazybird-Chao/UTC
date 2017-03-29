@@ -40,13 +40,14 @@ void YUVconvertSGPU::runImpl(double *runtime, int loop, MemType memtype){
 	GpuData<uint8_t> img_u(w*h, memtype);
 	GpuData<uint8_t> img_v(w*h, memtype);
 	GpuData<Pixel> sImg(w*h, memtype);
+	sImg.initH(srcImg->getPixelBuffer());
 
 	/*
 	 * copy data in
 	 */
 	timer.start();
-	memcpy(sImg.getH(true), srcImg->getPixelBuffer(), sImg.getBSize());
-	sImg.syncH();
+	//memcpy(sImg.getH(true), srcImg->getPixelBuffer(), sImg.getBSize());
+	sImg.sync();
 	double copyinTime = timer.stop();
 
 	/*
