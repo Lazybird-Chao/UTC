@@ -26,6 +26,7 @@
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_timer.h"
+#include "../../common/helper_printtime.h"
 #include "image.h"
 
 typedef struct __attribute__((aligned(4))) yuv_color{
@@ -151,8 +152,12 @@ int main(int argc, char* argv[]){
 	std::cout<<"Test complete !!!"<<std::endl;
 	if(printTime){
 		std::cout<<"\tInput image size: "<<srcImg.getWidth()<<" X "<<srcImg.getHeight()<<std::endl;
-		std::cout<<"\tRGB->YUV runtime: "<<std::fixed<<std::setprecision(4)<<runtime<<"(s)"<<std::endl;
+		std::cout<<"\tRGB->YUV runtime: "<<std::fixed<<std::setprecision(4)<<runtime*1000<<"(ms)"<<std::endl;
 	}
+
+	runtime *= 1000;
+	print_time(1, &runtime);
+
 	return 0;
 
 }

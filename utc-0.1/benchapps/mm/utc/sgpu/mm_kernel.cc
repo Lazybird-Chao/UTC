@@ -51,11 +51,11 @@ __global__ void gpuMatrixKernel(T *A,
 	    {
 	        // Declaration of the shared memory array As used to
 	        // store the sub-matrix of A
-	        __shared__ T As[32][32];
+	        __shared__ T As[16][16];
 
 	        // Declaration of the shared memory array Bs used to
 	        // store the sub-matrix of B
-	        __shared__ T Bs[32][32];
+	        __shared__ T Bs[16][16];
 
 	        // Load the matrices from device memory
 	        // to shared memory; each thread loads

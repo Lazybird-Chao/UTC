@@ -69,8 +69,10 @@ void MD5SGPU::runImpl(double* runtime, int blocksize, MemType memtype){
 	 * copy out
 	 */
 	timer.start();
-	out.fetch(md5Config->out);
+	out.sync();
 	double copyoutTime = timer.stop();
+	out.fetch(md5Config->out);
+
 
 	runtime[0] = kernelTime + copyinTime + copyoutTime;
 	runtime[1] = kernelTime;

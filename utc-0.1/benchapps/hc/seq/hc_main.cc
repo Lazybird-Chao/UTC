@@ -19,14 +19,15 @@
 #include <cstdlib>
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_timer.h"
+#include "../../common/helper_printtime.h"
 
-#define FTYPE float
+#define FTYPE double
 
 #define H 1.0
 #define T_SRC0 550.0
 #define ITERMAX 100		// not used
 
-void init_domain(float *domain_ptr, int h, int w){
+void init_domain(FTYPE *domain_ptr, int h, int w){
 	for (int j = 0; j < (int)floor(h/H); j++) {
 		for (int i = 0; i < (int) floor (w / H); i++) {
 			domain_ptr[j*((int) floor (w / H)) + i] = 0.0;
@@ -153,8 +154,8 @@ int main(int argc, char**argv){
 	t1 = getTime();
 	int iters = 1;
 	while(1){
-		if(iters % 1000 ==0)
-			std::cout<<"iteration: "<<iters<<" ..."<<std::endl;
+		//if(iters % 1000 ==0)
+		//	std::cout<<"iteration: "<<iters<<" ..."<<std::endl;
 		/* jacobi iterate */
 		jacobi(U_Curr, U_Next, HEIGHT, WIDTH);
 		/*check if convergence */
@@ -170,7 +171,7 @@ int main(int argc, char**argv){
 	double runtime = t2 -t1;
 
 	if(output){
-		char* ofile = "output.txt";
+		char ofile[100] = "output.txt";
 		FILE *fp = fopen(ofile, "w");
 		for(int i=0; i<HEIGHT; i++){
 			for(int j=0; j<WIDTH; j++){
@@ -191,5 +192,9 @@ int main(int argc, char**argv){
 		std::cout<<"\tIterations: "<<iters<<std::endl;
 		std::cout<<"\tTime info: "<<std::fixed<<std::setprecision(4)<<runtime<<"(s)"<<std::endl;
 	}
+
+	print_time(1, &runtime);
+
+	return 0;
 
 }

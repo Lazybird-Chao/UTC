@@ -9,10 +9,10 @@
 
 # set exe file and args
 EXE_FILE='./rotate_main'
-EXE_ARGS="-i ../../image-input/images.ppm  -a 66"
+EXE_ARGS="-i ../../image-input/imgl.ppm  -a 66"
 
 # set iterations and run
-iter=1
+iter=50
 i=1
 while [ $i -le $iter ]
 do

@@ -54,7 +54,7 @@ void YUVconvertSGPU::runImpl(double *runtime, int loop, MemType memtype){
 	 * invoke kernel
 	 */
 	timer.start();
-	int blocksize_x = 16;
+	int blocksize_x = 32;
 	int blocksize_y = 16;
 	int batchx = 1;
 	int batchy = 1;
@@ -63,13 +63,14 @@ void YUVconvertSGPU::runImpl(double *runtime, int loop, MemType memtype){
 				(h+blocksize_y*batchy-1)/(blocksize_y*batchy),
 				1);
 	for(int i=0; i<loop; i++){
-		convert<<<grid, block>>>(sImg.getD(),
+		convert<<<grid, block, 0, __streamId>>>(sImg.getD(),
 				img_y.getD(true),
 				img_u.getD(true),
 				img_v.getD(true),
 				h, w, batchx, batchy);
 		checkCudaErr(cudaGetLastError());
-		checkCudaErr(cudaDeviceSynchronize());
+		//checkCudaErr(cudaDeviceSynchronize());
+		checkCudaErr(cudaStreamSynchronize(__streamId));
 	}
 	double kernelTime = timer.stop();
 
@@ -82,11 +83,11 @@ void YUVconvertSGPU::runImpl(double *runtime, int loop, MemType memtype){
 	img_u.sync();
 	img_v.sync();
 	//std::cout<<img_y.at(10)<<std::endl;
+	double copyoutTime = timer.stop();
 
 	memcpy(dstImg->y, img_y.getH(), img_y.getBSize());
 	memcpy(dstImg->u, img_u.getH(), img_u.getBSize());
 	memcpy(dstImg->v, img_v.getH(), img_v.getBSize());
-	double copyoutTime = timer.stop();
 
 	runtime[1] = copyinTime;
 	runtime[2] = copyoutTime;

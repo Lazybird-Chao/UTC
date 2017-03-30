@@ -13,6 +13,7 @@
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_err.h"
+#include "../../common/helper_printtime.h"
 #include "Utc.h"
 #include "UtcGpu.h"
 using namespace iUtc;
@@ -34,7 +35,7 @@ int main(int argc, char* argv[]){
 	configArgs.input_set = 0;
 	configArgs.iterations = 1;
 	configArgs.outflag = 0;
-	int blocksize = 128;
+	int blocksize = 256;
 
 	/* initialize UTC context */
 	UtcContext &ctx = UtcContext::getContext(argc, argv);
@@ -134,6 +135,7 @@ int main(int argc, char* argv[]){
 		std::cout<<"\tprocess data info:"<<std::endl;
 		std::cout<<"\t\tnumber buffs:"<<datasets[configArgs.input_set].numbufs<<std::endl;
 		std::cout<<"\t\tbuff size(Bytes):"<<datasets[configArgs.input_set].bufsize<<std::endl;
+		std::cout<<"\t\tMemtype: "<<mtype<<std::endl;
 		std::cout<<"\ttime info:"<<std::endl;
 		std::cout<<"\t\ttotal time: "<<std::fixed<<std::setprecision(4)<<1000*(runtime[0])<<"(ms)"<<std::endl;
 		std::cout<<"\t\tkernel time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[1]<<"(ms)"<<std::endl;
@@ -142,6 +144,11 @@ int main(int argc, char* argv[]){
 
 	}
 
+	for(int i=0; i<4; i++)
+		runtime[i] *= 1000;
+	print_time(4, runtime);
+
+	return 0;
 
 }
 

@@ -71,7 +71,7 @@ int main(int argc, char* argv[]){
 	}
 
 	// do md5 processing
-	std::cout<<"Start MD5 processing ..."<<std::endl;
+	//std::cout<<"Start MD5 processing ..."<<std::endl;
 	double t1, t2;
 	t1 = getTime();
 	run(&configArgs);
@@ -91,6 +91,9 @@ int main(int argc, char* argv[]){
 		std::cout<<"\t\tbuff size(Bytes):"<<datasets[configArgs.input_set].bufsize<<std::endl;
 		std::cout<<"\ttime info:"<<std::fixed<<std::setprecision(4)<<1000*runtime<<"(ms)"<<std::endl;
 	}
+
+	runtime*= 1000;
+	print_time(1, &runtime);
 
 	return 0;
 

@@ -288,7 +288,8 @@ public:
 	}
 	void fetch(T* dest){
 		if(m_memtype == MemType::unified ||
-				m_status == MemStatus::host)
+				m_status == MemStatus::host ||
+				m_status == MemStatus::synced)
 			memcpy(dest, m_hostPtr, m_size_inbytes);
 		else{
 			checkCudaRuntimeErrors(cudaMemcpy(m_hostPtr, m_devicePtr,
@@ -310,7 +311,8 @@ public:
 	}
 	void move(T* dest){
 		if(m_memtype == MemType::unified ||
-				m_status == MemStatus::device)
+				m_status == MemStatus::device||
+				m_status == MemStatus::synced)
 			checkCudaRuntimeErrors(cudaMemcpy(dest, m_devicePtr,
 					m_size_inbytes, cudaMemcpyDefault));
 		else{

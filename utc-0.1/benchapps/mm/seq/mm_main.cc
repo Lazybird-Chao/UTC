@@ -11,8 +11,10 @@
  */
 
 #include <iostream>
+#include <iomanip>
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_timer.h"
+#include "../../common/helper_printtime.h"
 
 #define FTYPE float
 
@@ -87,8 +89,13 @@ int main(int argc, char **argv){
 	std::cout<<"Test complete !!!"<<std::endl;
 	if(printTime){
 		std::cout<<"\tMatrix info: "<<matrixSize<<" X "<<matrixSize<<std::endl;
-		std::cout<<"\tTime info: "<<runtime<<"(s)"<<std::endl;
+		std::cout<<"\tTime info: "<<std::fixed<<std::setprecision(4)<<runtime<<"(s)"<<std::endl;
 	}
+
+	runtime *=1000;
+	print_time(1, &runtime);
+
+	return 0;
 
 }
 

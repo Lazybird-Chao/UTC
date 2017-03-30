@@ -54,7 +54,8 @@ void hcSGPU::runImpl(double *runtime, int *iteration, int blockSize, MemType mem
 	if(__localThreadId == 0){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}
-	Timer timer;
+	Timer timer, timer0;
+	double totaltime;
 
 	GpuData<FTYPE> U_Curr((int)floor(h/H)*(int)floor(w/H), memtype);
 	GpuData<FTYPE> U_Next((int)floor(h/H)*(int)floor(w/H), memtype);
@@ -62,6 +63,7 @@ void hcSGPU::runImpl(double *runtime, int *iteration, int blockSize, MemType mem
 	init_domain(U_Curr.getH(true), h, w);
 
 	//
+	timer0.start();
 	timer.start();
 	U_Curr.sync();
 	double copyinTime = timer.stop();
@@ -80,8 +82,8 @@ void hcSGPU::runImpl(double *runtime, int *iteration, int blockSize, MemType mem
 	int iters = 1;
 
 	while(1){
-		if(iters % 1000 ==0)
-			std::cout<<"iteration: "<<iters<<" ..."<<std::endl;
+		//if(iters % 1000 ==0)
+		//	std::cout<<"iteration: "<<iters<<" ..."<<std::endl;
 		timer.start();
 		if(iters % 2 ==1){
 			jacobi_kernel<<<jacobiGrid, jacobiBlock,0,__streamId>>>(
@@ -113,18 +115,27 @@ void hcSGPU::runImpl(double *runtime, int *iteration, int blockSize, MemType mem
 			break;
 		iters++;
 	}
+
 	*iteration = iters;
 	timer.start();
-	if(iters % 2 ==1)
+	if(iters % 2 ==1){
+		U_Next.sync();
+		copyoutTime += timer.stop();
+		totaltime = timer0.stop();
 		U_Next.fetch(domainMatrix);
-	else
+	}
+	else{
+		U_Curr.sync();
+		copyoutTime += timer.stop();
+		totaltime = timer0.stop();
 		U_Curr.fetch(domainMatrix);
-	copyoutTime += timer.stop();
+	}
 
-	runtime[0] = copyinTime + copyoutTime + kernelTime + hostcompTime;
+	runtime[0] = totaltime;
 	runtime[1]= kernelTime;
 	runtime[2]= copyinTime;
 	runtime[3]= copyoutTime;
+	runtime[4]= hostcompTime;
 
 	if(__localThreadId ==0){
 		std::cout<<"task: "<<getCurrentTask()->getName()<<" finish runImpl.\n";

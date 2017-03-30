@@ -20,6 +20,7 @@
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_err.h"
+#include "../../common/helper_printtime.h"
 #include "Utc.h"
 #include "UtcGpu.h"
 using namespace iUtc;
@@ -28,7 +29,7 @@ using namespace iUtc;
 #include "sgpu/mm_task_sgpu.h"
 
 
-#define FTYPE float
+#define FTYPE double
 
 int main(int argc, char**argv){
 	bool printTime = false;
@@ -144,6 +145,7 @@ int main(int argc, char**argv){
 	if(printTime){
 		std::cout<<"\tMatrix size: "<<matrixSize<<" X "<<matrixSize<<std::endl;
 		std::cout<<"\tcuda Block size: "<<blockSize<<std::endl;
+		std::cout<<"\tMemtype: "<<mtype<<std::endl;
 		std::cout<<"\tTime info: "<<std::endl;
 		//std::cout<<"\t\tmemory create time: "<<memcreateTime<<" s"<<std::endl;
 		std::cout<<"\t\tkernel run time: "<<std::fixed<<std::setprecision(4)<<runtime[1]<<"(s)"<<std::endl;
@@ -151,6 +153,11 @@ int main(int argc, char**argv){
 		std::cout<<"\t\tmemcpy out time: "<<std::fixed<<std::setprecision(4)<<runtime[3]<<"(s)"<<std::endl;
 
 	}
+
+	for(int i=0; i<4; i++)
+		runtime[i] *= 1000;
+	print_time(4, runtime);
+
 	return 0;
 
 }

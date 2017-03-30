@@ -10,6 +10,7 @@
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_err.h"
+#include "../../common/helper_printtime.h"
 #include "Utc.h"
 #include "UtcGpu.h"
 using namespace iUtc;
@@ -107,7 +108,7 @@ int main(int argc, char **argv){
 	/*
 	 *
 	 */
-	double runtime[4];
+	double runtime[5];
 	int iters;
 	FTYPE *domainMatrix = (FTYPE*)malloc(sizeof(FTYPE)*(int)floor(HEIGHT/H)*(int)floor(WIDTH/H));
 	Task<hcSGPU> hc(ProcList(0), TaskType::gpu_task);
@@ -130,6 +131,7 @@ int main(int argc, char **argv){
 		std::cout<<"\tDomain size: "<<WIDTH<<" X "<<HEIGHT<<std::endl;
 		std::cout<<"\tAccuracy: "<<EPSILON<<std::endl;
 		std::cout<<"\tIterations: "<<iters<<std::endl;
+		std::cout<<"\tMemtype: "<<mtype<<std::endl;
 		std::cout<<"\tTime info: "<<std::endl;
 		std::cout<<"\t\ttotal time: "<<runtime[0]<<"(s)"<<std::endl;
 		std::cout<<"\t\tkernel run time: "<<runtime[1]<<"(s)"<<std::endl;
@@ -138,6 +140,10 @@ int main(int argc, char **argv){
 		//std::cout<<"\t\thost compute time: "<<runtime[0]<<"(s)"<<std::endl;
 
 	}
+
+	for(int i=0; i<5; i++)
+		runtime[i] *= 1000;
+	print_time(5, runtime);
 
 	return 0;
 

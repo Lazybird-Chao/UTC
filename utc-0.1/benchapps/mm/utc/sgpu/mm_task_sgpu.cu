@@ -75,8 +75,11 @@ void MatrixMulSGPU<T>::runImpl(double *runtime, int blockSize, MemType memtype){
 	 * copy out
 	 */
 	timer.start();
-	mC.fetch(matrixC);
+	mC.sync();
 	double copyoutTime = timer.stop();
+	mC.fetch(matrixC);
+	//mC.fetch(matrixC);
+
 
 	runtime[0] = kernelTime + copyinTime + copyoutTime;
 	runtime[1] = kernelTime;
