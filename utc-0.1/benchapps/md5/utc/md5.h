@@ -16,16 +16,16 @@
 typedef struct {
     int input_set;
     int iterations;
-    int numinputs;
-    int size;
+    long numinputs;
+    long size;
     int outflag;
     uint8_t* inputs;
     uint8_t* out;
 } config_t;
 
 typedef struct {
-	int numbufs;
-	int bufsize;
+	long numbufs;
+	long bufsize;
 	int rseed;
 } dataSet_t;
 

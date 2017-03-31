@@ -40,7 +40,8 @@ void bfsSGPU::runImpl(double *runtime,
 	if(__localThreadId == 0){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}
-	Timer timer;
+	Timer timer, timer0;
+	double totaltime;
 
 	GpuData<uint8_t> graph_nextWaveFlag(total_graph_nodes, memtype);
 	graph_nextWaveFlag.initH(0);
@@ -60,6 +61,7 @@ void bfsSGPU::runImpl(double *runtime,
 	/*
 	 * copyin
 	 */
+	timer0.start();
 	double copyinTime = 0;
 	timer.start();
 	nodes.sync();
@@ -112,10 +114,13 @@ void bfsSGPU::runImpl(double *runtime,
 	}
 
 	timer.start();
-	spath.fetch(shortestPath);
+	spath.sync();
 	copyoutTime += timer.stop();
+	totaltime = timer0.stop();
+	spath.fetch(shortestPath);
 
-	runtime[0] = kernelTime + copyinTime + copyoutTime;
+	runtime[0] = totaltime;
+	//runtime[0] = kernelTime + copyinTime + copyoutTime;
 	runtime[1] = kernelTime;
 	runtime[2] = copyinTime;
 	runtime[3] = copyoutTime;

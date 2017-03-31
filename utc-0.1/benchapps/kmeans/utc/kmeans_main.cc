@@ -10,6 +10,7 @@
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_err.h"
+#include "../../common/helper_printtime.h"
 #include "Utc.h"
 #include "UtcGpu.h"
 using namespace iUtc;
@@ -24,7 +25,7 @@ int main(int argc, char**argv){
 	int     isBinaryFile = 0;
 	char   *filename = NULL;
 	char *outfile = NULL;
-	FTYPE threshold = 0.001;
+	FTYPE threshold = 0.01;
 	int numClusters = 1;
 
 	int nthreads=1;
@@ -139,6 +140,7 @@ int main(int argc, char**argv){
 		printf("numClusters   = %d\n", numClusters);
 		printf("threshold     = %.4f\n", threshold);
 		printf("Iterations     	   = %d\n", loopcounters);
+		printf("MemType: 		=%d\n", mtype);
 
 		//printf("I/O time           = %10.4f sec\n", io_timing);
 		printf("copyin time        = %10.4f sec\n", runtime[2]);
@@ -148,6 +150,11 @@ int main(int argc, char**argv){
 		//clustering_timing = copyinTime + copyoutTime + kernelTime + hostCompTime;
 		printf("Total time = %10.4f sec\n", runtime[0]);
 	}
+
+	for(int i=0; i<5; i++)
+		runtime[i] *= 1000;
+	print_time(5, runtime);
+
 	return(0);
 
 }

@@ -26,6 +26,7 @@
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_err.h"
+#include "../../common/helper_printtime.h"
 #include "Utc.h"
 #include "UtcGpu.h"
 using namespace iUtc;
@@ -67,9 +68,10 @@ NBodyParams demoParams[] =
 int main(int argc, char** argv){
 	bool printTime = false;
 	int paraSelect  = 0;
-	int iteration = 100;
+	int iteration = 1;
 	int outInterval = 0;
 	int numBodies = 1024;
+	char* outfilename = NULL;
 
 	int blocksize = 256;
 	//int mingridsize = 16;
@@ -89,7 +91,7 @@ int main(int argc, char** argv){
 	int opt;
 	extern char* optarg;
 	extern int optind;
-	while((opt=getopt(argc, argv, "vt:p:m:i:l:o:n:b:"))!=EOF){
+	while((opt=getopt(argc, argv, "vt:p:m:i:l:o:O:n:b:"))!=EOF){
 		switch(opt){
 		case 'v':
 			printTime = true;
@@ -105,6 +107,9 @@ int main(int argc, char** argv){
 			break;
 		case 'o':
 			outInterval = atoi(optarg);
+			break;
+		case 'O':
+			outfilename = optarg;
 			break;
 		case 'l':
 			iteration = atoi(optarg);
@@ -221,18 +226,20 @@ int main(int argc, char** argv){
 	/*
 	 * output to a file
 	 */
-	FILE *fp = fopen("nbody_outpos.txt", "w");
-	if(!fp){
-		std::cout<<"Cann't open the output file !!!"<<std::endl;
-		exit(1);
+	if(outfilename){
+		FILE *fp = fopen(outfilename, "w");
+		if(!fp){
+			std::cout<<"Cann't open the output file !!!"<<std::endl;
+			exit(1);
+		}
+		Task<Output<FTYPE>> outtask(ProcList(0));
+		for(int i=0; i<iteration/outInterval+1; i++){
+			FTYPE timestamp = i*activeParams.m_timestep;
+			outtask.run(&fp, &body_outBuffer[i*numBodies*4], timestamp, numBodies);
+			outtask.wait();
+		}
+		fclose(fp);
 	}
-	Task<Output<FTYPE>> outtask(ProcList(0));
-	for(int i=0; i<iteration/outInterval+1; i++){
-		FTYPE timestamp = i*activeParams.m_timestep;
-		outtask.run(&fp, &body_outBuffer[i*numBodies*4], timestamp, numBodies);
-		outtask.wait();
-	}
-	fclose(fp);
 
 	delete[] body_pos;
 	delete[] body_vel;
@@ -254,6 +261,11 @@ int main(int argc, char** argv){
 		std::cout<<"\t\tcopyin time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[2]<<"(ms)"<<std::endl;
 		std::cout<<"\t\tcopyout time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[3]<<"(ms)"<<std::endl;
 	}
+
+	for(int i=0; i<4; i++)
+		runtime[i] *= 1000;
+	print_time(4, runtime);
+
 	return 0;
 
 }

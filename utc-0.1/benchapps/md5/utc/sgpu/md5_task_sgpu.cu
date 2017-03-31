@@ -26,7 +26,8 @@ void MD5SGPU::runImpl(double* runtime, int blocksize, MemType memtype){
 	if(__localThreadId == 0){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}
-	Timer timer;
+	Timer timer, timer0;
+	double totaltime =0;
 
 	/*
 	 * create gpumem
@@ -41,6 +42,7 @@ void MD5SGPU::runImpl(double* runtime, int blocksize, MemType memtype){
 	/*
 	 * copy in
 	 */
+	timer0.start();
 	timer.start();
 	inputs.sync();
 	double copyinTime = timer.stop();
@@ -71,10 +73,12 @@ void MD5SGPU::runImpl(double* runtime, int blocksize, MemType memtype){
 	timer.start();
 	out.sync();
 	double copyoutTime = timer.stop();
+	totaltime  = timer0.stop();
 	out.fetch(md5Config->out);
 
 
-	runtime[0] = kernelTime + copyinTime + copyoutTime;
+	//runtime[0] = kernelTime + copyinTime + copyoutTime;
+	runtime[0] = totaltime;
 	runtime[1] = kernelTime;
 	runtime[2] = copyinTime;
 	runtime[3] = copyoutTime;

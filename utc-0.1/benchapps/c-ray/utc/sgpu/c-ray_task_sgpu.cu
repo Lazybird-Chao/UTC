@@ -36,7 +36,8 @@ void craySGPU::runImpl(double *runtime, MemType memtype){
 	if(__localThreadId == 0){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}
-	Timer timer;
+	Timer timer, timer0;
+	double totaltime;
 
 	int xres = g_vars.xres;
 	int yres = g_vars.yres;
@@ -57,6 +58,7 @@ void craySGPU::runImpl(double *runtime, MemType memtype){
 	/*
 	 * data in
 	 */
+	timer0.start();
 	timer.start();
 	obj_array_pos.sync();
 	obj_array_mat.sync();
@@ -84,7 +86,7 @@ void craySGPU::runImpl(double *runtime, MemType memtype){
 	cudaThreadGetLimit(&stacksize, cudaLimitStackSize);
 	stacksize = 1024*4;
 	cudaThreadSetLimit(cudaLimitStackSize, stacksize);
-	dim3 block(16, 8, 1);
+	dim3 block(16, 16, 1);
 	dim3 grid((xres+block.x-1)/block.x, (yres+block.y-1)/block.y,1);
 	timer.start();
 	render_kernel<<<grid, block, 0, __streamId>>>(
@@ -101,10 +103,13 @@ void craySGPU::runImpl(double *runtime, MemType memtype){
 	 *
 	 */
 	timer.start();
-	pixels_d.fetch(pixels);
+	pixels_d.sync();
 	double copyoutTime = timer.stop();
+	totaltime = timer0.stop();
+	pixels_d.fetch(pixels);
 
-	runtime[0] = copyinTime + copyoutTime + kernelTime;
+	//runtime[0] = copyinTime + copyoutTime + kernelTime;
+	runtime[0] = totaltime;
 	runtime[1]= kernelTime;
 	runtime[2]= copyinTime;
 	runtime[3]= copyoutTime;

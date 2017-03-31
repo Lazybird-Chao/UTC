@@ -28,16 +28,16 @@
 
 // These names may vary by implementation
 //#define LINEAR_CONGRUENTIAL_ENGINE linear_congruential_engine
-#define LINEAR_CONGRUENTIAL_ENGINE linear_congruential
+#define LINEAR_CONGRUENTIAL_ENGINE linear_congruential_engine
 //#define UNIFORM_INT_DISTRIBUTION uniform_int_distribution
-#define UNIFORM_INT_DISTRIBUTION uniform_int
+#define UNIFORM_INT_DISTRIBUTION uniform_int_distribution
 
 using namespace std;
 
 #define MIN_NODES 20
 #define MAX_NODES ULONG_MAX
 #define MIN_EDGES 2
-#define MAX_INIT_EDGES 10 // Nodes will have, on average, 2*MAX_INIT_EDGES edges
+#define MAX_INIT_EDGES 3 // Nodes will have, on average, 2*MAX_INIT_EDGES edges
 #define MIN_WEIGHT 1
 #define MAX_WEIGHT 10
 
@@ -93,13 +93,21 @@ int main( int argc, char ** argv )
 		for ( j = 0; j < numEdges; j++ )
 		{
 			nodeID = randNode( gen );
+			if(nodeID == i)
+				continue;
+			int k;
+			for( k=0; k<graph[i].size(); k++)
+				if(graph[i].at(k).dest == nodeID)
+					break;
+			if(k != graph[i].size())
+				continue;
 			weight = rand() % ( MAX_WEIGHT - MIN_WEIGHT + 1 ) + MIN_WEIGHT;
 			graph[i].push_back( edge() );
 			graph[i].back().dest = nodeID;
 			graph[i].back().weight = weight;
-			graph[nodeID].push_back( edge() );
-			graph[nodeID].back().dest = i;
-			graph[nodeID].back().weight = weight;
+			//graph[nodeID].push_back( edge() );
+			//graph[nodeID].back().dest = i;
+			//graph[nodeID].back().weight = weight;
 		}
 	}
 
@@ -114,7 +122,8 @@ int main( int argc, char ** argv )
 		outf << totalEdges << " " << numEdges << "\n";
 		totalEdges += numEdges;
 	}
-	outf << "\n" << randNode( gen ) << "\n\n";
+	//outf << "\n" << randNode( gen ) << "\n\n";
+	outf << "\n" << 0 << "\n\n";
 	outf << totalEdges << "\n";
 	for ( ulong i = 0; i < numNodes; i++ )
 		for ( uint j = 0; j < graph[i].size(); j++ )

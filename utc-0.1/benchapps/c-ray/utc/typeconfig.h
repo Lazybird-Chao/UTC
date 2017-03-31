@@ -8,7 +8,7 @@
 #ifndef TYPECONFIG_H_
 #define TYPECONFIG_H_
 
-#define FTYPE double
+#define FTYPE float
 
 
 typedef struct vec3{

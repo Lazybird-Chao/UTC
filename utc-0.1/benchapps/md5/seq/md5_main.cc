@@ -20,6 +20,7 @@
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_timer.h"
+#include "../../common/helper_printtime.h"
 
 #include <iostream>
 #include <iomanip>
@@ -71,7 +72,7 @@ int main(int argc, char* argv[]){
 	}
 
 	// do md5 processing
-	//std::cout<<"Start MD5 processing ..."<<std::endl;
+	std::cout<<"Start MD5 processing ..."<<std::endl;
 	double t1, t2;
 	t1 = getTime();
 	run(&configArgs);
@@ -115,10 +116,10 @@ int initialize(config_t *configArgs){
 		return 1;
 	// generate random data
 	srand(datasets[index].rseed);
-	for(int i=0; i<configArgs->numinputs; i++){
+	for(long i=0; i<configArgs->numinputs; i++){
 		uint8_t *p = &(configArgs->inputs[i*configArgs->size]);
 		int key = rand();
-		for(int j = 0; j<configArgs->size; j++)
+		for(long j = 0; j<configArgs->size; j++)
 			*p++ = (key+j) % 255;
 	}
 	return 0;
@@ -154,11 +155,11 @@ void process(uint8_t* in, uint8_t* out, long bufsize) {
 void run(config_t * args) {
 	for(int i = 0; i < args->iterations; i++) {
 
-		int buffers_to_process = args->numinputs;
+		long buffers_to_process = args->numinputs;
 		uint8_t* in = args->inputs;
 		uint8_t* out = args->out;
 
-		int j=0;
+		long j=0;
 		while(j< buffers_to_process) {
 			process(&in[j*args->size], out+j*DIGEST_SIZE, args->size);
 			j++;
@@ -176,10 +177,10 @@ int finalize(config_t *args){
 	if(args->outflag) {
 		fp = fopen(outname, "w");
 
-		for(int i = 0; i < args->numinputs; i++) {
+		for(long i = 0; i < args->numinputs; i++) {
 			sprintf(buffer, "Buffer %d has checksum ", i);
 			fwrite(buffer, sizeof(char), strlen(buffer)+1, fp);
-			for(int j = 0; j < DIGEST_SIZE*2; j+=2) {
+			for(long j = 0; j < DIGEST_SIZE*2; j+=2) {
 				sprintf(buffer+j, "%x", args->out[DIGEST_SIZE*i+j/2] & 0xf);
 				sprintf(buffer+j+1, "%x", args->out[DIGEST_SIZE*i+j/2] & 0xf0);
 			}

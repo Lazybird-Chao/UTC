@@ -14,22 +14,22 @@
 typedef struct {
     int input_set;
     int iterations;
-    int numinputs;
-    int size;
+    long numinputs;
+    long size;
     int outflag;
     uint8_t* inputs;
     uint8_t* out;
 } config_t;
 
 typedef struct {
-	int numbufs;
-	int bufsize;
+	long numbufs;
+	long bufsize;
 	int rseed;
 } dataSet_t;
 
 dataSet_t datasets[] ={
-		{1024, 4094, 0},
-		{1024*16, 4096*2, 1},
+		{1024*2, 4094, 0},
+		{1024*32, 4096*2, 1},
 		{1024*256, 4096*4, 2},
 
 	{64, 64*8, 0},//0

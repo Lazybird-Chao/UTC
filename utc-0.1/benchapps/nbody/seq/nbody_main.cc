@@ -29,6 +29,7 @@
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_timer.h"
+#include "../../common/helper_printtime.h"
 
 #include "nbody.h"
 #include "bodysystem.h"
@@ -68,9 +69,10 @@ NBodyParams demoParams[] =
 int main(int argc, char* argv[]){
 	bool printTime = false;
 	int paraSelect  = 0;
-	int iteration = 100;
+	int iteration = 1;
 	int outInterval = 0;
 	int numBodies = 1024;
+	char* outfilename= NULL;
 
 	/*
 	 * parse arguments
@@ -78,7 +80,7 @@ int main(int argc, char* argv[]){
 	int opt;
 	extern char* optarg;
 	extern int optind;
-	while((opt=getopt(argc, argv, "vi:l:o:n:"))!=EOF){
+	while((opt=getopt(argc, argv, "vi:l:o:O:n:"))!=EOF){
 		switch(opt){
 		case 'v':
 			printTime = true;
@@ -88,6 +90,9 @@ int main(int argc, char* argv[]){
 			break;
 		case 'o':
 			outInterval = atoi(optarg);
+			break;
+		case 'O':
+			outfilename = optarg;
 			break;
 		case 'l':
 			iteration = atoi(optarg);
@@ -187,21 +192,23 @@ int main(int argc, char* argv[]){
 	/*
 	 * output to a file
 	 */
-	FILE *fp = fopen("nbody_outpos.txt", "w");
-	if(!fp){
-		std::cout<<"Cann't open the output file !!!"<<std::endl;
-		exit(1);
-	}
-	for(int i=0; i<iteration/outInterval + 1; i++){
-		fprintf(fp, "%f\n", i*activeParams.m_timestep);
-		for(int j=0; j<numBodies; j++){
-			fprintf(fp, "%.5f ", body_outBuffer[i*numBodies*4 + j*4 + 0]);
-			fprintf(fp, "%.5f ", body_outBuffer[i*numBodies*4 + j*4 +1]);
-			fprintf(fp, "%.5f ", body_outBuffer[i*numBodies*4 + j*4 +2]);
-			fprintf(fp, "%.5f\n", body_outBuffer[i*numBodies*4 + j*4 +3]);
+	if(outfilename){
+		FILE *fp = fopen(outfilename, "w");
+		if(!fp){
+			std::cout<<"Cann't open the output file !!!"<<std::endl;
+			exit(1);
 		}
+		for(int i=0; i<iteration/outInterval + 1; i++){
+			fprintf(fp, "%f\n", i*activeParams.m_timestep);
+			for(int j=0; j<numBodies; j++){
+				fprintf(fp, "%.5f ", body_outBuffer[i*numBodies*4 + j*4 + 0]);
+				fprintf(fp, "%.5f ", body_outBuffer[i*numBodies*4 + j*4 +1]);
+				fprintf(fp, "%.5f ", body_outBuffer[i*numBodies*4 + j*4 +2]);
+				fprintf(fp, "%.5f\n", body_outBuffer[i*numBodies*4 + j*4 +3]);
+			}
+		}
+		fclose(fp);
 	}
-	fclose(fp);
 
 	delete[] body_pos;
 	delete[] body_vel;
@@ -218,6 +225,11 @@ int main(int argc, char* argv[]){
 		std::cout<<"\t\truntime: "<<std::fixed<<std::setprecision(4)<<1000*runtime<<"(ms)"<<std::endl;
 		std::cout<<"\t\tmemtime: "<<std::fixed<<std::setprecision(4)<<1000*memtime<<"(ms)"<<std::endl;
 	}
+
+	double totaltime = runtime + memtime;
+	totaltime *= 1000;
+	print_time(1, &totaltime);
+
 	return 0;
 
 }

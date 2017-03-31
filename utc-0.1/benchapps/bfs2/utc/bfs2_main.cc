@@ -3,6 +3,7 @@
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_err.h"
+#include "../../common/helper_printtime.h"
 #include "Utc.h"
 #include "UtcGpu.h"
 using namespace iUtc;
@@ -32,7 +33,7 @@ int main(int argc, char**argv){
 	int opt;
 	extern char* optarg;
 	extern int optind;
-	while((opt=getopt(argc, argv, "vi:o:b:h:"))!=EOF){
+	while((opt=getopt(argc, argv, "vt:p:m:i:o:b:h:"))!=EOF){
 		switch(opt){
 		case 'v':
 			printTime = true;
@@ -147,6 +148,11 @@ int main(int argc, char**argv){
 		std::cout<<"\t\tcopyin time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[2]<<"(ms)"<<std::endl;
 		std::cout<<"\t\tcopyout time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[3]<<"(ms)"<<std::endl;
 	}
+
+	for(int i=0; i<4; i++)
+		runtime[i] *= 1000;
+	print_time(4, runtime);
+
 	return 0;
 }
 

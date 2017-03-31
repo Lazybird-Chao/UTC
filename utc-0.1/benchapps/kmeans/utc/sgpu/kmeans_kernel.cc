@@ -60,7 +60,7 @@ __global__ void kmeans_kernel(
 	int bx = blockIdx.x;
 	int tx = threadIdx.x;
 
-	if(numClusters<= blockDim.x && numClusters*numCoords < 1024){
+	if(numClusters<= blockDim.x && numClusters*numCoords <= 1024){
 		__shared__ T clusters_s[1024];
 		if(tx < numClusters){
 			for(int i=0; i<numCoords; i++){

@@ -9,7 +9,7 @@
 #include "kmeans.h"
 
 
-#define PREC 300 // max iteration times
+#define PREC 20 // max iteration times
 
 FTYPE delta; /* Delta is a value between 0 and 1 describing the percentage of objects which changed cluster membership */
 

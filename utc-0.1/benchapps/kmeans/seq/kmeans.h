@@ -8,7 +8,7 @@
 
 #include <assert.h>
 
-#define FTYPE double
+#define FTYPE float
 
 FTYPE** kmeans(FTYPE**, int, int, int, FTYPE, int*, int*);
 

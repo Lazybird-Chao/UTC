@@ -49,13 +49,13 @@ void print_time(int timerCount, double* timeVal){
 	//std::cout<<timeRecord.is_open()<<std::endl;
 	for(int i=0; i<line; i++){
 		for(int j=0; j<timerCount; j++){
-			timeRecord<<std::fixed<<std::setprecision(4)<<std::setw(10)<<lineTimeVal[i][j];
+			timeRecord<<std::fixed<<std::setprecision(4)<<std::setw(16)<<lineTimeVal[i][j];
 		}
 		timeRecord<<std::endl;
 	}
 	for(int j=0; j<timerCount; j++){
 		//std::cout<<j;
-		timeRecord<<std::fixed<<std::setprecision(4)<<std::setw(10)<<timeVal[j];
+		timeRecord<<std::fixed<<std::setprecision(4)<<std::setw(16)<<timeVal[j];
 		totalTimeVal[j]+=timeVal[j];
 		if(maxTimeVal[j]<timeVal[j])
 			maxTimeVal[j] = timeVal[j];
@@ -70,15 +70,15 @@ void print_time(int timerCount, double* timeVal){
 		totalTimeVal[i]/= line;
 	}
 	for(int i=0; i<timerCount; i++){
-		timeRecord<<std::fixed<<std::setprecision(4)<<std::setw(10)<<totalTimeVal[i];
+		timeRecord<<std::fixed<<std::setprecision(4)<<std::setw(16)<<totalTimeVal[i];
 	}
 	timeRecord<<"\nMax:\n";
 	for(int i=0; i<timerCount; i++){
-		timeRecord<<std::fixed<<std::setprecision(4)<<std::setw(10)<<maxTimeVal[i];
+		timeRecord<<std::fixed<<std::setprecision(4)<<std::setw(16)<<maxTimeVal[i];
 	}
 	timeRecord<<"\nMin:\n";
 	for(int i=0; i<timerCount; i++){
-		timeRecord<<std::fixed<<std::setprecision(4)<<std::setw(10)<<minTimeVal[i];
+		timeRecord<<std::fixed<<std::setprecision(4)<<std::setw(16)<<minTimeVal[i];
 	}
 	timeRecord<<std::endl<<std::endl;
 
@@ -131,13 +131,13 @@ void print_time(int timerCount, double* timeVal){
 			//std::cout<<timeRecord.is_open()<<std::endl;
 			for(int i=0; i<line; i++){
 				for(int j=0; j<timerCount; j++){
-					fprintf(timeRecord, "%.4lf\t\t",lineTimeVal[i][j]);
+					fprintf(timeRecord, "%.4lf\t\t\t",lineTimeVal[i][j]);
 				}
 				fprintf(timeRecord, "\n");
 			}
 			for(int j=0; j<timerCount; j++){
 				//std::cout<<j;
-				fprintf(timeRecord, "%.4lf\t\t",timeVal[j]);
+				fprintf(timeRecord, "%.4lf\t\t\t",timeVal[j]);
 				totalTimeVal[j]+=timeVal[j];
 				if(maxTimeVal[j]<timeVal[j])
 					maxTimeVal[j] = timeVal[j];
@@ -152,15 +152,15 @@ void print_time(int timerCount, double* timeVal){
 				totalTimeVal[i]/= line;
 			}
 			for(int i=0; i<timerCount; i++){
-				fprintf(timeRecord, "%.4lf\t\t",totalTimeVal[i]);
+				fprintf(timeRecord, "%.4lf\t\t\t",totalTimeVal[i]);
 			}
 			fprintf(timeRecord, "\nMax\n");
 			for(int i=0; i<timerCount; i++){
-				fprintf(timeRecord, "%.4lf\t\t",maxTimeVal[i]);
+				fprintf(timeRecord, "%.4lf\t\t\t",maxTimeVal[i]);
 			}
 			fprintf(timeRecord, "\nMin\n");
 			for(int i=0; i<timerCount; i++){
-				fprintf(timeRecord, "%.4lf\t\t",minTimeVal[i]);
+				fprintf(timeRecord, "%.4lf\t\t\t",minTimeVal[i]);
 			}
 			fprintf(timeRecord, "\n");
 

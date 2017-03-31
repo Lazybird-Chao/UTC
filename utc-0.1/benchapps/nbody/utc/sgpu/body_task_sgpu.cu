@@ -48,7 +48,8 @@ void BodySystemSGPU<T>::runImpl(double* runtime,
 	if(__localThreadId == 0){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}
-	Timer timer;
+	Timer timer, timer0;
+	double totaltime;
 
 	GpuData<T> posBuffer[2] = {GpuData<T>(m_numBodies*4, memtype), GpuData<T>(m_numBodies*4, memtype)};
 	GpuData<T> velBuffer(m_numBodies*4, memtype);
@@ -58,6 +59,7 @@ void BodySystemSGPU<T>::runImpl(double* runtime,
 	/*
 	 * copyin data
 	 */
+	timer0.start();
 	timer.start();
 	posBuffer[0].sync();
 	velBuffer.sync();
@@ -82,7 +84,7 @@ void BodySystemSGPU<T>::runImpl(double* runtime,
 	while(i<loops){
 		timer.start();
 		if(threadsperBody>1){
-			_integrateNBodySystemSmall_kernel<T><<<grid, block>>>(
+			_integrateNBodySystemSmall_kernel<T><<<grid, block, 0, __streamId>>>(
 				    		posBuffer[posBufferIndex].getD(),
 							posBuffer[1-posBufferIndex].getD(true),
 				    		velBuffer.getD(true),
@@ -94,7 +96,7 @@ void BodySystemSGPU<T>::runImpl(double* runtime,
 				    		threadsperBody);
 		}
 		else{
-			_integrateNBodySystem_kernel<T><<<grid, block>>>(
+			_integrateNBodySystem_kernel<T><<<grid, block, 0, __streamId>>>(
 						posBuffer[posBufferIndex].getD(),
 						posBuffer[1-posBufferIndex].getD(true),
 						velBuffer.getD(true),
@@ -105,7 +107,8 @@ void BodySystemSGPU<T>::runImpl(double* runtime,
 			    		ntiles);
 		}
 		checkCudaErr(cudaGetLastError());
-		checkCudaErr(cudaDeviceSynchronize());
+		//checkCudaErr(cudaDeviceSynchronize());
+		checkCudaErr(cudaStreamSynchronize(__streamId));
 		kernelTime += timer.stop();
 
 		i++;
@@ -114,13 +117,15 @@ void BodySystemSGPU<T>::runImpl(double* runtime,
 			 * copyout data
 			 */
 			timer.start();
+			posBuffer[1-posBufferIndex].sync();
+			copyoutTime += timer.stop();
 			int offset = (i/outInterval -1)*m_numBodies*4;
 			posBuffer[1-posBufferIndex].fetch(outbuffer+offset);
-			copyoutTime += timer.stop();
 		}
 		posBufferIndex = 1-posBufferIndex;
 	}
-	runtime[0] = kernelTime + copyinTime + copyoutTime;
+	runtime[0] = timer0.stop();
+	//runtime[0] = kernelTime + copyinTime + copyoutTime;
 	runtime[1] = kernelTime;
 	runtime[2] = copyinTime;
 	runtime[3] = copyoutTime;

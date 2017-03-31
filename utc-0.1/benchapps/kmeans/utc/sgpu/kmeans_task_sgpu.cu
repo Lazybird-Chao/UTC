@@ -9,7 +9,7 @@
 #include "kmeans_kernel.h"
 #include "../../../common/helper_err.h"
 
-#define MAX_ITERATION 300
+#define MAX_ITERATION 20
 
 
 template<typename T>
@@ -36,7 +36,8 @@ void kmeansSGPU<T>::runImpl(double *runtime, T threshold, int* loopcounters, Mem
 	if(__localThreadId == 0){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}
-	Timer timer;
+	Timer timer, timer0;
+	double totaltime;
 
 	T *new_clusters = new T[numClusters*numCoords];
 	int *new_clustersize = new int[numClusters];
@@ -56,6 +57,7 @@ void kmeansSGPU<T>::runImpl(double *runtime, T threshold, int* loopcounters, Mem
 	objs_d.initH(objects);
 	clusters_d.initH(clusters);
 
+	timer0.start();
 	timer.start();
 	objs_d.sync();
 	clusters_d.sync();
@@ -66,7 +68,7 @@ void kmeansSGPU<T>::runImpl(double *runtime, T threshold, int* loopcounters, Mem
 	double copyoutTime = 0;
 	double hostCompTime = 0;
 
-	int batchPerThread = 16;
+	int batchPerThread = 1;
 	int blocksize = 256;
 	int gridsize = (numObjs + blocksize*batchPerThread -1)/(blocksize*batchPerThread);
 	dim3 block(blocksize, 1, 1);
@@ -125,13 +127,20 @@ void kmeansSGPU<T>::runImpl(double *runtime, T threshold, int* loopcounters, Mem
 		hostCompTime += timer.stop();
 
 	}while(loops++ < MAX_ITERATION && (T)changedObjs/numObjs > threshold );
+
+	timer.start();
+	clusters_d.sync();
+	copyoutTime += timer.stop();
+	totaltime = timer0.stop();
 	clusters_d.fetch(clusters);
+
 	*loopcounters = loops;
 	delete new_clustersize;
 	delete new_clusters;
 	delete membership;
 
-	runtime[0] = kernelTime + copyinTime + copyoutTime + hostCompTime;
+	//runtime[0] = kernelTime + copyinTime + copyoutTime + hostCompTime;
+	runtime[0] = totaltime;
 	runtime[1] = kernelTime;
 	runtime[2] = copyinTime;
 	runtime[3] = copyoutTime;

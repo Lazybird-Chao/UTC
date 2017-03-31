@@ -46,7 +46,7 @@ int main(int argc, char* argv[]){
 	int opt;
 	extern char* optarg;
 	extern int optind;
-	opt=getopt(argc, argv, "vi:c:ob:");
+	opt=getopt(argc, argv, "vt:p:m:i:c:ob:");
 	while(opt!=EOF){
 		switch(opt){
 		case 'v':
@@ -75,7 +75,7 @@ int main(int argc, char* argv[]){
 		default:
 			break;
 		}
-		opt=getopt(argc, argv, "vi:c:ob:");
+		opt=getopt(argc, argv, "vt:p:m:i:c:ob:");
 	}
 	int procs = ctx.numProcs();
 	int myproc = ctx.getProcRank();
@@ -109,6 +109,7 @@ int main(int argc, char* argv[]){
 	/*
 	 * do md5
 	 */
+	std::cout<<"Start MD5 processing ..."<<std::endl;
 	double runtime[4];
 	Task<MD5SGPU> md5(ProcList(0), TaskType::gpu_task);
 	md5.init(&configArgs);

@@ -21,6 +21,7 @@
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_timer.h"
+#include "../../common/helper_printtime.h"
 
 #include "kmeans.h"
 
@@ -56,7 +57,7 @@ int main(int argc, char **argv) {
 
     /* some default values */
     numClusters       = 1;		/* Amount of cluster centers */
-    threshold         = 0.001; 	/* Percentage of objects that need to change membership for the clusting to continue */
+    threshold         = 0.01; 	/* Percentage of objects that need to change membership for the clusting to continue */
     isBinaryFile      = 0;		/* 0 if the input file is in ASCII format, 1 for binary format */
     filename          = NULL;	/* Name of the input file */
     outfile           = NULL;
@@ -148,5 +149,9 @@ int main(int argc, char **argv) {
 		printf("I/O time           = %10.4f sec\n", io_timing);
 		printf("Computation timing = %10.4f sec\n", clustering_timing);
     }
+
+    clustering_timing *= 1000;
+    print_time(1, &clustering_timing);
+
     return(0);
 }

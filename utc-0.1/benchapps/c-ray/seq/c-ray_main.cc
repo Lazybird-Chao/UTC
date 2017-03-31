@@ -37,8 +37,9 @@
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_timer.h"
+#include "../../common/helper_printtime.h"
 
-#define FTYPE double
+#define FTYPE float
 
 
 /*
@@ -153,8 +154,8 @@ int main(int argc, char **argv){
 	FILE *outfile = nullptr;
 	uint32_t *pixels;
 	bool printTime = false;
-	char* infile_path;
-	char* outfile_path;
+	char* infile_path = NULL;
+	char* outfile_path = NULL;
 
 	/* Parse command line options */
 	int     opt;
@@ -189,10 +190,10 @@ int main(int argc, char **argv){
 		std::cerr<<"Error, cannot open scene file."<<std::endl;
 		return 1;
 	}
-	if((outfile = fopen((const char*)outfile_path, "wb"))==nullptr){
+	/*if((outfile = fopen((const char*)outfile_path, "wb"))==nullptr){
 		std::cerr<<"Error, cannot open output file."<<std::endl;
 		return 1;
-	}
+	}*/
 
 	if(!(pixels = (uint32_t*)malloc(xres * yres * sizeof *pixels))) {
 		perror("pixel buffer allocation failed");
@@ -231,7 +232,8 @@ int main(int argc, char **argv){
 	/*
 	 * output the image
 	 */
-	if(outfile != nullptr){
+	if(outfile_path){
+		outfile = fopen((const char*)outfile_path, "wb");
 		fprintf(outfile, "P6\n%d %d\n255\n", xres, yres);
 		for(int i=0; i<xres * yres; i++) {
 			fputc((pixels[i] >> RSHIFT) & 0xff, outfile);
@@ -246,6 +248,7 @@ int main(int argc, char **argv){
 		free(obj_array);
 	free(pixels);
 
+	std::cout<<"Test complete !!!"<<std::endl;
 	if(printTime){
 		std::cout<<"Scene info:"<<std::endl;
 		std::cout<<"\tNumber of objects: "<<obj_count<<std::endl;
@@ -255,6 +258,9 @@ int main(int argc, char **argv){
 		std::cout<<"Output image: "<<xres<<" X "<<yres<<std::endl;
 		std::cout<<"Runtime: "<<std::fixed<<std::setprecision(4)<<runtime<<"(s)"<<std::endl;
 	}
+
+	runtime *= 1000;
+	print_time(1, &runtime);
 
 	return 0;
 

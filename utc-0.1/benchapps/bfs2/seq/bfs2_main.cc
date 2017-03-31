@@ -15,6 +15,7 @@
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_timer.h"
+#include "../../common/helper_printtime.h"
 #include "bfs2_main.h"
 
 
@@ -102,6 +103,10 @@ int main(int argc, char*argv[]){
 		std::cout<<"\t\tsource node id: "<<source_nodeid<<std::endl;
 		std::cout<<"\ttime info: "<<std::fixed<<std::setprecision(4)<<1000*runtime<<"(ms)"<<std::endl;
 	}
+
+	runtime *= 1000;
+	print_time(1, &runtime);
+
 	return 0;
 
 }

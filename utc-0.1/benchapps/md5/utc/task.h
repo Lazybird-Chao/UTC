@@ -12,8 +12,8 @@
 #include "Utc.h"
 
 dataSet_t datasets[] ={
-		{1024, 4094, 0},
-		{1024*16, 4096*2, 1},
+		{1024*2, 4094, 0},
+		{1024*32, 4096*2, 1},
 		{1024*256, 4096*4, 2},
 
 	{64, 64*8, 0},//0
@@ -61,10 +61,10 @@ public:
 		srand(datasets[index].rseed);
 		// for cuda memory coalease, we store one buffer in a colum,
 		// not a row
-		for(int i=0; i<configArgs->numinputs; i++){
+		for(long i=0; i<configArgs->numinputs; i++){
 			uint8_t *p = &(configArgs->inputs[i]);
 			int key = rand();
-			for(int j = 0; j<configArgs->size; j++){
+			for(long j = 0; j<configArgs->size; j++){
 				p[j*configArgs->numinputs] = (key+j) % 255;
 			}
 		}
@@ -81,11 +81,11 @@ public:
 
 		fp = fopen(outname, "w");
 
-		for(int i = 0; i < args->numinputs; i++) {
+		for(long i = 0; i < args->numinputs; i++) {
 			sprintf(buffer, "Buffer %d has checksum ", i);
 			fwrite(buffer, sizeof(char), strlen(buffer)+1, fp);
 			// the out is also stored in column order
-			for(int j = 0; j < DIGEST_SIZE*2; j+=2) {
+			for(long j = 0; j < DIGEST_SIZE*2; j+=2) {
 				sprintf(buffer+j, "%x", args->out[j/2*args->numinputs+i] & 0xf);
 				sprintf(buffer+j+1, "%x", args->out[j/2*args->numinputs+i] & 0xf0);
 			}

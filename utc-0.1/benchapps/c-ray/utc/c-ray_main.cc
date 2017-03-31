@@ -14,6 +14,7 @@
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_err.h"
+#include "../../common/helper_printtime.h"
 #include "Utc.h"
 #include "UtcGpu.h"
 using namespace iUtc;
@@ -26,8 +27,8 @@ FTYPE aspect = 1.333333;
 
 int main(int argc, char** argv){
 	bool printTime = false;
-	char* infile_path;
-	char* outfile_path;
+	char* infile_path = NULL;
+	char* outfile_path = NULL;
 	int xres=800;
 	int yres=600;
 	int rays_per_pixel=1;
@@ -122,9 +123,11 @@ int main(int argc, char** argv){
 	/*
 	 * output image
 	 */
-	Task<Output> fileOut(ProcList(0));
-	fileOut.run(outfile_path, pixels, xres, yres);
-	fileOut.wait();
+	if(outfile_path){
+		Task<Output> fileOut(ProcList(0));
+		fileOut.run(outfile_path, pixels, xres, yres);
+		fileOut.wait();
+	}
 
 	if(obj_array.mat)
 		free(obj_array.mat);
@@ -135,6 +138,7 @@ int main(int argc, char** argv){
 	if(pixels)
 		free(pixels);
 
+	std::cout<<"Test complete !!!"<<std::endl;
 	if(printTime){
 		std::cout<<"Scene info:"<<std::endl;
 		std::cout<<"\tNumber of objects: "<<g_vars.obj_count<<std::endl;
@@ -147,6 +151,11 @@ int main(int argc, char** argv){
 		std::cout<<"copy in time: "<<std::fixed<<std::setprecision(4)<<runtime[2]<<"(s)"<<std::endl;
 		std::cout<<"copy out time: "<<std::fixed<<std::setprecision(4)<<runtime[3]<<"(s)"<<std::endl;
 	}
+
+	for(int i=0; i<4; i++)
+		runtime[i] *= 1000;
+	print_time(4, runtime);
+
 
 	return 0;
 }
