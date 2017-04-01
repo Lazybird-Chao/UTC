@@ -69,7 +69,9 @@ void RotateSGPU::runImpl(double *runtime, MemType memtype){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}
 
-	Timer timer;
+	Timer timer, timer0;
+	double totaltime;
+
 	GpuData<Pixel> sImg(srcImg->getWidth()*srcImg->getHeight(), memtype);
 	GpuData<Pixel> dImg(dstImg->getWidth()*dstImg->getHeight(), memtype);
 	sImg.initH(srcImg->getPixelBuffer());
@@ -80,6 +82,7 @@ void RotateSGPU::runImpl(double *runtime, MemType memtype){
 	/*
 	 * copy data in
 	 */
+	timer0.start();
 	timer.start();
 	//memcpy(sImg.getH(true), srcImg->getPixelBuffer(), sImg.getBSize());
 	sImg.syncH();
@@ -119,13 +122,15 @@ void RotateSGPU::runImpl(double *runtime, MemType memtype){
 	//Pixel tmp = dImg.at(1000);
 	//std::cout<<tmp.r<<std::endl;
 	double copyoutTime = timer.stop();
+	totaltime = timer0.stop();
 	memcpy(dstImg->getPixelBuffer(), dImg.getH(), dImg.getBSize());
 
 
-	runtime[1] = copyinTime;
-	runtime[2] = copyoutTime;
-	runtime[3] = kernelTime;
-	runtime[0] = copyinTime+copyoutTime+kernelTime;
+	runtime[2] = copyinTime;
+	runtime[3] = copyoutTime;
+	runtime[1] = kernelTime;
+	//runtime[0] = copyinTime+copyoutTime+kernelTime;
+	runtime[0] = totaltime;
 
 	if(__localThreadId ==0){
 		std::cout<<"task: "<<getCurrentTask()->getName()<<" finish runImpl.\n";

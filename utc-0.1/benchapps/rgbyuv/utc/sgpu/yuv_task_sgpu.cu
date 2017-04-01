@@ -33,7 +33,9 @@ void YUVconvertSGPU::runImpl(double *runtime, int loop, MemType memtype){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}
 
-	Timer timer;
+	Timer timer, timer0;
+	double totaltime;
+
 	int w = srcImg->getWidth();
 	int h = srcImg->getHeight();
 	GpuData<uint8_t> img_y(w*h, memtype);
@@ -45,6 +47,7 @@ void YUVconvertSGPU::runImpl(double *runtime, int loop, MemType memtype){
 	/*
 	 * copy data in
 	 */
+	timer0.start();
 	timer.start();
 	//memcpy(sImg.getH(true), srcImg->getPixelBuffer(), sImg.getBSize());
 	sImg.sync();
@@ -84,15 +87,17 @@ void YUVconvertSGPU::runImpl(double *runtime, int loop, MemType memtype){
 	img_v.sync();
 	//std::cout<<img_y.at(10)<<std::endl;
 	double copyoutTime = timer.stop();
+	totaltime = timer0.stop();
 
 	memcpy(dstImg->y, img_y.getH(), img_y.getBSize());
 	memcpy(dstImg->u, img_u.getH(), img_u.getBSize());
 	memcpy(dstImg->v, img_v.getH(), img_v.getBSize());
 
-	runtime[1] = copyinTime;
-	runtime[2] = copyoutTime;
-	runtime[3] = kernelTime;
-	runtime[0] = copyinTime + copyoutTime + kernelTime;
+	runtime[2] = copyinTime;
+	runtime[3] = copyoutTime;
+	runtime[1] = kernelTime;
+	//runtime[0] = copyinTime + copyoutTime + kernelTime;
+	runtime[0] = totaltime;
 
 	if(__localThreadId ==0){
 		std::cout<<"task: "<<getCurrentTask()->getName()<<" finish runImpl.\n";

@@ -63,8 +63,8 @@ void UtcGpuContext::ctxInit(){
 					cudaStreamCreateWithFlags(&m_cudaStreamBound, cudaStreamNonBlocking));
 			}
 			else{
-				//checkCudaRuntimeErrors(cudaStreamCreateWithFlags(&m_cudaStreamBound, cudaStreamDefault));
-				m_cudaStreamBound = cudaStreamPerThread;
+				checkCudaRuntimeErrors(cudaStreamCreateWithFlags(&m_cudaStreamBound, cudaStreamDefault));
+				//m_cudaStreamBound = cudaStreamPerThread;
 			}
 			/* create stream with flag and priority
 			 */
@@ -79,8 +79,10 @@ void UtcGpuContext::ctxInit(){
 											priority);
 											*/
 		}
-		else
-			m_cudaStreamBound = cudaStreamLegacy; // stream 0 or default legacy stream
+		else{
+			//m_cudaStreamBound = cudaStreamLegacy; // stream 0 or default legacy stream
+			m_cudaStreamBound = NULL;
+		}
 		break;
 	default:
 		break;
@@ -118,8 +120,7 @@ void UtcGpuContext::ctxDestroy(){
 			 * may need to call stream sync before destroy it
 			 */
 			cudaStreamSynchronize(m_cudaStreamBound);
-			if(m_cudaStreamBound != cudaStreamLegacy &&
-					m_cudaStreamBound != cudaStreamPerThread)
+			if(m_cudaStreamBound != NULL )
 				checkCudaRuntimeErrors(cudaStreamDestroy(m_cudaStreamBound));
 		}
 	}

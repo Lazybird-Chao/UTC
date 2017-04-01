@@ -35,7 +35,8 @@ void MatrixMulSGPU<T>::runImpl(double *runtime, int blockSize, MemType memtype){
 	if(__localThreadId == 0){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}
-	Timer timer;
+	Timer timer, timer0;
+	double totaltime;
 
 	GpuData<T> mA(sizeM*sizeN, memtype);
 	GpuData<T> mB(sizeN*sizeP, memtype);
@@ -46,6 +47,7 @@ void MatrixMulSGPU<T>::runImpl(double *runtime, int blockSize, MemType memtype){
 	/*
 	 * copy data in
 	 */
+	timer0.start();
 	timer.start();
 	mA.sync();
 	mB.sync();
@@ -77,11 +79,13 @@ void MatrixMulSGPU<T>::runImpl(double *runtime, int blockSize, MemType memtype){
 	timer.start();
 	mC.sync();
 	double copyoutTime = timer.stop();
+	double totaltime = timer0.stop();
 	mC.fetch(matrixC);
 	//mC.fetch(matrixC);
 
 
-	runtime[0] = kernelTime + copyinTime + copyoutTime;
+	//runtime[0] = kernelTime + copyinTime + copyoutTime;
+	runtime[0] = totaltime;
 	runtime[1] = kernelTime;
 	runtime[2] = copyinTime;
 	runtime[3] = copyoutTime;

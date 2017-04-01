@@ -143,7 +143,11 @@ void GpuData<T>::cleanMem(){
 		checkCudaRuntimeErrors(cudaFree(m_devicePtr));
 		break;
 	case MemType::unified:
-		checkCudaRuntimeErrors(cudaFree(m_devicePtr));
+		if(getCurrentUtcGpuCtx()->getCurrentDeviceAttr(cudaDevAttrManagedMemory) ==1){
+			checkCudaRuntimeErrors(cudaFree(m_devicePtr));
+		}
+		else
+			checkCudaRuntimeErrors(cudaFreeHost(m_hostPtr));
 		break;
 	}
 	iscleaned = true;
