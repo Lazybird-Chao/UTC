@@ -18,7 +18,7 @@ void BodySystemSGPU<T>::initImpl(unsigned int numBodies,
 		T *pos,
 		T *vel){
 	if(__localThreadId ==0){
-		std::cout<<"task: "<<getCurrentTask()->getName()<<"begin init ...\n";
+		//std::cout<<"task: "<<getCurrentTask()->getName()<<"begin init ...\n";
 		m_numBodies = numBodies;
 		m_softeningSquared = softeningSquared;
 		m_damping = damping;
@@ -32,9 +32,9 @@ void BodySystemSGPU<T>::initImpl(unsigned int numBodies,
 	}
 
 	intra_Barrier();
-	if(__localThreadId ==0){
+	/*if(__localThreadId ==0){
 		std::cout<<"task: "<<getCurrentTask()->getName()<<" finish initImpl.\n";
-	}
+	}*/
 }
 
 template<typename T>
@@ -45,12 +45,13 @@ void BodySystemSGPU<T>::runImpl(double* runtime,
 			T deltaTime,
 			T *outbuffer,
 			MemType memtype){
-	if(__localThreadId == 0){
+	/*if(__localThreadId == 0){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
-	}
+	}*/
 	Timer timer, timer0;
 	double totaltime;
 
+	timer0.start();
 	GpuData<T> posBuffer[2] = {GpuData<T>(m_numBodies*4, memtype), GpuData<T>(m_numBodies*4, memtype)};
 	GpuData<T> velBuffer(m_numBodies*4, memtype);
 	posBuffer[0].initH(m_pos);
@@ -59,7 +60,7 @@ void BodySystemSGPU<T>::runImpl(double* runtime,
 	/*
 	 * copyin data
 	 */
-	timer0.start();
+	//timer0.start();
 	timer.start();
 	posBuffer[0].sync();
 	velBuffer.sync();
@@ -68,7 +69,7 @@ void BodySystemSGPU<T>::runImpl(double* runtime,
 	/*
 	 * iterate
 	 */
-	int mingridsize = 16;
+	int mingridsize = 1;
 	double kernelTime =0;
 	double copyoutTime = 0;
 	dim3 block(blocksize, 1,1);
@@ -130,9 +131,9 @@ void BodySystemSGPU<T>::runImpl(double* runtime,
 	runtime[2] = copyinTime;
 	runtime[3] = copyoutTime;
 
-	if(__localThreadId ==0){
+	/*if(__localThreadId ==0){
 		std::cout<<"task: "<<getCurrentTask()->getName()<<" finish runImpl.\n";
-	}
+	}*/
 }
 
 template class BodySystemSGPU<float>;

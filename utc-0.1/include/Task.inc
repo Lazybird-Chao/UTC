@@ -154,7 +154,7 @@ Task<T>::~Task()
 	(*m_procOstream)<<"["<<m_Name<<"] finish run!"<<std::endl;
 #endif
 		}
-
+		//std::cout<<m_Name<<" finish "<<std::endl;
 		delete m_realTaskInstance;
 
 	}
@@ -182,6 +182,7 @@ Task<T>::~Task()
 		PRINT_TIME_NOW(*m_procOstream)
 		(*m_procOstream)<<"["<<m_Name<<"] destroyed on proc "<<m_processRank<<" !!!"<<std::endl;
 #endif
+	//std::cout<<"end task destructor"<<std::endl;
 }
 
 template<class T>

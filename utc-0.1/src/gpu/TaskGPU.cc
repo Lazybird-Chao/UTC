@@ -80,12 +80,15 @@ TaskGPU::TaskGPU(TaskType taskType,
 }
 
 TaskGPU::~TaskGPU(){
+	//std::cout<<"enter gpu task destructor"<<std::endl;
 	for(auto& th : m_taskThreads)
 	{
 		if(th.joinable())
 		{
 			ThreadId_t id = th.get_id();
+			//std::cout<<"start finish one thread"<<std::endl;
 			th.join();
+			//std::cout<<"end finish one thread"<<std::endl;
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*m_procOstream)
 		(*m_procOstream)<<"cputask thread "<<id<<" join on "<<getpid()
@@ -117,7 +120,7 @@ TaskGPU::~TaskGPU(){
 	/****************************/
 	m_gpuIdBindList.clear();
 	free(m_allLocalThreadUtcGpuContexPtr);
-
+	//std::cout<<"end gputask desctructor"<<std::endl;
 
 }
 
