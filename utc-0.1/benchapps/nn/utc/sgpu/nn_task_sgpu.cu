@@ -45,9 +45,9 @@ void nnSGPU<T>::runImpl(double *runtime, MemType memtype){
 		targetObj[i] = 0;
 
 
-	GpuData<T> objs_d(numObjs*numCoords);
-	GpuData<T> distanceObjs(numObjs);
-	GpuData<T> targetObj_d(numCoords);
+	GpuData<T> objs_d(numObjs*numCoords, memtype);
+	GpuData<T> distanceObjs(numObjs, memtype);
+	GpuData<T> targetObj_d(numCoords, memtype);
 	objs_d.initH(objects);
 	targetObj_d.initH(targetObj);
 
@@ -78,73 +78,76 @@ void nnSGPU<T>::runImpl(double *runtime, MemType memtype){
 	cudaStreamSynchronize(__streamId);
 	checkCudaErr(cudaGetLastError());
 	kernelTime1 = timer.stop();
-	///*
+	timer.start();
+
+	GpuData<int> *topkIndexArray;
 	int blocksize2 = 16;
 	int gridsize2 = 1;
 	if(numObjs > blocksize2*numNN*8)
 		gridsize2 = numObjs/(blocksize2*numNN*8);
-	GpuData<int> topkIndexArray(numNN*gridsize2);
-	dim3 block2(blocksize2, 1, 1);
-	dim3 grid2(gridsize2, 1, 1);
-	timer.stop();
-	topk_kernel<<<grid2, block2, 0, __streamId>>>(
-			numObjs,
-			numNN,
-			distanceObjs.getD(),
-			topkIndexArray.getD(true));
-	//*/
-	cudaStreamSynchronize(__streamId);
-	checkCudaErr(cudaGetLastError());
+	if(gridsize2 >=16){
+		topkIndexArray  = new GpuData<int>(numNN*gridsize2, memtype);
+		dim3 block2(blocksize2, 1, 1);
+		dim3 grid2(gridsize2, 1, 1);
+		topk_kernel<<<grid2, block2, 0, __streamId>>>(
+				numObjs,
+				numNN,
+				distanceObjs.getD(),
+				topkIndexArray->getD(true));
+		cudaStreamSynchronize(__streamId);
+		checkCudaErr(cudaGetLastError());
+	}
 	kernelTime2 = timer.stop();
 
 	timer.start();
 	distanceObjs.sync();
-	topkIndexArray.sync();
+	if(gridsize2 >=16){
+		topkIndexArray->sync();
+	}
 	copyoutTime += timer.stop();
 
 
 	/* find k nearest objs */
-	/*
-	T *distancePtr = distanceObjs.getH();
-	timer.start();
-	for(int i=0; i<numNN; i++){
-		int min = i;
-		for(int j=i+1; j<numObjs; j++){
-			if(distancePtr[min]>distancePtr[j])
-				min = j;
+	if(gridsize2<16){
+		T *distancePtr = distanceObjs.getH();
+		timer.start();
+		for(int i=0; i<numNN; i++){
+			int min = i;
+			for(int j=i+1; j<numObjs; j++){
+				if(distancePtr[min]>distancePtr[j])
+					min = j;
+			}
+			if(min != i){
+				T tmp = distancePtr[i];
+				distancePtr[i] = distancePtr[min];
+				distancePtr[min] = tmp;
+			}
+			for(int j=0; j<numCoords; j++)
+				objsNN[i*numCoords + j] = objects[min*numCoords + j];
 		}
-		if(min != i){
-			T tmp = distancePtr[i];
-			distancePtr[i] = distancePtr[min];
-			distancePtr[min] = tmp;
-		}
-		for(int j=0; j<numCoords; j++)
-			objsNN[i*numCoords + j] = objects[min*numCoords + j];
+		hostCompTime = timer.stop();
 	}
-	hostCompTime = timer.stop();
-	*/
-
-	///*
-	T *distancePtr = distanceObjs.getH();
-	int *topkindexPtr = topkIndexArray.getH();
-	timer.start();
-	for(int i=0; i<numNN; i++){
-		int min = i;
-		for(int j=i+1; j<topkIndexArray.getSize(); j++){
-			if(distancePtr[topkindexPtr[min]]>distancePtr[topkindexPtr[j]])
-				min = j;
+	else{
+		T *distancePtr = distanceObjs.getH();
+		int *topkindexPtr = topkIndexArray->getH();
+		timer.start();
+		for(int i=0; i<numNN; i++){
+			int min = i;
+			for(int j=i+1; j<topkIndexArray->getSize(); j++){
+				if(distancePtr[topkindexPtr[min]]>distancePtr[topkindexPtr[j]])
+					min = j;
+			}
+			if(min != i){
+				int tmp = topkindexPtr[min];
+				topkindexPtr[min] = topkindexPtr[i];
+				topkindexPtr[i] = tmp;
+			}
+			for(int j=0; j<numCoords; j++){
+				objsNN[i*numCoords +j] = objects[topkindexPtr[i]*numCoords+j];
+			}
 		}
-		if(min != i){
-			int tmp = topkindexPtr[min];
-			topkindexPtr[min] = topkindexPtr[i];
-			topkindexPtr[i] = tmp;
-		}
-		for(int j=0; j<numCoords; j++){
-			objsNN[i*numCoords +j] = objects[topkindexPtr[i]*numCoords+j];
-		}
+		hostCompTime = timer.stop();
 	}
-	hostCompTime = timer.stop();
-	//*/
 
 	totaltime = timer0.stop();
 

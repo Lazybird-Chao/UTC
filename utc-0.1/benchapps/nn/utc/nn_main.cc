@@ -39,7 +39,7 @@ int main(int argc, char **argv){
 	int     opt;
 	extern char   *optarg;
 	extern int     optind;
-	while ( (opt=getopt(argc,argv,"o:i:n:bv"))!= EOF) {
+	while ( (opt=getopt(argc,argv,"o:i:n:bvt:p:m:"))!= EOF) {
 		switch (opt) {
 			case 'v': printTime = true;
 					  break;
@@ -122,6 +122,7 @@ int main(int argc, char **argv){
 	if(objsNN)
 		delete objsNN;
 
+	std::cout<<"Test complete !!!"<<std::endl;
 	if(printTime){
 		std::cout<<"Data info:"<<std::endl;
 		std::cout<<"\tnumObjs = "<<numObjs<<std::endl;
@@ -138,7 +139,7 @@ int main(int argc, char **argv){
 	for(int i=0; i<6; i++)
 		runtime[i] *= 1000;
 
-	//print_time(6, runtime);
+	print_time(6, runtime);
 
 	return 0;
 

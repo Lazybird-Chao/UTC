@@ -113,7 +113,7 @@ int main(int argc, char** argv){
 	delete distanceObjs;
 	delete targetObj;
 
-
+	std::cout<<"Test complete !!!"<<std::endl;
 	if(printTime){
 		std::cout<<"Data info:"<<std::endl;
 		std::cout<<"\tnumObjs = "<<numObjs<<std::endl;
@@ -129,7 +129,7 @@ int main(int argc, char** argv){
 	runtime[1] = computeTime1*1000;
 	runtime[2] = computeTime2*1000;
 	runtime[0] = runtime[1]+runtime[2];
-	//print_time(2, runtime);
+	print_time(3, runtime);
 
 	return 0;
 }
