@@ -101,7 +101,7 @@ int main(int argc, char **argv){
 	 * find k nearest neighbors
 	 */
 	FTYPE *objsNN = new FTYPE[numNN * numCoords];
-	double *runtime[5];
+	double runtime[6];
 	Task<nnSGPU<FTYPE>> nnCompute(ProcList(0), TaskType::gpu_task);
 	nnCompute.init(objects, objsNN, numObjs, numCoords, numNN);
 	nnCompute.run(runtime, memtype);
@@ -126,17 +126,19 @@ int main(int argc, char **argv){
 		std::cout<<"Data info:"<<std::endl;
 		std::cout<<"\tnumObjs = "<<numObjs<<std::endl;
 		std::cout<<"\tnumCoords = "<<numCoords<<std::endl;
-		std::cout<<"\numNN = "<<numNN<<std::endl;
+		std::cout<<"\tumNN = "<<numNN<<std::endl;
 		std::cout<<"Time info:"<<std::endl;
-		std::cout<<"kernel time: "<<std::fixed<<std::setprecision(4)<<runtime[1]*1000<<std::endl;
-		std::cout<<"host compute time: "<<std::fixed<<std::setprecision(4)<<runtime[4]*1000<<std::endl;
-		std::cout<<"copyin time "<<std::fixed<<std::setprecision(4)<<runtime[2]*1000<<std::endl;
-		std::cout<<"copyout time "<<std::fixed<<std::setprecision(4)<<runtime[3]*1000<<std::endl;
+		std::cout<<"kernel1 time: "<<std::fixed<<std::setprecision(4)<<runtime[1]*1000<<std::endl;
+		std::cout<<"kernel2 time: "<<std::fixed<<std::setprecision(4)<<runtime[2]*1000<<std::endl;
+		std::cout<<"host compute time: "<<std::fixed<<std::setprecision(4)<<runtime[5]*1000<<std::endl;
+		std::cout<<"copyin time "<<std::fixed<<std::setprecision(4)<<runtime[3]*1000<<std::endl;
+		std::cout<<"copyout time "<<std::fixed<<std::setprecision(4)<<runtime[4]*1000<<std::endl;
 	}
 
-	for(int i=0; i<5; i++)
+	for(int i=0; i<6; i++)
 		runtime[i] *= 1000;
-	//print_time(5, runtime);
+
+	//print_time(6, runtime);
 
 	return 0;
 

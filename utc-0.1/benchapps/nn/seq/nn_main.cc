@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <cstdio>
 #include <cstdlib>
+#include <cmath>
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_timer.h"
@@ -19,7 +20,7 @@
 int main(int argc, char** argv){
 	bool printTime = false;
 	int numNN, numCoords, numObjs;
-	int     isBinaryFile;
+	int     isBinaryFile=0;
 	char   *filename = nullptr;
 	char	*outfile = nullptr;
 	float **objects;       /* [numObjs][numCoords] data objects */
@@ -75,7 +76,7 @@ int main(int argc, char** argv){
 	for(int i=0; i<numNN; i++){
 		int min = i;
 		for(int j=i+1; j<numObjs; j++){
-			if(distanceObjs[min]<distanceObjs[j])
+			if(distanceObjs[min]>distanceObjs[j])
 				min = j;
 		}
 		if(min != i){
@@ -117,16 +118,17 @@ int main(int argc, char** argv){
 		std::cout<<"Data info:"<<std::endl;
 		std::cout<<"\tnumObjs = "<<numObjs<<std::endl;
 		std::cout<<"\tnumCoords = "<<numCoords<<std::endl;
-		std::cout<<"\numNN = "<<numNN<<std::endl;
+		std::cout<<"\tnumNN = "<<numNN<<std::endl;
 		std::cout<<"Time info:"<<std::endl;
-		std::cout<<"compute 1: "<<std::fixed<<std::setprecision(4)<<computeTime1<<std::endl;
-		std::cout<<"compute 2: "<<std::fixed<<std::setprecision(4)<<computeTime2<<std::endl;
-		std::cout<<"io time: "<<std::fixed<<std::setprecision(4)<<iotime<<std::endl;
+		std::cout<<"\tcompute 1: "<<std::fixed<<std::setprecision(4)<<computeTime1*1000<<std::endl;
+		std::cout<<"\tcompute 2: "<<std::fixed<<std::setprecision(4)<<computeTime2*1000<<std::endl;
+		std::cout<<"\tio time: "<<std::fixed<<std::setprecision(4)<<iotime*1000<<std::endl;
 	}
 
-	double runtime[2];
-	runtime[0] = computeTime1;
-	runtime[1] = computeTime2;
+	double runtime[3];
+	runtime[1] = computeTime1*1000;
+	runtime[2] = computeTime2*1000;
+	runtime[0] = runtime[1]+runtime[2];
 	//print_time(2, runtime);
 
 	return 0;

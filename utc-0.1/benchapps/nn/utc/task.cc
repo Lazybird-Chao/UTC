@@ -115,8 +115,8 @@ void FileRead<T>::runImpl(int isBinaryFile,
 	return;
 }
 
-template class ClusterDataInit<float>;
-template class ClusterDataInit<double>;
+template class FileRead<float>;
+template class FileRead<double>;
 
 
 template<typename T>
@@ -124,7 +124,7 @@ void Output<T>::runImpl(char* filename, T *objsNN, int numNN, int numCoords){
 	int l;
 	FILE* fp = fopen(filename, "w");
 	for(int j = 0; j < numNN; j++) {
-		fprintf(fp, "Cluster %d: ", j);
+		fprintf(fp, "Neighbor %d: ", j);
 		for(l = 0; l < numCoords; l++)
 			fprintf(fp, "%f ", objsNN[j*numCoords + l]);
 		fprintf(fp, "\n");

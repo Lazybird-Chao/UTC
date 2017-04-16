@@ -18,6 +18,11 @@ __global__ void distance_kernel(
 		T *distanceObjs,
 		int batchPerThread);
 
-
+template <typename T>
+__global__ void topk_kernel(
+		int numObjs,
+		int numNN,
+		T *distanceObjs,
+		int *topkIndexArray);
 
 #endif /* BENCHAPPS_KMEANS_CUDA_KMEANS_KERNEL_H_ */
