@@ -24,6 +24,8 @@ GpuData<T>::GpuData(MemType memtype){
 	isinitialized = false;
 	iscleaned = false;
 	m_hostPtr = m_devicePtr = NULL;
+	m_memtype = memtype;
+	m_status = MemStatus::unknown;
 }
 
 template <typename T>

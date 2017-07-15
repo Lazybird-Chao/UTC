@@ -128,9 +128,9 @@ void kmeansSGPU<T>::runImpl(double *runtime, T threshold, int* loopcounters, Mem
 
 	}while(loops++ < MAX_ITERATION && (T)changedObjs/numObjs > threshold );
 
-	timer.start();
-	clusters_d.sync();
-	copyoutTime += timer.stop();
+	//timer.start();
+	//clusters_d.sync();
+	//copyoutTime += timer.stop();
 	totaltime = timer0.stop();
 	clusters_d.fetch(clusters);
 

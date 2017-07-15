@@ -67,7 +67,8 @@ public:
 	 */
 	T *get(){
 		if(m_memtype == MemType::unified ||
-				m_status == MemStatus::host)
+				m_status == MemStatus::host ||
+				m_status == MemStatus::synced)
 			return m_hostPtr;
 		else{
 			return m_devicePtr;
@@ -82,7 +83,8 @@ public:
 
 	T *get(bool isModefied){
 		if(m_memtype == MemType::unified ||
-				m_status == MemStatus::host){
+				m_status == MemStatus::host ||
+				m_status == MemStatus::synced){
 			m_status = MemStatus::host;
 			return m_hostPtr;
 		}
@@ -205,7 +207,7 @@ public:
 	T at(int index){
 		return m_hostPtr[index];
 	}
-	void put(unsigned long index, const T value){
+	void assign(unsigned long index, const T value){
 		m_hostPtr[index] = value;
 		m_status = MemStatus::host;
 	}
@@ -296,6 +298,26 @@ public:
 						m_size_inbytes, cudaMemcpyDefault));
 			memcpy(dest, m_hostPtr, m_size_inbytes);
 			m_status = MemStatus::synced;
+		}
+	}
+
+	void fetchH(T* dest, unsigned long offset, unsigned long size){
+		memcpy(dest, m_hostPtr+offset, size);
+	}
+	void fetchD(T* dest, unsigned long offset, unsigned long size){
+		checkCudaRuntimeErrors(cudaMemcpy(dest, m_devicePtr+offset,
+				size, cudaMemcpyDefault));
+	}
+	void fetch(T* dest, unsigned long offset, unsigned long size){
+		if(m_memtype == MemType::unified ||
+				m_status == MemStatus::host ||
+				m_status == MemStatus::synced)
+			memcpy(dest, m_hostPtr+offset, size);
+		else{
+			checkCudaRuntimeErrors(cudaMemcpy(dest, m_devicePtr+offset,
+						size, cudaMemcpyDefault));
+			//memcpy(dest, m_hostPtr, m_size_inbytes);
+			//m_status = MemStatus::synced;
 		}
 	}
 
