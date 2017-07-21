@@ -47,7 +47,7 @@ void bfsSGPU::runImpl(double *runtime,
 	graph_nextWaveFlag.initH(0);
 	GpuData<uint8_t> graph_frontWaveFlag(total_graph_nodes, memtype);
 	graph_frontWaveFlag.initH(0);
-	graph_frontWaveFlag.put(src_node, 1);
+	graph_frontWaveFlag.assign(src_node, 1);
 	GpuData<Node_t> nodes(total_graph_nodes, memtype);
 	GpuData<Edge_t> edges(total_graph_edges, memtype);
 	GpuData<int> spath(total_graph_nodes, memtype);
@@ -55,7 +55,7 @@ void bfsSGPU::runImpl(double *runtime,
 	edges.initH(graph_edges);
 	spath.initH(shortestPath);
 	GpuData<uint8_t> stopflag(1, memtype);
-	stopflag.put(0, 0);
+	stopflag.assign(0, 0);
 	//std::cout<<total_graph_nodes<<" "<<total_graph_edges<<" "<<src_node<<std::endl;
 
 	/*
@@ -79,7 +79,7 @@ void bfsSGPU::runImpl(double *runtime,
 	double kernelTime=0;
 	double copyoutTime=0;
 	while(stopflag.at(0)==0){
-		stopflag.put(0,1);
+		stopflag.assign(0,1);
 		timer.start();
 		stopflag.sync();
 		copyinTime += timer.stop();

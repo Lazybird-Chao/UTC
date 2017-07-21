@@ -112,16 +112,14 @@ void nnSGPU<T>::runImpl(double *runtime, MemType memtype){
 		T *distancePtr = distanceObjs.getH();
 		timer.start();
 		for(int i=0; i<numNN; i++){
-			int min = i;
-			for(int j=i+1; j<numObjs; j++){
-				if(distancePtr[min]>distancePtr[j])
+			int min =0;
+			while(distancePtr[min]<0)
+				min++;
+			for(int j=0; j<numObjs; j++){
+				if(distancePtr[j]>=0 && distancePtr[min]>distancePtr[j])
 					min = j;
 			}
-			if(min != i){
-				T tmp = distancePtr[i];
-				distancePtr[i] = distancePtr[min];
-				distancePtr[min] = tmp;
-			}
+			distancePtr[min] = -1;
 			for(int j=0; j<numCoords; j++)
 				objsNN[i*numCoords + j] = objects[min*numCoords + j];
 		}
@@ -132,18 +130,17 @@ void nnSGPU<T>::runImpl(double *runtime, MemType memtype){
 		int *topkindexPtr = topkIndexArray->getH();
 		timer.start();
 		for(int i=0; i<numNN; i++){
-			int min = i;
-			for(int j=i+1; j<topkIndexArray->getSize(); j++){
-				if(distancePtr[topkindexPtr[min]]>distancePtr[topkindexPtr[j]])
+			int min = 0;
+			while(distancePtr[topkindexPtr[min]]<0)
+				min++;
+			for(int j=0; j<topkIndexArray->getSize(); j++){
+				if(distancePtr[topkindexPtr[j]]>=0 &&
+							   distancePtr[topkindexPtr[min]]>distancePtr[topkindexPtr[j]])
 					min = j;
 			}
-			if(min != i){
-				int tmp = topkindexPtr[min];
-				topkindexPtr[min] = topkindexPtr[i];
-				topkindexPtr[i] = tmp;
-			}
+			distancePtr[topkindexPtr[min]] = -1;
 			for(int j=0; j<numCoords; j++){
-				objsNN[i*numCoords +j] = objects[topkindexPtr[i]*numCoords+j];
+				objsNN[i*numCoords +j] = objects[topkindexPtr[min]*numCoords+j];
 			}
 		}
 		hostCompTime = timer.stop();

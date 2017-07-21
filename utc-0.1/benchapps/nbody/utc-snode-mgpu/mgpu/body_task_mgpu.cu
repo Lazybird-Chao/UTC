@@ -10,6 +10,10 @@
 #include "bodysystem_kernel.h"
 #include <iostream>
 
+template<typename T>
+thread_local int BodySystemMGPU<T>::local_numBodies;
+template<typename T>
+thread_local int BodySystemMGPU<T>::local_startBodyIndex;
 
 template<typename T>
 void BodySystemMGPU<T>::initImpl(unsigned int numBodies,
@@ -51,7 +55,7 @@ void BodySystemMGPU<T>::initImpl(unsigned int numBodies,
 }
 
 template<typename T>
-void BodySystemMGPU<T>::runImpl(double** runtime,
+void BodySystemMGPU<T>::runImpl(double runtime[][4],
 			int loops,
 			int outInterval,
 			int blocksize,
@@ -91,14 +95,18 @@ void BodySystemMGPU<T>::runImpl(double** runtime,
 		threadsperBody = 1;
 	else
 		threadsperBody = blocksize*mingridsize/local_numBodies;  //should keep this dividable
-	dim3 grid(local_numBodies*threadsperBody/blocksize, 1,1);
+	dim3 grid((local_numBodies*threadsperBody+blocksize-1)/blocksize, 1,1);
 	int ntiles = m_numBodies/block.x;
 	int i=0;
 	//int posBufferIndex = 0;
+	T* tmp[2];
+	tmp[0] = oldPosBuffer;
+	tmp[1] = newPosBuffer;
+	int cur = 0;
 	while(i<loops){
 		//copy all bodies new pos data to gpu
 		timer.start();
-		posBuffer[0].putD(oldPosBuffer);
+		posBuffer[0].putD(tmp[cur]);
 		copyinTime += timer.stop();
 
 		//compute new pos
@@ -140,19 +148,17 @@ void BodySystemMGPU<T>::runImpl(double** runtime,
 		 * gather results of each thread together
 		 */
 		timer.start();
-		posBuffer[1].fetchD(newPosBuffer+local_startBodyIndex*4);
+		posBuffer[1].fetchD(tmp[1-cur]+local_startBodyIndex*4);
 		copyoutTime += timer.stop();
 
 		intra_Barrier();
-		T *tmp = newPosBuffer;
-		newPosBuffer = oldPosBuffer;
-		oldPosBuffer = tmp;
-
 		i++;
 		if(i%outInterval ==0){
 			int offset = (i/outInterval -1)*m_numBodies*4;
-			memcpy(outbuffer+offset, oldPosBuffer, m_numBodies*4*sizeof(T));
+			memcpy(outbuffer+offset+local_startBodyIndex*4, tmp[1-cur]+local_startBodyIndex*4,
+					local_numBodies*4*sizeof(T));
 		}
+		cur = 1-cur;
 		//posBufferIndex = 1-posBufferIndex;
 	}
 	runtime[__localThreadId][0] = timer0.stop();

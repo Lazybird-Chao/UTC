@@ -11,6 +11,8 @@
 
 #define MAX_ITERATION 20
 
+template<typename T> thread_local int kmeansMGPU<T>::local_numObjs;
+template<typename T> thread_local int kmeansMGPU<T>::local_startObjIndex;
 
 template<typename T>
 void kmeansMGPU<T>::initImpl(T*objects, T*clusters, int numObjs, int numCoords, int numClusters){
@@ -48,7 +50,7 @@ void kmeansMGPU<T>::initImpl(T*objects, T*clusters, int numObjs, int numCoords, 
 }
 
 template<typename T>
-void kmeansMGPU<T>::runImpl(double **runtime, T threshold, int* loopcounters, MemType memtype){
+void kmeansMGPU<T>::runImpl(double runtime[][5], T threshold, int* loopcounters, MemType memtype){
 	if(__localThreadId == 0){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}

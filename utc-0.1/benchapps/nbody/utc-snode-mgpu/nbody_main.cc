@@ -207,7 +207,7 @@ int main(int argc, char** argv){
 	/*
 	 * run Nbody process
 	 */
-	Task<BodySystemMGPU<FTYPE>> nbody(ProcList(0), TaskType::gpu_task);
+	Task<BodySystemMGPU<FTYPE>> nbody(ProcList(nthreads, 0), TaskType::gpu_task);
 	nbody.init(numBodies,
 			(FTYPE)activeParams.m_softening*(FTYPE)activeParams.m_softening,
 			activeParams.m_damping,

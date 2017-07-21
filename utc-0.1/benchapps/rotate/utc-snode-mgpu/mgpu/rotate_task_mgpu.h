@@ -28,9 +28,15 @@ private:
 	PrivateScopedData<int> num_rows;
 
 public:
+	RotateMGPU():
+		start_row(this),
+		end_row(this),
+		num_rows(this){
+
+	}
 	void initImpl(Image* srcImg, Image* dstImg, int angle);
 
-	void runImpl(double **runtime, MemType memtype=MemType::pageable);
+	void runImpl(double runtime[][4], MemType memtype=MemType::pageable);
 };
 
 

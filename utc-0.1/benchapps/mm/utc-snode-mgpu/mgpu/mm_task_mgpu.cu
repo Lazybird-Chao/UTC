@@ -10,6 +10,11 @@
 #include "../../../common/helper_err.h"
 #include <iostream>
 
+template<typename T>
+thread_local int MatrixMulMGPU<T>::start_row;
+
+template<typename T>
+thread_local int MatrixMulMGPU<T>::local_numRows;
 
 template<typename T>
 void MatrixMulMGPU<T>::initImpl(T *mA, T *mB, T *mC, int M, int N, int P){
@@ -25,11 +30,11 @@ void MatrixMulMGPU<T>::initImpl(T *mA, T *mB, T *mC, int M, int N, int P){
 	}
 	int rowsPerThread = M/__numLocalThreads;
 	if(__localThreadId<M%__numLocalThreads){
-		local_numRows = rowPerThread+1;
+		local_numRows = rowsPerThread+1;
 		start_row = __localThreadId*(rowsPerThread+1);
 	}
 	else{
-		local_numRows = rowPerThread;
+		local_numRows = rowsPerThread;
 		start_row = __localThreadId*rowsPerThread + M%__numLocalThreads;
 	}
 
@@ -41,12 +46,11 @@ void MatrixMulMGPU<T>::initImpl(T *mA, T *mB, T *mC, int M, int N, int P){
 }
 
 template<typename T>
-void MatrixMulMGPU<T>::runImpl(double *runtime, int blockSize, MemType memtype){
+void MatrixMulMGPU<T>::runImpl(double runtime[][4], int blockSize, MemType memtype){
 	if(__localThreadId == 0){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}
 	Timer timer, timer0;
-	double totaltime;
 
 	GpuData<T> partial_mA(local_numRows*sizeN, memtype);
 	GpuData<T> mB(sizeN*sizeP, memtype);

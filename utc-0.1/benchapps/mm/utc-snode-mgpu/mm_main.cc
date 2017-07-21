@@ -43,6 +43,7 @@ int main(int argc, char**argv){
 	int mtype = 0;
 	/* initialize UTC context */
 	UtcContext &ctx = UtcContext::getContext(argc, argv);
+	std::cout<<"UTC context initialized !\n";
 
 	int opt;
 	extern char* optarg;
@@ -112,7 +113,7 @@ int main(int argc, char**argv){
 	 * do computation
 	 */
 	double runtime_m[8][4];
-	Task<MatrixMulMGPU<FTYPE>> mm(ProcList(0), TaskType::gpu_task);
+	Task<MatrixMulMGPU<FTYPE>> mm(ProcList(nthreads, 0), TaskType::gpu_task);
 	mm.init(matrixA, matrixB, matrixC, matrixSize, matrixSize, matrixSize);
 	mm.run(runtime_m, blockSize, memtype);
 	mm.wait();
@@ -141,7 +142,8 @@ int main(int argc, char**argv){
 		std::cout<<"no errors in results\n";
 	else
 		std::cout<<"errors: "<<error<<std::endl;
-	*/
+		*/
+
 
 	delete matrixA;
 	delete matrixB;

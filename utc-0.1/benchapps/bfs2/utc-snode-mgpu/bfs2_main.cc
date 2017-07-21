@@ -26,6 +26,7 @@ int main(int argc, char**argv){
 	int mtype = 0;
 	/* initialize UTC context */
 	UtcContext &ctx = UtcContext::getContext(argc, argv);
+	std::cout<<"UTC context initialized !"<<std::endl;
 
 	/*
 	 * parse arguments
@@ -107,6 +108,7 @@ int main(int argc, char**argv){
 	/*
 	 * do bfs
 	 */
+	std::cout<<"Do bfs task ... "<<std::endl;
 	Task<bfsMGPU> bfs(ProcList(nthreads, 0), TaskType::gpu_task);
 	bfs.init(graph_nodes,
 			graph_edges,

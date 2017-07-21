@@ -30,7 +30,7 @@ libutcgpu.a: $(OBJS)
 	cp libutcgpu.a $(PROJECT_LIBDIR)
 	cp $(OBJS) $(PROJECT_LIBDIR)
 	@echo "make gpulibrary succefful !!!"
-CudaDeviceManager.o: CudaDeviceManager.cc
+CudaDeviceManager.o: CudaDeviceManager.cc CudaDeviceManager.h  UtcGpuBasics.h
 	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 TaskGPU.o: TaskGPU.cc
 	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)

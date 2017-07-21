@@ -28,13 +28,13 @@ private:
 	int* local_clusters_size_array;
 	int g_changedObjs;
 	int* local_changedObjs_array;
-	thread_local int local_numObjs;
-	thread_local int local_startObjIndex;
+	static thread_local int local_numObjs;
+	static thread_local int local_startObjIndex;
 
 public:
 	void initImpl(T* objects, T* clusters, int numObjs, int numCoords, int numClusters);
 
-	void runImpl(double **runtime, T threshold, int* loop, MemType memtype);
+	void runImpl(double runtime[][5], T threshold, int* loop, MemType memtype);
 
 };
 

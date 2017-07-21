@@ -1,5 +1,5 @@
 mainobj = md5_main.o
-taskobj = md5_task_sgpu.o
+taskobj = md5_task_mgpu.o
 kernelobj = md5_kernel.o
 
 bin = md5
@@ -12,10 +12,12 @@ NWARNING = -w
 GENCODE_SM20 = -gencode arch=compute_20,code=sm_20
 GENCODE_SM30 = -gencode arch=compute_30,code=sm_30
 GENCODE_SM35 = -gencode arch=compute_35,code=sm_35
+GENCODE_SM37 = -gencode arch=compute_37,code=sm_37
+
 
 NVCC = nvcc
-NVCCFLAGS = $(GENCODE_SM35) --device-c
-NVLINKFLAGS = $(GENCODE_SM35) --device-link
+NVCCFLAGS = $(GENCODE_SM37) --device-c
+NVLINKFLAGS = $(GENCODE_SM37) --device-link
 
 
 DEBUG = 0
@@ -54,13 +56,13 @@ helperObj = helperObj.o
 $(helperObj):$(COMMONDIR)/helper_getopt.c
 	$(C++) -o $@  -c $<
 
-md5_main.o: md5_main.cc task.h ./sgpu/md5_task_sgpu.h
+md5_main.o: md5_main.cc task.h ./mgpu/md5_task_mgpu.h
 	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
     
-md5_task_sgpu.o: ./sgpu/md5_task_sgpu.cu ./sgpu/md5_task_sgpu.h ./sgpu/md5_kernel.h
+md5_task_mgpu.o: ./mgpu/md5_task_mgpu.cu ./mgpu/md5_task_mgpu.h ./mgpu/md5_kernel.h
 	$(NVCC) -o $@  $(CCFLAGS) $(NVCCFLAGS) $(NWARNING) $(UTC_INCLUDE) $(MPI_INCLUDE) $(CUDA_INCLUDE) $(BOOST_INCLUDE) -c $<
 
-$(kernelobj): ./sgpu/md5_kernel.cc ./sgpu/md5_kernel.h
+$(kernelobj): ./mgpu/md5_kernel.cc ./mgpu/md5_kernel.h
 	$(NVCC) -o $@  -x cu $(CCFLAGS) $(NVCCFLAGS) $(NWARNING) $(CUDA_INCLUDE) -c $<
     
 tmplink.o: $(taskobj) $(kernelobj)

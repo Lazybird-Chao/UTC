@@ -25,9 +25,14 @@ private:
 	PrivateScopedData<int> num_rows;
 
 public:
+	YUVconvertMGPU()
+		:start_row(this),
+		 end_row(this),
+		 num_rows(this){
+	}
 	void initImpl(Image* srcImg, yuv_color_t *dstImg);
 
-	void runImpl(double **runtime, int loop, MemType memtype = MemType::pageable);
+	void runImpl(double runtime[][4], int loop, MemType memtype = MemType::pageable);
 
 };
 

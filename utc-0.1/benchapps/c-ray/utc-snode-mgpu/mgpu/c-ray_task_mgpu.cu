@@ -13,6 +13,9 @@ __device__  vec3_t lights_d[MAX_LIGHTS];
 __device__  vec2_t urand_d[NRAN];
 __device__  int irand_d[NRAN];
 
+thread_local int crayMGPU::local_yres;
+thread_local int crayMGPU::local_startYresIndex;
+
 void crayMGPU::initImpl(global_vars g_vars,
 		sphere_array_t obj_array,
 		uint32_t *pixels,
@@ -42,15 +45,15 @@ void crayMGPU::initImpl(global_vars g_vars,
 	}
 }
 
-void crayMGPU::runImpl(double **runtime, MemType memtype){
+void crayMGPU::runImpl(double runtime[][4], MemType memtype){
 	if(__localThreadId == 0){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}
 	Timer timer, timer0;
 	double totaltime;
 
-	int xres = g_vars.xres;
-	int yres = g_vars.yres;
+	int xres = g_vars.xres;	//column
+	int yres = g_vars.yres;	//row
 	GpuData<unsigned int> partial_pixels_d(xres*local_yres);
 	GpuData<vec3_t> obj_array_pos(g_vars.obj_count);
 	GpuData<material_t> obj_array_mat(g_vars.obj_count);
@@ -97,14 +100,14 @@ void crayMGPU::runImpl(double **runtime, MemType memtype){
 	stacksize = 1024*4;
 	cudaThreadSetLimit(cudaLimitStackSize, stacksize);
 	dim3 block(16, 16, 1);
-	dim3 grid((local_xres+block.x-1)/block.x, (yres+block.y-1)/block.y,1);
+	dim3 grid((xres+block.x-1)/block.x, (local_yres+block.y-1)/block.y,1);
 	timer.start();
 	render_kernel<<<grid, block, 0, __streamId>>>(
 			partial_pixels_d.getD(true),
 			obj_array_pos.getD(),
 			obj_array_mat.getD(),
 			obj_array_rad.getD(),
-			startYresIndex
+			local_startYresIndex
 			);
 	checkCudaErr(cudaGetLastError());
 	checkCudaErr(cudaStreamSynchronize(__streamId));

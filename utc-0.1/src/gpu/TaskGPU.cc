@@ -366,10 +366,10 @@ int TaskGPU::execImpl(std::function<void()> execHandle){
 }
 
 int TaskGPU::waitImpl(){
-	m_jobHandleQueue.push_back(m_nullJobHandle);
 	std::unique_lock<std::mutex> LCK1(m_jobExecMutex);
 	m_jobDoneWait->reset(m_numLocalThreads);
 	m_jobQueue.push_back(threadJobType::job_wait);
+	m_jobHandleQueue.push_back(m_nullJobHandle);
 	LCK1.unlock();
 	m_jobExecCond.notify_all();
 #ifdef USE_DEBUG_LOG
@@ -383,9 +383,9 @@ int TaskGPU::waitImpl(){
 }
 
 int TaskGPU::finishImpl(){
-	m_jobHandleQueue.push_back(m_nullJobHandle);
 	std::unique_lock<std::mutex> LCK1(m_jobExecMutex);
 	m_jobQueue.push_back(threadJobType::job_finish);
+	m_jobHandleQueue.push_back(m_nullJobHandle);
 	LCK1.unlock();
 	m_jobExecCond.notify_all();
 	// will wait all thread calling thread exit

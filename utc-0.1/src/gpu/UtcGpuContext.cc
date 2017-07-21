@@ -9,6 +9,7 @@
 #include "UtcGpuContext.h"
 #include "CudaDeviceManager.h"
 #include "helper_cuda.h"
+#include <iostream>
 
 namespace iUtc{
 
@@ -35,7 +36,7 @@ void UtcGpuContext::ctxInit(){
 		 * bind cuda device primary ctx to this host thread
 		 */
 		checkCudaRuntimeErrors(cudaSetDevice(m_cudaDeviceId));
-
+		std::cout<<"cuda device id:"<<m_cudaDeviceId<<std::endl;
 		/*
 		 * set flag for device, should be done in other places,
 		 * here we just bind the primary cuda ctx to this host thread

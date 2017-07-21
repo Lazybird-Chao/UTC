@@ -35,6 +35,7 @@ int main(int argc, char**argv){
 	int mtype = 0;
 	/* initialize UTC context */
 	UtcContext &ctx = UtcContext::getContext(argc, argv);
+	std::cout<<"UTC context initialized !\n";
 
 	/* Parse command line options */
 	int     opt;
@@ -154,7 +155,7 @@ int main(int argc, char**argv){
 		printf("gpu kernel time    = %10.4f sec\n", runtime[1]);
 		printf("host compute time  = %10.4f sec\n", runtime[4]);
 		//clustering_timing = copyinTime + copyoutTime + kernelTime + hostCompTime;
-		printf("Total time = %10.4f sec\n", runtime[0]);
+		printf("Total time         = %10.4f sec\n", runtime[0]);
 	}
 
 	for(int i=0; i<5; i++)

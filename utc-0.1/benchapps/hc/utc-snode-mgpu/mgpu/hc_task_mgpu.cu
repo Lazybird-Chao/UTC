@@ -15,6 +15,9 @@
 #define H 1.0
 #define T_SRC0 550.0
 
+thread_local int hcMGPU::local_numRows;
+thread_local int hcMGPU::local_startRowIndex;
+
 template<typename T>
 void init_domain(T *domain_ptr, int h, int w){
 	for (int j = 0; j < (int)floor(h/H); j++) {
@@ -64,17 +67,17 @@ void hcMGPU::initImpl(int w, int h, FTYPE e, FTYPE*dmatrix){
 }
 
 
-void hcMGPU::runImpl(double *runtime, int *iteration, int blockSize, MemType memtype){
+void hcMGPU::runImpl(double runtime[][5], int *iteration, int blockSize, MemType memtype){
 	if(__localThreadId == 0){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}
 	Timer timer, timer0;
 	double totaltime;
 
-	GpuData<FTYPE> partial_U_Curr((local_numRows)*(int)floor(w/H), memtype);
-	GpuData<FTYPE> partial_U_Next((local_numRows)*(int)floor(w/H), memtype);
+	GpuData<FTYPE> local_U_Curr((local_numRows)*(int)floor(w/H), memtype);
+	GpuData<FTYPE> local_U_Next((local_numRows)*(int)floor(w/H), memtype);
 	GpuData<FTYPE> converge_sqd((int)floor(w/H), memtype);
-	init_domain(partial_U_Curr.getH(true), local_numRows, w);
+	init_domain(local_U_Curr.getH(true), local_numRows, w);
 
 	GpuData<FTYPE> top_row((int)floor(w/H), memtype);
 	GpuData<FTYPE> bottom_row((int)floor(w/H), memtype);
@@ -84,7 +87,7 @@ void hcMGPU::runImpl(double *runtime, int *iteration, int blockSize, MemType mem
 	//
 	timer0.start();
 	timer.start();
-	U_Curr.sync();
+	local_U_Curr.sync();
 	top_row.sync();
 	bottom_row.sync();
 	double copyinTime = timer.stop();
@@ -175,18 +178,18 @@ void hcMGPU::runImpl(double *runtime, int *iteration, int blockSize, MemType mem
 	//*iteration = iters;
 	timer.start();
 	if(iters % 2 ==1){
-		U_Next.sync();
+		local_U_Next.sync();
 		copyoutTime += timer.stop();
 		totaltime = timer0.stop();
-		U_Next.fetch(domainMatrix+local_startRowIndex*w);
+		local_U_Next.fetch(domainMatrix+local_startRowIndex*w);
 	}
 	else{
-		U_Curr.sync();
+		local_U_Curr.sync();
 		copyoutTime += timer.stop();
 		totaltime = timer0.stop();
-		U_Curr.fetch(domainMatrix+local_startRowIndex*w);
+		local_U_Curr.fetch(domainMatrix+local_startRowIndex*w);
 	}
-
+	intra_Barrier();
 	runtime[__localThreadId][0] = totaltime;
 	runtime[__localThreadId][1]= kernelTime;
 	runtime[__localThreadId][2]= copyinTime;

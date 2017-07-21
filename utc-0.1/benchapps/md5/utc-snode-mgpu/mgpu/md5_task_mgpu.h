@@ -18,14 +18,14 @@ class MD5MGPU: public UserTaskBase{
 private:
 	config_t *md5Config;
 
-	thread_local long local_numBuffers;
-	thread_local long local_startBufferIndex;
-	thread_local uint8_t* local_buffer;
+	static thread_local long local_numBuffers;
+	static thread_local long local_startBufferIndex;
+	static thread_local uint8_t* local_buffer;
 
 public:
 	void initImpl(config_t *args);
 
-	void runImpl(double** runtime, int blocksize, MemType memtype);
+	void runImpl(double runtime[][4], int blocksize, MemType memtype);
 
 };
 

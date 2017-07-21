@@ -58,15 +58,15 @@ void RotateMGPU::initImpl(Image* srcImg, Image* dstImg, int angle){
 
 	}
 	intra_Barrier();
-	int rows_per_thread = outH/__numLocalThreads;
-	if(__localThreadId < outH % __numLocalThreads){
+	int rows_per_thread = dstImg->getHeight()/__numLocalThreads;
+	if(__localThreadId < dstImg->getHeight() % __numLocalThreads){
 		num_rows = rows_per_thread+1;
 		start_row = __localThreadId*(rows_per_thread+1);
 		end_row = start_row + (rows_per_thread+1) -1;
 	}
 	else{
 		num_rows = rows_per_thread;
-		start_row = __localThreadId*rows_per_thread + outH % __numLocalThreads;
+		start_row = __localThreadId*rows_per_thread + dstImg->getHeight() % __numLocalThreads;
 		end_row = start_row + rows_per_thread -1;
 	}
 
@@ -76,7 +76,7 @@ void RotateMGPU::initImpl(Image* srcImg, Image* dstImg, int angle){
 	}
 }
 
-void RotateMGPU::runImpl(double **runtime, MemType memtype){
+void RotateMGPU::runImpl(double runtime[][4], MemType memtype){
 	if(__localThreadId == 0){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}

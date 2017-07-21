@@ -29,13 +29,17 @@ CudaDeviceManager::CudaDeviceManager(){
 	driverMinor = (driverVersion%100)/10;
 	runtimeMajor = runtimeVersion/1000;
 	runtimeMinor = (runtimeVersion%100)/10;
+	//std::cout<<"CUDA check version !\n";
 
 	checkCudaRuntimeErrors(cudaGetDeviceCount(&m_numTotalDevices));
 	//std::cout<<m_numTotalDevices<<driverMajor<<runtimeMajor<<ERROR_LINE<<std::endl;
+	//std::cout<<"CUDA check count !\n";
+
 	m_numDevicesForUse = 0;
 	for(int i=0; i<MAX_DEVICE_PER_NODE;i++)
 		m_deviceForUseArray[i] = -1;
 	for(int i=0; i<m_numTotalDevices; i++){
+#if CHECK_GPU_ABILITY
 		checkCudaRuntimeErrors(cudaSetDevice(i));
 		cudaDeviceProp *devProp = (cudaDeviceProp*) malloc(sizeof(cudaDeviceProp));
 		checkCudaRuntimeErrors(cudaGetDeviceProperties(devProp, i));
@@ -58,6 +62,17 @@ CudaDeviceManager::CudaDeviceManager(){
 			m_numDevicesForUse++;
 			cudaDeviceReset();
 		}
+#else
+		m_deviceForUseArray[m_numDevicesForUse] = i;
+		m_deviceInfoArray[m_numDevicesForUse].devID = i;
+		m_deviceInfoArray[m_numDevicesForUse].smMajor = 9;
+		m_deviceInfoArray[m_numDevicesForUse].smMinor = 9;
+		m_deviceInfoArray[m_numDevicesForUse].deviceProp = nullptr;
+		m_deviceInfoArray[m_numDevicesForUse].inited = false;
+		m_deviceInfoArray[m_numDevicesForUse].reseted = false;
+		m_numDevicesForUse++;
+#endif
+
 	}
 
 }

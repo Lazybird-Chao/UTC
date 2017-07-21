@@ -24,13 +24,13 @@ private:
 	int sizeN;
 	int sizeP;
 
-	thread_local int start_row;
-	thread_local int local_numRows;
+	static thread_local int start_row;
+	static thread_local int local_numRows;
 
 public:
 	void initImpl(T *mA, T *mB, T *mC, int M, int N, int P);
 
-	void runImpl(double *runtime, int blocksize, MemType memtype);
+	void runImpl(double runtime[][4], int blocksize, MemType memtype);
 };
 
 

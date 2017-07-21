@@ -27,6 +27,14 @@ class UtcContext{
         static UtcContext& getContext();
         static UtcContext& getContext(int &argc, char** &argv);
 
+        /*
+         * TODO: add this utc overall finish method for explicitly use in main program,
+         * 		 do some necessary clean work before program exit.
+         * 		 Because put some clean work in destructor with automatic invoke when program
+         * 		 is exiting may call system error. (like call cudaSetDevice())
+         */
+        static void Finish();
+
         int getProcRank();
 
         int numProcs();

@@ -26,9 +26,9 @@ libutc-scopeddata.a: $(OBJS)
 	cp libutc-scopeddata.a $(PROJECT_LIBDIR)
 	cp $(OBJS) $(PROJECT_LIBDIR)
 	@echo "make scopeddata library succefful !!!"
-PrivateScopedData.o: PrivateScopedData.cc PrivateScopedData.inc
+PrivateScopedData.o: PrivateScopedData.cc PrivateScopedData.h PrivateScopedData.inc
 	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
-GlobalScopedData.o: GlobalScopedData.cc GlobalScopedData.inc
+GlobalScopedData.o: GlobalScopedData.cc GlobalScopedData.h GlobalScopedData.inc
 	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 
 	

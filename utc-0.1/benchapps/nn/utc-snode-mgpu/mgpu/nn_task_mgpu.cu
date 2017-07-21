@@ -10,7 +10,14 @@
 #include "../../../common/helper_err.h"
 #include "nn_kernel.h"
 
-
+template<typename T>
+thread_local T* nnMGPU<T>::partial_obj_startPtr;
+template<typename T>
+thread_local int nnMGPU<T>::partial_numObjs;
+template<typename T>
+thread_local T* nnMGPU<T>::objsNN_array_startPtr;
+template<typename T>
+thread_local T* nnMGPU<T>::distance_array_startPtr;
 
 template<typename T>
 void nnMGPU<T>::initImpl(T*objects, T*objsNN, int numObjs, int numCoords, int numNN){
@@ -46,7 +53,7 @@ void nnMGPU<T>::initImpl(T*objects, T*objsNN, int numObjs, int numCoords, int nu
 }
 
 template<typename T>
-void nnMGPU<T>::runImpl(double **runtime, MemType memtype){
+void nnMGPU<T>::runImpl(double runtime[][6], MemType memtype){
 	if(__localThreadId == 0){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}
@@ -97,8 +104,9 @@ void nnMGPU<T>::runImpl(double **runtime, MemType memtype){
 	GpuData<int> *topkIndexArray;
 	int blocksize2 = 16;
 	int gridsize2 = 1;
-	if(numObjs > blocksize2*numNN*8)
-		gridsize2 = numObjs/(blocksize2*numNN*8);
+	if(partial_numObjs > blocksize2*numNN*8)
+		gridsize2 = partial_numObjs/(blocksize2*numNN*8);
+	//std::cout<<gridsize2<<std::endl;
 	if(gridsize2 >=16){
 		topkIndexArray  = new GpuData<int>(numNN*gridsize2, memtype);
 		dim3 block2(blocksize2, 1, 1);
@@ -126,19 +134,17 @@ void nnMGPU<T>::runImpl(double **runtime, MemType memtype){
 		T *distancePtr = distanceObjs.getH();
 		timer.start();
 		for(int i=0; i<numNN; i++){
-			int min = i;
-			for(int j=i+1; j<partial_numObjs; j++){
-				if(distancePtr[min]>distancePtr[j])
+			int min = 0;
+			while(distancePtr[min]<0)
+				min++;
+			for(int j=0; j<partial_numObjs; j++){
+				if(distancePtr[j]>=0 && distancePtr[min]>distancePtr[j])
 					min = j;
 			}
-			if(min != i){
-				T tmp = distancePtr[i];
-				distancePtr[i] = distancePtr[min];
-				distancePtr[min] = tmp;
-			}
+			distance_array_startPtr[i] = distancePtr[min];
+			distancePtr[min] = -1;
 			for(int j=0; j<numCoords; j++)
 				objsNN_array_startPtr[i*numCoords + j] = partial_obj_startPtr[min*numCoords + j];
-			distance_array_startPtr[i] = distancePtr[i];
 
 		}
 		hostCompTime = timer.stop();
@@ -148,19 +154,18 @@ void nnMGPU<T>::runImpl(double **runtime, MemType memtype){
 		int *topkindexPtr = topkIndexArray->getH();
 		timer.start();
 		for(int i=0; i<numNN; i++){
-			int min = i;
-			for(int j=i+1; j<topkIndexArray->getSize(); j++){
-				if(distancePtr[topkindexPtr[min]]>distancePtr[topkindexPtr[j]])
+			int min = 0;
+			while(distancePtr[topkindexPtr[min]]<0)
+				min++;
+			for(int j=0; j<topkIndexArray->getSize(); j++){
+				if(distancePtr[topkindexPtr[j]]>=0 &&
+						distancePtr[topkindexPtr[min]]>distancePtr[topkindexPtr[j]])
 					min = j;
 			}
-			if(min != i){
-				int tmp = topkindexPtr[min];
-				topkindexPtr[min] = topkindexPtr[i];
-				topkindexPtr[i] = tmp;
-			}
+			distance_array_startPtr[i] = distancePtr[topkindexPtr[min]];
+			distancePtr[topkindexPtr[min]] = -1;
 			for(int j=0; j<numCoords; j++){
-				objsNN_array_startPtr[i*numCoords +j] = partial_obj_startPtr[topkindexPtr[i]*numCoords+j];
-			distance_array_startPtr[i] = distancePtr[topkindexPtr[i]];
+				objsNN_array_startPtr[i*numCoords +j] = partial_obj_startPtr[topkindexPtr[min]*numCoords+j];
 			}
 		}
 		hostCompTime = timer.stop();
@@ -170,24 +175,23 @@ void nnMGPU<T>::runImpl(double **runtime, MemType memtype){
 	 * then find global k-nn
 	 */
 	intra_Barrier();
+	timer.start();
 	if(getUniqueExecution()){
 		for(int i=0; i<numNN; i++){
-			int min = i;
-			for(int j=i+1; j<nunNN*__numLocalThreads; j++){
-				if(distance_array[min]>distance_array[j])
+			int min = 0;
+			while(distance_array[min]<0)
+				min++;
+			for(int j=0; j<numNN*__numLocalThreads; j++){
+				if(distance_array[j]>=0 && distance_array[min]>distance_array[j])
 					min = j;
 			}
-			if(min != i){
-				T tmp = distance_array[i];
-				distance_array[i] = distance_array[min];
-				distance_array[min] = tmp;
-			}
+			distance_array[min] = -1;
 			for(int j=0; j<numCoords; j++)
 				objsNN[i*numCoords + j] = objsNN_array[min*numCoords + j];
 		}
-		hostCompTime = timer.stop();
 	}
 	intra_Barrier();
+	hostCompTime = timer.stop();
 	totaltime = timer0.stop();
 
 

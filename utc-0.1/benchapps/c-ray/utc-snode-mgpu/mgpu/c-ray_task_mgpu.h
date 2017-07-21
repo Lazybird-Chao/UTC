@@ -21,8 +21,8 @@ private:
 	vec3_t *lights;
 	uint32_t *pixels;
 
-	thread_local int local_yres;
-	thread_local int local_startYresIndex;
+	static thread_local int local_yres;
+	static thread_local int local_startYresIndex;
 
 public:
 	void initImpl(global_vars g_vars,
@@ -30,7 +30,7 @@ public:
 			uint32_t *pixels,
 			vec3_t *lights);
 
-	void runImpl(double **runtime, MemType memtype);
+	void runImpl(double runtime[][4], MemType memtype);
 
 };
 

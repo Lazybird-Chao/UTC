@@ -57,7 +57,7 @@ private:
 	int  m_typesize;
 	std::atomic<int> m_numThreads;
 	boost::thread_specific_ptr<T> m_dataPtr;
-	T* m_privateDataPtr;
+	//T* m_privateDataPtr;
 	UserTaskBase* m_userTaskObj;
 
 

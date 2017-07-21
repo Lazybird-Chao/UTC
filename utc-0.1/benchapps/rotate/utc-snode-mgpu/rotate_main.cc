@@ -49,6 +49,7 @@ int main(int argc, char** argv){
 
 	/* initialize UTC context */
 	UtcContext &ctx = UtcContext::getContext(argc, argv);
+	std::cout<<"UTC context initialized !\n";
 
 	/* Parse command line options */
 	int     opt;

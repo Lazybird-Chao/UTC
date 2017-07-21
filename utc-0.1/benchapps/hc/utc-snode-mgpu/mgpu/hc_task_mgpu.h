@@ -21,8 +21,8 @@ private:
 	FTYPE epsilon;
 	FTYPE *domainMatrix;
 
-	thread_local int local_numRows;
-	thread_local int local_startRowIndex;
+	static thread_local int local_numRows;
+	static thread_local int local_startRowIndex;
 	FTYPE *converge_sqd_array;
 	FTYPE *top_row_array;
 	FTYPE *bottom_row_array;
@@ -30,7 +30,7 @@ private:
 public:
 	void initImpl(int w, int h, FTYPE e, FTYPE *dmatrix);
 
-	void runImpl(double** runtime, int *iters, int blocksize, MemType memtype);
+	void runImpl(double runtime[][5], int *iters, int blocksize, MemType memtype);
 };
 
 

@@ -122,9 +122,8 @@ void RotateSGPU::runImpl(double *runtime, MemType memtype){
 	//Pixel tmp = dImg.at(1000);
 	//std::cout<<tmp.r<<std::endl;
 	double copyoutTime = timer.stop();
-	totaltime = timer0.stop();
 	memcpy(dstImg->getPixelBuffer(), dImg.getH(), dImg.getBSize());
-
+	totaltime = timer0.stop();
 
 	runtime[2] = copyinTime;
 	runtime[3] = copyoutTime;

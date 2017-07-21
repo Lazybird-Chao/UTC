@@ -10,6 +10,11 @@
 #include "../md5.h"
 #include "../../../common/helper_err.h"
 
+
+thread_local long MD5MGPU::local_numBuffers;
+thread_local long MD5MGPU::local_startBufferIndex;
+thread_local uint8_t* MD5MGPU::local_buffer;
+
 void MD5MGPU::initImpl(config_t* args){
 	if(__localThreadId ==0){
 		std::cout<<"task: "<<getCurrentTask()->getName()<<"begin init ...\n";
@@ -22,12 +27,16 @@ void MD5MGPU::initImpl(config_t* args){
 		local_startBufferIndex = (buffersPerThread+1)*__localThreadId;
 	}
 	else{
-		local_numBuffers = bufferPerThread;
-		local_startBufferIndex = bufferPerThread*__localThreadId + md5Config->numinputs % __numLocalThreads;
+		local_numBuffers = buffersPerThread;
+		local_startBufferIndex = buffersPerThread*__localThreadId + md5Config->numinputs % __numLocalThreads;
 	}
 	local_buffer = new uint8_t[local_numBuffers*md5Config->size];
-	uint8_t gbuff = md5Config->inputs;
+	uint8_t *gbuff = md5Config->inputs;
 	gbuff = gbuff+local_startBufferIndex*md5Config->size;
+	/*
+	 * convert the store sequence of each buffer's data,
+	 * for better access pattern of cuda threads
+	 */
 	for(int i=0; i<local_numBuffers;i++){
 		uint8_t *p = &local_buffer[i];
 		for(int j=0; j<md5Config->size; j++){
@@ -41,7 +50,7 @@ void MD5MGPU::initImpl(config_t* args){
 	}
 }
 
-void MD5MGPU::runImpl(double** runtime, int blocksize, MemType memtype){
+void MD5MGPU::runImpl(double runtime[][4], int blocksize, MemType memtype){
 	if(__localThreadId == 0){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}
@@ -92,8 +101,10 @@ void MD5MGPU::runImpl(double** runtime, int blocksize, MemType memtype){
 	timer.start();
 	partial_out.sync();
 	double copyoutTime = timer.stop();
-	//totaltime  = timer0.stop();
+	totaltime  = timer0.stop();
 	intra_Barrier();
+
+
 	uint8_t *gout = md5Config->out;
 	gout = gout + local_startBufferIndex*DIGEST_SIZE;
 	for(int i=0; i<local_numBuffers; i++){
@@ -102,7 +113,7 @@ void MD5MGPU::runImpl(double** runtime, int blocksize, MemType memtype){
 			gout[i*DIGEST_SIZE + j] = p[j*local_numBuffers];
 		}
 	}
-	totaltime  = timer0.stop();
+	//totaltime  = timer0.stop();
 
 
 	//runtime[0] = kernelTime + copyinTime + copyoutTime;

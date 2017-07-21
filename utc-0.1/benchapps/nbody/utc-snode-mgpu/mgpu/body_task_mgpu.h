@@ -25,8 +25,8 @@ private:
 	T *oldPosBuffer;
 	T *newPosBuffer;
 
-	thread_local int local_numBodies;
-	thread_local int local_startBodyIndex;
+	static thread_local int local_numBodies;
+	static thread_local int local_startBodyIndex;
 
 public:
 	void initImpl(unsigned int numBodies,
@@ -35,7 +35,7 @@ public:
 			T *pos,
 			T *vel);
 
-	void runImpl(double** runtime,
+	void runImpl(double runtime[][4],
 			int loops,
 			int outInterval,
 			int blocksize,

@@ -30,11 +30,12 @@
  */
 #define CUDA_CONTEXT_MAP_MODE	3
 
-#define MAX_DEVICE_PER_NODE		4
+#define MAX_DEVICE_PER_NODE		16
 
 #define CUDA_MAJOR	65
 
 
+#define CHECK_GPU_ABILITY	0
 
 
 #endif /* UTC_GPU_UTCGPUBASICS_H_ */

@@ -23,14 +23,13 @@ private:
 	int total_graph_edges;
 	int src_node;
 
-	thread_local int local_numNodes;
-	thread_local int local_startNodeIndex;
+	static thread_local int local_numNodes;
+	static thread_local int local_startNodeIndex;
 	int *g_spath;
 	int *spath_array;
 	uint8_t *g_frontWave;
 	uint8_t *nextWave_array;
 	uint8_t *stopflag_array;
-	uint8_t stopflag;
 
 public:
 	void initImpl(Node_t *graph_nodes,
@@ -40,7 +39,7 @@ public:
 			int total_graph_edges,
 			int src_node);
 
-	void runImpl(double *runtime,
+	void runImpl(double runtime[][4],
 			int blocksize,
 			int batch,
 			MemType memtype);

@@ -12,7 +12,7 @@
 
 void YUVconvertMGPU::initImpl(Image* srcImg, yuv_color_t *dstImg){
 	if(__localThreadId ==0){
-		std::cout<<"task: "<<getCurrentTask()->getName()<<"begin init ...\n";
+		std::cout<<"task: "<<getCurrentTask()->getName()<<" begin init ...\n";
 		this->srcImg = srcImg;
 		this->dstImg = dstImg;
 		int w = srcImg->getWidth();
@@ -22,6 +22,8 @@ void YUVconvertMGPU::initImpl(Image* srcImg, yuv_color_t *dstImg){
 		dstImg->v = (uint8_t*)malloc(sizeof(uint8_t)*w*h);
 	}
 	intra_Barrier();
+	int w = srcImg->getWidth();
+	int h = srcImg->getHeight();
 	int rows_per_thread = h/__numLocalThreads;
 	if(__localThreadId < h % __numLocalThreads){
 		num_rows = rows_per_thread+1;
@@ -30,17 +32,16 @@ void YUVconvertMGPU::initImpl(Image* srcImg, yuv_color_t *dstImg){
 	}
 	else{
 		num_rows = rows_per_thread;
-		start_row = __localThreadId*rows_per_thread + outH % __numLocalThreads;
+		start_row = __localThreadId*rows_per_thread + h % __numLocalThreads;
 		end_row = start_row + rows_per_thread -1;
 	}
-
 	intra_Barrier();
 	if(__localThreadId ==0){
 		std::cout<<"task: "<<getCurrentTask()->getName()<<" finish initImpl.\n";
 	}
 }
 
-void YUVconvertMGPU::runImpl(double **runtime, int loop, MemType memtype){
+void YUVconvertMGPU::runImpl(double runtime[][4], int loop, MemType memtype){
 	if(__localThreadId == 0){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
 	}

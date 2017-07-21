@@ -12,16 +12,11 @@ NWARNING = -w
 GENCODE_SM20 = -gencode arch=compute_20,code=sm_20
 GENCODE_SM30 = -gencode arch=compute_30,code=sm_30
 GENCODE_SM35 = -gencode arch=compute_35,code=sm_35
+GENCODE_SM37 = -gencode arch=compute_37,code=sm_37
 
 NVCC = nvcc
-NVCCFLAGS = $(GENCODE_SM35) --device-c
-NVLINKFLAGS = $(GENCODE_SM35) --device-link
-
-DEBUG = 0
-ifeq ($(DEBUG), 1)
-	NVCCFLAGS += -g -G
-	CCFLAGS += -g
-endif
+NVCCFLAGS = -g -G $(GENCODE_SM37) --device-c
+NVLINKFLAGS = $(GENCODE_SM37) --device-link
 
 #####################################################
 UTC_HOMEDIR = /home/liu.chao/utc-0.1
@@ -47,7 +42,7 @@ utc_lib:
     
 #######################################################
 
-COMMONDIR = ../../common
+COMMONDIR = ../../../common
 helperObj = helperObj.o
 $(helperObj):$(COMMONDIR)/helper_getopt.c
 	$(C++) -o $@  -c $<
