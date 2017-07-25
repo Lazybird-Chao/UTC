@@ -101,12 +101,12 @@ void YUVconvertMGPU::runImpl(double runtime[][4], int loop, MemType memtype){
 	img_v.sync();
 	//std::cout<<img_y.at(10)<<std::endl;
 	double copyoutTime = timer.stop();
-
+	intra_Barrier();
+	totaltime = timer0.stop();
 
 	memcpy(dstImg->y + w*start_row, img_y.getH(), img_y.getBSize());
 	memcpy(dstImg->u + w*start_row, img_u.getH(), img_u.getBSize());
 	memcpy(dstImg->v + w*start_row, img_v.getH(), img_v.getBSize());
-	totaltime = timer0.stop();
 
 	runtime[__localThreadId][2] = copyinTime;
 	runtime[__localThreadId][3] = copyoutTime;

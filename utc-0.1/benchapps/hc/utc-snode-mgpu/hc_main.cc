@@ -106,14 +106,17 @@ int main(int argc, char **argv){
 	}
 
 
+	//
+	int increaseH = 1*HEIGHT;
+
 	/*
 	 *
 	 */
 	double runtime_m[8][5];
 	int iters;
-	FTYPE *domainMatrix = (FTYPE*)malloc(sizeof(FTYPE)*(int)floor(HEIGHT/H)*(int)floor(WIDTH/H));
+	FTYPE *domainMatrix = (FTYPE*)malloc(sizeof(FTYPE)*(int)floor(increaseH/H)*(int)floor(WIDTH/H));
 	Task<hcMGPU> hc(ProcList(nthreads, 0), TaskType::gpu_task);
-	hc.init(WIDTH, HEIGHT, EPSILON, domainMatrix);
+	hc.init(WIDTH, increaseH, EPSILON, domainMatrix);
 	hc.run(runtime_m, &iters, blockSize, memtype);
 	hc.wait();
 	double runtime[5]={0,0,0,0,0};
@@ -130,12 +133,12 @@ int main(int argc, char **argv){
 	if(output){
 		char filename[30] = "output.txt";
 		Task<Output<FTYPE>> fout(ProcList(0));
-		fout.run(domainMatrix, WIDTH, HEIGHT, filename);
+		fout.run(domainMatrix, WIDTH, increaseH, filename);
 	}
 
 	std::cout<<"Test complete !!!"<<std::endl;
 	if(printTime){
-		std::cout<<"\tDomain size: "<<WIDTH<<" X "<<HEIGHT<<std::endl;
+		std::cout<<"\tDomain size: "<<WIDTH<<" X "<<increaseH<<std::endl;
 		std::cout<<"\tAccuracy: "<<EPSILON<<std::endl;
 		std::cout<<"\tIterations: "<<iters<<std::endl;
 		std::cout<<"\tMemtype: "<<mtype<<std::endl;

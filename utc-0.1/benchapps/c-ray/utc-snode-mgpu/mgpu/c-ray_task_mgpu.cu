@@ -119,6 +119,7 @@ void crayMGPU::runImpl(double runtime[][4], MemType memtype){
 	timer.start();
 	partial_pixels_d.sync();
 	double copyoutTime = timer.stop();
+	intra_Barrier();
 	totaltime = timer0.stop();
 	partial_pixels_d.fetch(pixels+local_startYresIndex*xres);
 

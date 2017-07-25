@@ -10,8 +10,12 @@
 
 #include "md5.h"
 #include "Utc.h"
+#include <iostream>
+#include <fstream>
+#include <cstring>
 
 dataSet_t datasets[] ={
+	{128*1024, 16*1024, 0},
 	{1024*2, 4094, 0},
 	{1024*32, 4096*2, 1},
 	{1024*256, 4096*4, 2},
@@ -42,33 +46,103 @@ dataSet_t datasets[] ={
 	{1024, 1024*4096, 4},
 };
 
-class RandomInput : public UserTaskBase{
-public:
-	void runImpl(config_t *configArgs){
-		int index = configArgs->input_set;
-		if(index < 0 || index >= sizeof(datasets)/sizeof(datasets[0])) {
-			std::cout<<"Invalid input set choice, set to default 0"<<std::endl;
-			index = 0;
-		}
-
-		configArgs->numinputs = datasets[index].numbufs;
-		configArgs->size = datasets[index].bufsize;
-		configArgs->inputs = (uint8_t*)calloc(configArgs->numinputs*configArgs->size, sizeof(uint8_t));
-		configArgs->out = (uint8_t*)calloc(configArgs->numinputs, DIGEST_SIZE);
-		if(configArgs->inputs ==NULL || configArgs->out==NULL)
-			return;
-		// generate random data
-		srand(datasets[index].rseed);
-
-		for(long i=0; i<configArgs->numinputs; i++){
-			uint8_t *p = &(configArgs->inputs[i*configArgs->size]);
-			int key = rand();
-			for(long j = 0; j<configArgs->size; j++){
-				p[j] = (key+j) % 255;
-			}
+void toFile(char* data, long numBuffs, long buffSize, const char* filename, bool isBinary){
+	std::ofstream outfile;
+	if(isBinary){
+		outfile.open(filename, std::ofstream::binary);
+		outfile.write((char*)&numBuffs, sizeof(long));
+		outfile.write((char*)&buffSize, sizeof(long));
+		outfile.write(data, numBuffs*buffSize);
+	}
+	else{
+		outfile.open(filename);
+		outfile<<numBuffs<<" "<<buffSize<<std::endl;
+		for(long i=0; i<numBuffs; i++){
+			for(long j=0; j<buffSize; j++)
+				outfile<<data[i*buffSize+j];
+			outfile<<std::endl;
 		}
 	}
+	return;
+}
+void fromFile(char* &data, long& numBuffs, long& buffSize, const char* filename, bool isBinary){
+	std::ifstream infile;
+	if(isBinary){
+		infile.open(filename, std::ios::binary);
+		infile.read((char*)&numBuffs, sizeof(long));
+		infile.read((char*)&buffSize, sizeof(long));
+		//std::cout<<numBuffs<<" "<<buffSize<<std::endl;
+		data = new char[numBuffs*buffSize];
+		infile.read(data, numBuffs*buffSize);
+	}
+	else{
+		infile.open(filename);
+		infile>>numBuffs;
+		infile>>buffSize;
+		data = new char[numBuffs*buffSize];
+		for(long i=0; i<numBuffs; i++){
+			for(long j=0; j<buffSize; j++)
+				infile>>data[i*buffSize+j];
+		}
+	}
+	return;
+}
+
+void increaseBy(int times, config_t *configArgs){
+	if(times == 1)
+		return;
+	long numBuffs = configArgs->numinputs * times;
+	char* data = new char[numBuffs * configArgs->size];
+	for(long i=0; i<times; i++)
+		memcpy(data+i*configArgs->numinputs * configArgs->size, configArgs->inputs, configArgs->numinputs * configArgs->size);
+	configArgs->numinputs = numBuffs;
+	free(configArgs->inputs);
+	configArgs->inputs = (uint8_t*)data;
+	free(configArgs->out);
+	configArgs->out = (uint8_t*)calloc(configArgs->numinputs, DIGEST_SIZE);
+	return;
+}
+
+class RandomInput : public UserTaskBase{
+public:
+	void runImpl(config_t *configArgs, const char* filename, bool isBinary){
+		if(filename == nullptr){
+			int index = configArgs->input_set;
+			if(index < 0 || index >= sizeof(datasets)/sizeof(datasets[0])) {
+				std::cout<<"Invalid input set choice, set to default 0"<<std::endl;
+				index = 0;
+			}
+
+			configArgs->numinputs = datasets[index].numbufs;
+			configArgs->size = datasets[index].bufsize;
+			configArgs->inputs = (uint8_t*)calloc(configArgs->numinputs*configArgs->size, sizeof(uint8_t));
+			configArgs->out = (uint8_t*)calloc(configArgs->numinputs, DIGEST_SIZE);
+			if(configArgs->inputs ==NULL || configArgs->out==NULL)
+				return;
+			// generate random data
+			srand(datasets[index].rseed);
+
+			for(long i=0; i<configArgs->numinputs; i++){
+				uint8_t *p = &(configArgs->inputs[i*configArgs->size]);
+				int key = rand();
+				for(long j = 0; j<configArgs->size; j++){
+					p[j] = (key+j) % 255;
+				}
+			}
+		}
+		else{
+			long numBuffs, buffSize;
+			char *data;
+			fromFile(data, numBuffs, buffSize, filename, isBinary);
+			configArgs->numinputs = numBuffs;
+			configArgs->size = buffSize;
+			configArgs->inputs = (uint8_t*)data;
+			configArgs->out = (uint8_t*)calloc(configArgs->numinputs, DIGEST_SIZE);
+		}
+		return;
+	}
 };
+
 
 class Output : public UserTaskBase{
 public:

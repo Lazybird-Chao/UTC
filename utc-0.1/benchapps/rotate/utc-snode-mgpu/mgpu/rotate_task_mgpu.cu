@@ -137,9 +137,11 @@ void RotateMGPU::runImpl(double runtime[][4], MemType memtype){
 	//Pixel tmp = dImg.at(1000);
 	//std::cout<<tmp.r<<std::endl;
 	double copyoutTime = timer.stop();
+	intra_Barrier();
+	totaltime = timer0.stop();
 	Pixel *dImg_startPtr = dstImg->getPixelBuffer() + start_row*dstImg->getWidth();
 	memcpy(dImg_startPtr, partial_dImg.getH(), partial_dImg.getBSize());
-	totaltime = timer0.stop();
+
 
 	runtime[__localThreadId][2] = copyinTime;
 	runtime[__localThreadId][3] = copyoutTime;

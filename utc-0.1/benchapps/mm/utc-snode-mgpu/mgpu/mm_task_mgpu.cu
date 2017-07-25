@@ -93,16 +93,16 @@ void MatrixMulMGPU<T>::runImpl(double runtime[][4], int blockSize, MemType memty
 	timer.start();
 	mC.sync();
 	double copyoutTime = timer.stop();
+	intra_Barrier();
 	double totaltime = timer0.stop();
 	mC.fetch(matrixC + (start_row*sizeP));
-	intra_Barrier();
-
 
 	//runtime[0] = kernelTime + copyinTime + copyoutTime;
 	runtime[__localThreadId][0] = totaltime;
 	runtime[__localThreadId][1] = kernelTime;
 	runtime[__localThreadId][2] = copyinTime;
 	runtime[__localThreadId][3] = copyoutTime;
+	intra_Barrier();
 	if(__localThreadId ==0){
 		std::cout<<"task: "<<getCurrentTask()->getName()<<" finish runImpl.\n";
 	}

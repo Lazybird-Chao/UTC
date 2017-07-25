@@ -9,14 +9,15 @@
 
 # set exe file and args
 EXE_FILE='./mm'
-EXE_ARGS="-s 1024   -m 2"
+EXE_ARGS="-t 8  -s 4096"
 
 # set iterations and run
-iter=20
+iter=10
 i=1
 while [ $i -le $iter ]
 do
 	${EXE_FILE} ${EXE_ARGS}
+	echo "round " ${i} " finished ..."
 	((i++))
 	sleep 1
 done
@@ -25,6 +26,7 @@ done
 if [ -f time_record.txt ]
 then
 	echo "-----------------------------------------" >> total_time_record.txt
+	echo ${EXE_FILE} ${EXE_ARGS} >> total_time_record.txt
 	cat time_record.txt >> total_time_record.txt
 	echo "-----------------------------------------" >> total_time_record.txt
 	rm  -f time_record.txt

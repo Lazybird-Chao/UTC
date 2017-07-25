@@ -81,7 +81,8 @@ void kmeansMGPU<T>::runImpl(double runtime[][5], T threshold, int* loopcounters,
 	clusters_d.sync();
 	double copyinTime = timer.stop();
 
-	std::cout<<"Start clustering..."<<std::endl;
+
+	//std::cout<<"Start clustering..."<<std::endl;
 	double kernelTime =0;
 	double copyoutTime = 0;
 	double hostCompTime = 0;
@@ -168,10 +169,12 @@ void kmeansMGPU<T>::runImpl(double runtime[][5], T threshold, int* loopcounters,
 		intra_Barrier();
 		clusters_d.putH(g_clusters);
 
+
 		hostCompTime += timer.stop();
 
 	}while(loops++ < MAX_ITERATION && (T)g_changedObjs/numObjs > threshold );
 
+	intra_Barrier();
 	totaltime = timer0.stop();
 
 

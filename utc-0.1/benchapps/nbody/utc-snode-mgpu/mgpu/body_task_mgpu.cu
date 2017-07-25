@@ -161,6 +161,7 @@ void BodySystemMGPU<T>::runImpl(double runtime[][4],
 		cur = 1-cur;
 		//posBufferIndex = 1-posBufferIndex;
 	}
+	intra_Barrier();
 	runtime[__localThreadId][0] = timer0.stop();
 	//runtime[0] = kernelTime + copyinTime + copyoutTime;
 	runtime[__localThreadId][1] = kernelTime;

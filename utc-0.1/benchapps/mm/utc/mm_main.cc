@@ -29,12 +29,13 @@ using namespace iUtc;
 #include "sgpu/mm_task_sgpu.h"
 
 
-#define FTYPE double
+#define FTYPE float
 
 int main(int argc, char**argv){
 	bool printTime = false;
 	int blockSize = 16;
 	int matrixSize = 1024;
+	char *fileout = nullptr;
 
 	int nthreads=1;
 	int nprocess=1;
@@ -47,7 +48,7 @@ int main(int argc, char**argv){
 	int opt;
 	extern char* optarg;
 	extern int optind;
-	opt=getopt(argc, argv, "vt:p:m:s:b:");
+	opt=getopt(argc, argv, "vt:p:m:s:b:o:");
 	while(opt!=EOF){
 		switch(opt){
 		case 'v':
@@ -65,12 +66,15 @@ int main(int argc, char**argv){
 		case 'b':
 			blockSize = atoi(optarg);
 			break;
+		case 'o':
+			fileout = optarg;
+			break;
 		case '?':
 			break;
 		default:
 			break;
 		}
-		opt=getopt(argc, argv, "vt:p:m:s:b:");
+		opt=getopt(argc, argv, "vt:p:m:s:b:o:");
 	}
 	if(matrixSize<=0){
 		std::cerr<<"matrix size is illegal"<<std::endl;
@@ -104,8 +108,10 @@ int main(int argc, char**argv){
 	FTYPE *matrixB = new FTYPE[sizeof(FTYPE)*matrixSize*matrixSize];
 	FTYPE *matrixC = new FTYPE[sizeof(FTYPE)*matrixSize*matrixSize];
 	Task<RandomMatrix<FTYPE>> matrixInit(ProcList(0));
-	matrixInit.run(matrixA, matrixSize, matrixSize);
-	matrixInit.run(matrixB, matrixSize, matrixSize);
+	//matrixInit.run(matrixA, matrixSize, matrixSize);
+	//matrixInit.run(matrixB, matrixSize, matrixSize);
+	matrixInit.run(matrixA, matrixSize, matrixSize, "../input/4k_4k_A.txt", true);
+	matrixInit.run(matrixB, matrixSize, matrixSize, "../input/4k_4k_B.txt", true);
 	matrixInit.wait();
 
 	/*
@@ -137,7 +143,9 @@ int main(int argc, char**argv){
 	else
 		std::cout<<"errors: "<<error<<std::endl;
 	*/
-
+	if(fileout){
+		RandomMatrix<FTYPE>::toFile(matrixC, matrixSize*4, matrixSize, fileout, true);
+	}
 	delete matrixA;
 	delete matrixB;
 	delete matrixC;

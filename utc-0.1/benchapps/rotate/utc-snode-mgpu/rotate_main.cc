@@ -117,6 +117,10 @@ int main(int argc, char** argv){
 	readImg.run(&srcImg, infile_path);
 	readImg.wait();
 
+	//
+	srcImg.increaseHeightBy(8);
+
+
 	/*
 	 * do rotation
 	 */

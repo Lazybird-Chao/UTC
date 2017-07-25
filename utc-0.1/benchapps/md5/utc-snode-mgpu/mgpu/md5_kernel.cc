@@ -47,8 +47,8 @@
 __global__ void md5_process(
 		uint8_t *inputs,
 		uint8_t *out,
-		int numbuffs,
-		int buffsize){
+		long numbuffs,
+		long buffsize){
 
 	int bx = blockIdx.x;
 	int tx = threadIdx.x;
@@ -72,7 +72,7 @@ __global__ void md5_process(
  * This processes one or more 64-byte data blocks, but does NOT update
  * the bit counters.  There are no alignment requirements.
  */
-__device__ void *body_with_global(MD5_CTX *ctx, void *data, int offset, unsigned long size)
+__device__ void *body_with_global(MD5_CTX *ctx, void *data, long offset, unsigned long size)
 {
 	unsigned char *ptr;
 	MD5_u32plus a, b, c, d;
@@ -323,7 +323,7 @@ __device__ void MD5_Init(MD5_CTX *ctx)
 	ctx->hi = 0;
 }
 
-__device__ void MD5_Update(MD5_CTX *ctx, void *data, int offset, unsigned long size)
+__device__ void MD5_Update(MD5_CTX *ctx, void *data, long offset, unsigned long size)
 {
 	MD5_u32plus saved_lo;
 	unsigned long used, free;

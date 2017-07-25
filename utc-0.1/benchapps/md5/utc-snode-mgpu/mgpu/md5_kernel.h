@@ -22,16 +22,16 @@ typedef struct __attribute__((aligned(4))){
 __global__ void md5_process(
 		uint8_t *inputs,
 		uint8_t *out,
-		int numbuffs,
-		int buffsize);
+		long numbuffs,
+		long buffsize);
 
 __device__ void MD5_Init(MD5_CTX *ctx);
 
-__device__ void MD5_Update(MD5_CTX *ctx, void *data, int offset, unsigned long size);
+__device__ void MD5_Update(MD5_CTX *ctx, void *data, long offset, unsigned long size);
 
 __device__ void MD5_Final(unsigned char *result, MD5_CTX *ctx, int offset);
 
-__device__ void *body_with_global(MD5_CTX *ctx, void *data, int offset, unsigned long size);
+__device__ void *body_with_global(MD5_CTX *ctx, void *data, long offset, unsigned long size);
 
 __device__ void *body_with_local(MD5_CTX *ctx, void *data, unsigned long size);
 

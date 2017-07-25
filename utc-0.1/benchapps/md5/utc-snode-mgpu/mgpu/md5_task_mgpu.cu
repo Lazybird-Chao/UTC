@@ -21,7 +21,7 @@ void MD5MGPU::initImpl(config_t* args){
 		md5Config = args;
 	}
 	intra_Barrier();
-	int buffersPerThread = md5Config->numinputs / __numLocalThreads;
+	long buffersPerThread = md5Config->numinputs / __numLocalThreads;
 	if(__localThreadId < md5Config->numinputs % __numLocalThreads){
 		local_numBuffers = buffersPerThread+1;
 		local_startBufferIndex = (buffersPerThread+1)*__localThreadId;
@@ -37,12 +37,16 @@ void MD5MGPU::initImpl(config_t* args){
 	 * convert the store sequence of each buffer's data,
 	 * for better access pattern of cuda threads
 	 */
-	for(int i=0; i<local_numBuffers;i++){
+	/*
+	for(long i=0; i<local_numBuffers;i++){
 		uint8_t *p = &local_buffer[i];
-		for(int j=0; j<md5Config->size; j++){
+		for(long j=0; j<md5Config->size; j++){
 			p[j*local_numBuffers] = gbuff[i*md5Config->size +j];
 		}
 	}
+	*/
+	// assume rearranged for fast test
+	memcpy(local_buffer, gbuff, local_numBuffers*md5Config->size);
 
 	intra_Barrier();
 	if(__localThreadId ==0){
@@ -91,7 +95,7 @@ void MD5MGPU::runImpl(double runtime[][4], int blocksize, MemType memtype){
 				md5Config->size);
 		checkCudaErr(cudaGetLastError());
 		checkCudaErr(cudaStreamSynchronize(__streamId));
-		checkCudaErr(cudaDeviceSynchronize());
+		//checkCudaErr(cudaDeviceSynchronize());
 	}
 	double kernelTime = timer.stop();
 
@@ -101,15 +105,16 @@ void MD5MGPU::runImpl(double runtime[][4], int blocksize, MemType memtype){
 	timer.start();
 	partial_out.sync();
 	double copyoutTime = timer.stop();
-	totaltime  = timer0.stop();
 	intra_Barrier();
+	totaltime  = timer0.stop();
 
 
 	uint8_t *gout = md5Config->out;
 	gout = gout + local_startBufferIndex*DIGEST_SIZE;
-	for(int i=0; i<local_numBuffers; i++){
+	// rearrange data
+	for(long i=0; i<local_numBuffers; i++){
 		uint8_t *p = partial_out.getH() + i;
-		for(int j=0; j<DIGEST_SIZE; j++){
+		for(long j=0; j<DIGEST_SIZE; j++){
 			gout[i*DIGEST_SIZE + j] = p[j*local_numBuffers];
 		}
 	}

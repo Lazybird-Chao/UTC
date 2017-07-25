@@ -55,6 +55,11 @@ class Image {
         int getMaxcolor();
 		void clean();
 		Pixel *getPixelBuffer();
+
+		//
+		void increaseHeightBy(int times);
+		void decreaseHeightBy(int times);
+
 	private:
 		Pixel* pixels;
 		int width, height;
@@ -62,6 +67,7 @@ class Image {
 		float x_off, y_off;
 		int ppmGetInt(std::fstream &src);
 		char ppmGetChar(std::fstream &src);
+
 };
 
 typedef struct yuv_color{

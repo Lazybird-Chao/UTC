@@ -105,9 +105,9 @@ int main( int argc, char ** argv )
 			graph[i].push_back( edge() );
 			graph[i].back().dest = nodeID;
 			graph[i].back().weight = weight;
-			//graph[nodeID].push_back( edge() );
-			//graph[nodeID].back().dest = i;
-			//graph[nodeID].back().weight = weight;
+			graph[nodeID].push_back( edge() );
+			graph[nodeID].back().dest = i;
+			graph[nodeID].back().weight = weight;
 		}
 	}
 

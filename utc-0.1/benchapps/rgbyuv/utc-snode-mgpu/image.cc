@@ -5,6 +5,7 @@
  */
 
 #include "image.h"
+#include <cstring>
 
 /*
 *   Function: createImageFromFile
@@ -141,6 +142,34 @@ void Image::clean() {
 
 Pixel *Image::getPixelBuffer(){
 	return pixels;
+}
+
+
+//
+void Image::increaseHeightBy(int times){
+	if(times ==1)
+		return;
+	int h = height*times;
+	Pixel *new_image = new Pixel[width*h];
+	for(int i=0; i<times; i++)
+		memcpy(new_image+i*width*height, pixels, sizeof(Pixel)*width*height);
+	delete[] pixels;
+	pixels = new_image;
+	height = h;
+	y_off = (float)height / 2.0;
+	return;
+}
+void Image::decreaseHeightBy(int times){
+	if(times ==1)
+		return;
+	int h = height/times;
+	Pixel *new_image = new Pixel[width*h];
+	memcpy(new_image, pixels, sizeof(Pixel)*width*h);
+	delete[] pixels;
+	pixels = new_image;
+	height = h;
+	y_off = (float)height / 2.0;
+	return;
 }
 
 

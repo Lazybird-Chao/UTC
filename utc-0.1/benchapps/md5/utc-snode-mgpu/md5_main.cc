@@ -105,8 +105,15 @@ int main(int argc, char* argv[]){
 	 */
 	std::cout<<"Generating random input data set ..."<<std::endl;
 	Task<RandomInput> dataGen(ProcList(0));
-	dataGen.run(&configArgs);
+	dataGen.run(&configArgs,  "../input/128k_16k.txt", true);
+	//dataGen.run(&configArgs, nullptr, false);
 	dataGen.wait();
+
+	//
+	//toFile((char*)configArgs.inputs, configArgs.numinputs, configArgs.size, "128k_16k.txt", true);
+	//std::cout<<configArgs.numinputs<<" "<<configArgs.size<<std::endl;
+	increaseBy(8, &configArgs);
+
 
 	/*
 	 * do md5
@@ -142,8 +149,8 @@ int main(int argc, char* argv[]){
 	std::cout<<"Test complete !!!"<<std::endl;
 	if(printTime){
 		std::cout<<"\tprocess data info:"<<std::endl;
-		std::cout<<"\t\tnumber buffs:"<<datasets[configArgs.input_set].numbufs<<std::endl;
-		std::cout<<"\t\tbuff size(Bytes):"<<datasets[configArgs.input_set].bufsize<<std::endl;
+		std::cout<<"\t\tnumber buffs:"<<configArgs.numinputs<<std::endl;
+		std::cout<<"\t\tbuff size(Bytes):"<<configArgs.size<<std::endl;
 		std::cout<<"\t\tMemtype: "<<mtype<<std::endl;
 		std::cout<<"\ttime info:"<<std::endl;
 		std::cout<<"\t\ttotal time: "<<std::fixed<<std::setprecision(4)<<1000*(runtime[0])<<"(ms)"<<std::endl;

@@ -9,14 +9,15 @@
 
 # set exe file and args
 EXE_FILE='./rotate'
-EXE_ARGS="-i ../../image-input/imgs.ppm  -a 66 -m 2"
+EXE_ARGS="-t 8  -i ../../image-input/8k.ppm  -a 90"
 
 # set iterations and run
-iter=30
+iter=15
 i=1
 while [ $i -le $iter ]
 do
 	${EXE_FILE} ${EXE_ARGS}
+	echo "round " ${i} " finish ..."
 	((i++))
 	sleep 1
 done
@@ -25,6 +26,7 @@ done
 if [ -f time_record.txt ]
 then
 	echo "-----------------------------------------" >> total_time_record.txt
+	echo ${EXE_ARGS} >> total_time_record.txt
 	cat time_record.txt >> total_time_record.txt
 	echo "-----------------------------------------" >> total_time_record.txt
 	rm  -f time_record.txt

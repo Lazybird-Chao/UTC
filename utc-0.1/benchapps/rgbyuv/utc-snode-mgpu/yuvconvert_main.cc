@@ -113,6 +113,10 @@ int main(int argc, char** argv){
 	readImg.run(&srcImg, infile_path);
 	readImg.wait();
 
+	//
+	srcImg.increaseHeightBy(1);
+
+
 	/*
 	 * do converter
 	 */
@@ -147,6 +151,7 @@ int main(int argc, char** argv){
 		std::cout<<"\tInput image size: "<<srcImg.getWidth()<<" X "<<srcImg.getHeight()<<std::endl;
 		std::cout<<"\tMemtype: "<<mtype<<std::endl;
 		std::cout<<"\tTime info: "<<std::endl;
+		std::cout<<"\t\ttotal time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[0]<<"(ms)"<<std::endl;
 		std::cout<<"\t\tmemcpy in time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[2]<<"(ms)"<<std::endl;
 		std::cout<<"\t\tmemcpy out time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[3]<<"(ms)"<<std::endl;
 		std::cout<<"\t\tkernel run time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[1]<<"(ms)"<<std::endl;
