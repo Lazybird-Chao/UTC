@@ -170,7 +170,7 @@ void bfsMGPU::runImpl(double runtime[][4],
 			std::cout<<__localThreadId<<": "<<(int)stopflag<<std::endl;
 		}*/
 	}
-
+	intra_Barrier();
 	totaltime = timer0.stop();
 
 

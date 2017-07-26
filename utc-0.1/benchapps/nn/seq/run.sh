@@ -9,7 +9,7 @@
 
 # set exe file and args
 EXE_FILE='./nn_main'
-EXE_ARGS="-i ../../kmeans/input/8k_16.txt -n 32"
+EXE_ARGS="-i ../../kmeans/input/2m_16.txt -n 32"
 
 # set iterations and run
 iter=10
@@ -25,7 +25,6 @@ done
 if [ -f time_record.txt ]
 then
 	echo "-----------------------------------------" >> total_time_record.txt
-	echo ${EXE_FILE} ${EXE_ARGS} >> total_time_record.txt
 	cat time_record.txt >> total_time_record.txt
 	echo "-----------------------------------------" >> total_time_record.txt
 	rm  -f time_record.txt

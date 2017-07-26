@@ -9,7 +9,7 @@
 
 # set exe file and args
 EXE_FILE='./c-ray'
-EXE_ARGS="-h 2048 -w 2048  -i ../input/sphfract -m 2"
+EXE_ARGS="-t 8 -h 8192 -w 4096  -i ../input/sphfract"
 
 # set iterations and run
 iter=10
@@ -17,6 +17,7 @@ i=1
 while [ $i -le $iter ]
 do
 	${EXE_FILE} ${EXE_ARGS}
+	echo "round " ${i} " finished ..."
 	((i++))
 	sleep 1
 done
@@ -25,6 +26,7 @@ done
 if [ -f time_record.txt ]
 then
 	echo "-----------------------------------------" >> total_time_record.txt
+	echo ${EXE_FILE} ${EXE_ARGS} >> total_time_record.txt
 	cat time_record.txt >> total_time_record.txt
 	echo "-----------------------------------------" >> total_time_record.txt
 	rm  -f time_record.txt

@@ -191,7 +191,7 @@ void nnMGPU<T>::runImpl(double runtime[][6], MemType memtype){
 		}
 	}
 	intra_Barrier();
-	hostCompTime = timer.stop();
+	hostCompTime += timer.stop();
 	totaltime = timer0.stop();
 
 
