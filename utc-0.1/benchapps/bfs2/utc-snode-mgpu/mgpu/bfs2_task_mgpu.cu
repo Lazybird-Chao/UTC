@@ -57,7 +57,7 @@ void bfsMGPU::initImpl(Node_t *graph_nodes,
 }
 
 
-void bfsMGPU::runImpl(double runtime[][4],
+void bfsMGPU::runImpl(double runtime[][5],
 			int blocksize,
 			int batch,
 			MemType memtype){
@@ -104,9 +104,10 @@ void bfsMGPU::runImpl(double runtime[][4],
 	/*
 	 * do bfs search
 	 */
-	std::cout<<"start bfs processing ..."<<std::endl;
+	//std::cout<<"start bfs processing ..."<<std::endl;
 	double kernelTime=0;
 	double copyoutTime=0;
+	double hostcompTime = 0;
 	while(stopflag==false){
 		stopflag = true;
 		if(stopflag_array[__localThreadId]==0){
@@ -143,11 +144,12 @@ void bfsMGPU::runImpl(double runtime[][4],
 		}
 
 		intra_Barrier();
+		timer.start();
 		//std::cout<<local_startNodeIndex<<" "<<local_numNodes<<std::endl;
 		for(int j=0; j<__numLocalThreads; j++){
 		for(int i=local_startNodeIndex; i<local_startNodeIndex+local_numNodes; i++){
 			//for(int j=0; j<__numLocalThreads; j++){
-				if(nextWave_array[j*total_graph_nodes+i]==1){
+				if(nextWave_array[j*total_graph_nodes+i]==1 && g_frontWave[i]==0){
 					g_frontWave[i] = 1;
 					g_spath[i] = spath_array[j*total_graph_nodes+i];
 					if(stopflag_array[__localThreadId]==1){
@@ -157,6 +159,7 @@ void bfsMGPU::runImpl(double runtime[][4],
 				}
 			}
 		}
+		hostcompTime += timer.stop();
 		intra_Barrier();
 		for(int i=0; i<__numLocalThreads; i++){
 			if(stopflag_array[i] == 0){
@@ -179,6 +182,7 @@ void bfsMGPU::runImpl(double runtime[][4],
 	runtime[__localThreadId][1] = kernelTime;
 	runtime[__localThreadId][2] = copyinTime;
 	runtime[__localThreadId][3] = copyoutTime;
+	runtime[__localThreadId][4] = hostcompTime;
 
 	intra_Barrier();
 	if(__localThreadId ==0){

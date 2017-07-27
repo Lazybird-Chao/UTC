@@ -39,7 +39,7 @@ public:
 			int total_graph_edges,
 			int src_node);
 
-	void runImpl(double runtime[][4],
+	void runImpl(double runtime[][5],
 			int blocksize,
 			int batch,
 			MemType memtype);

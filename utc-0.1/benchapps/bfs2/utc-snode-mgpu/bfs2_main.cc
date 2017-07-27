@@ -116,14 +116,14 @@ int main(int argc, char**argv){
 			total_graph_nodes,
 			total_graph_edges,
 			source_nodeid);
-	double runtime_m[8][4];
+	double runtime_m[8][5];
 	bfs.run(runtime_m, blocksize, batch, memtype);
 	bfs.wait();
-	double runtime[4]={0,0,0,0};
+	double runtime[5]={0,0,0,0,0};
 	for(int i=0; i<nthreads; i++)
-		for(int j=0; j<4; j++)
+		for(int j=0; j<5; j++)
 			runtime[j]+= runtime_m[i][j];
-	for(int j=0; j<4; j++)
+	for(int j=0; j<5; j++)
 		runtime[j] /= nthreads;
 
 
@@ -155,11 +155,12 @@ int main(int argc, char**argv){
 		std::cout<<"\t\tkernel time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[1]<<"(ms)"<<std::endl;
 		std::cout<<"\t\tcopyin time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[2]<<"(ms)"<<std::endl;
 		std::cout<<"\t\tcopyout time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[3]<<"(ms)"<<std::endl;
+		std::cout<<"\t\thost time: "<<std::fixed<<std::setprecision(4)<<1000*runtime[4]<<"(ms)"<<std::endl;
 	}
 
-	for(int i=0; i<4; i++)
+	for(int i=0; i<5; i++)
 		runtime[i] *= 1000;
-	print_time(4, runtime);
+	print_time(5, runtime);
 
 	return 0;
 }
