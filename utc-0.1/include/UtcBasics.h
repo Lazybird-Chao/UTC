@@ -134,7 +134,7 @@ extern struct timespec LONG_PERIOD;  // use 100us
 /*
  * GPU task related info
  */
-#define ENABLE_GPU_TASK		1  //enalbe the use of GPU task
+#define ENABLE_GPU_TASK		0  //enalbe the use of GPU task
 
 
 #endif

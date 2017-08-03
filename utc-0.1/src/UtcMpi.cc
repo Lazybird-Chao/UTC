@@ -45,8 +45,10 @@ namespace iUtc{
 #endif
             int provided=0;
             MPI_Init_thread(&argc, &argv, mpi_mode, &provided);
-            std::cout<< "MPI ThreadMode="<<m_mode[provided]<<std::endl;
             m_rank= this->rank();
+            if(m_rank==0){
+            	std::cout<< "MPI ThreadMode="<<m_mode[provided]<<std::endl;
+            }
             m_size = this->numProcs();
             int length;
             MPI_Get_processor_name(m_name, &length);
