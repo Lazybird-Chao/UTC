@@ -16,7 +16,8 @@ namespace iUtc{
 
 MpiWinLock::MpiWinLock(){
 	m_root = 0;
-	m_comm = &MPI_COMM_WORLD;
+	world_comm_copy = MPI_COMM_WORLD;
+	m_comm = &world_comm_copy;
 	MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
 
 	MPI_Info lock_info = MPI_INFO_NULL;
@@ -37,9 +38,9 @@ MpiWinLock::MpiWinLock(){
 }
 
 
-MpiWinLock::MpiWinLock(MPI_Comm &comm, int root, int rank){
+MpiWinLock::MpiWinLock(MPI_Comm *comm, int root, int rank){
 	m_root = root;
-	m_comm = &comm;
+	m_comm = comm;
 	m_rank = rank;
 
 	MPI_Info lock_info = MPI_INFO_NULL;
@@ -54,7 +55,7 @@ MpiWinLock::MpiWinLock(MPI_Comm &comm, int root, int rank){
 	m_mpi_win_baseptr[PREV_DISP] = -1;
 	m_mpi_win_baseptr[TAIL_DISP] = -1;
 	m_mpi_win_baseptr[LOCK_DISP] = -1;
-	MPI_Win_lock_all (0, m_mpi_win);	//note the 0
+	MPI_Win_lock_all (0, m_mpi_win);	//note the 0, not shared lock
 
 	MPI_Info_free(&lock_info);
 }
@@ -140,7 +141,7 @@ void MpiWinLock::unlock(long *lockp){
 int MpiWinLock::trylock(long *lockp){
 	int is_locked = -1, compare = -1;
 	mpi_win_lock_t *lock = (mpi_win_lock_t *) lockp;
-	lock->prev = -1;
+	lock->prev_owner_rank = -1;
 	/* Get the last tail, if -1 replace with me */
 	MPI_Compare_and_swap (&m_rank, &compare, &(lock->prev_owner_rank), MPI_INT,
 			m_root, TAIL_DISP, m_mpi_win);

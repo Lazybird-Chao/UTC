@@ -3,10 +3,16 @@
  */
 
 #include "internal_win.h"
+#include "dlmalloc.h"
 
+
+#include <stdlib.h>
+
+//extern "C"  void* create_mspace_with_base(void* base, size_t capacity, int locked);
+//extern "C" size_t mspace_set_footprint_limit(mspace msp, size_t bytes);
 
 namespace iUtc{
-static inline int Type_size(int mpi_type){
+static inline int Type_size(MPI_Datatype mpi_type){
 	int type_size;
 	MPI_Type_size(mpi_type, &type_size);
 	return type_size;
@@ -47,7 +53,7 @@ void internal_MPIWin::scoped_win_init(){
 		}
 
 		 MPI_Win_lock_all(MPI_MODE_NOCHECK /* use 0 instead if things break */,
-				 shmem_sheap_win);
+				 scoped_sheap_win);
 		 /* dlmalloc mspace constructor.
 		 * locked may not need to be 0 if SHMEM makes no multithreaded access... */
 		 /* Part (less than 128*sizeof(size_t) bytes) of this space is used for bookkeeping,
@@ -61,11 +67,11 @@ void internal_MPIWin::scoped_win_init(){
 		  * similar to shmem_symetirc space size, that shared data can not
 		  * exceed this size from shmalloc()
 		  */
-		 mspace_setfootprint_limit(scoped_heap_msapce, scoped_sheap_size);
+		 mspace_set_footprint_limit(scoped_heap_mspace, scoped_sheap_size);
 
 		 MPI_Info_free(&sheap_info);
 
-		 scoped_win_lock = new MpiWinLock(scoped_win_comm, scoped_win_root);
+		 scoped_win_lock = new MpiWinLock(scoped_win_comm, scoped_win_root, scoped_win_comm_rank );
 
 		 MPI_Barrier(*scoped_win_comm);
 	}
@@ -109,7 +115,7 @@ void internal_MPIWin::scoped_win_local_complete(){
 }
 
 void internal_MPIWin::scoped_win_local_complete_pe(int pe){
-	MPI_Win_flush_local(pe, scoped_sheap_win)
+	MPI_Win_flush_local(pe, scoped_sheap_win);
 }
 
 /* return 0 on successful lookup, otherwise 1 */
@@ -126,7 +132,7 @@ int internal_MPIWin::scoped_win_offset(const void *address, const int pe, /* IN 
 		return 0;
 	}
 	else{
-		*win_offset = (MPI_Aint)nullptr;
+		*win_offset = (MPI_Aint)NULL;
 		*win_id      = _INVALID_WINDOW;
 		return 1;
 	}
@@ -295,18 +301,25 @@ void internal_MPIWin::scoped_win_wait(MPI_Datatype mpi_type,
 		const void *value){
 	enum window_id_e win_id;
 	MPI_Aint win_offset;
-	if(scoped_win_offset(target, pe, &win_id, &win_offset)){
+	if(scoped_win_offset(target, scoped_win_comm_rank, &win_id, &win_offset)){
 		/*
 		 * error
 		 */
 		printf("Error, scoped_win_put offset failed");
 		exit(1);
 	}
-	*output = *value;
-	while(*output == *value){
-		MPI_Fetch_and_op(nullptr, output, mpi_type, scoped_win_comm_rank,
-				win_offset, MPI_NO_OP, scoped_sheap_win);
-		MPI_Win_flush_local(scoped_win_comm_rank, scoped_sheap_win);
+	if(Type_size(mpi_type)==8){
+		long *o = (long*)output;
+		long *v = (long*)value;
+		*o = *v;
+		while(*o == *v){
+			MPI_Fetch_and_op(NULL, output, mpi_type, scoped_win_comm_rank,
+					win_offset, MPI_NO_OP, scoped_sheap_win);
+			MPI_Win_flush_local(scoped_win_comm_rank, scoped_sheap_win);
+		}
+	}
+	else{
+		std::cerr<<"no implemented type in scoped_win_wait!!!"<<std::endl;
 	}
 }
 
@@ -317,7 +330,7 @@ void internal_MPIWin::scoped_win_wait_until(MPI_Datatype mpi_type,
 		const void *value){
 	enum window_id_e win_id;
 	MPI_Aint win_offset;
-	if(scoped_win_offset(target, pe, &win_id, &win_offset)){
+	if(scoped_win_offset(target, scoped_win_comm_rank, &win_id, &win_offset)){
 		/*
 		 * error
 		 */
@@ -326,39 +339,46 @@ void internal_MPIWin::scoped_win_wait_until(MPI_Datatype mpi_type,
 	}
 
 	bool comp_res =false;
+	if(Type_size(mpi_type)==8){
+		long *o = (long*)output;
+		long *v = (long*)value;
 	while(!comp_res){
-		MPI_Fetch_and_op(nullptr, output, mpi_type, scoped_win_comm_rank,
+		MPI_Fetch_and_op(NULL, output, mpi_type, scoped_win_comm_rank,
 					win_offset, MPI_NO_OP, scoped_sheap_win);
 		MPI_Win_flush_local(scoped_win_comm_rank, scoped_sheap_win);
 		switch(cond){
 		case 1:
-			if(*output = *value)
+			if(*o == *v)
 				comp_res = true;
 			break;
 		case 2:
-			if(*output != *value)
+			if(*o != *v)
 				comp_res = true;
 			break;
 		case 3:
-			if(*output > *value)
+			if(*o > *v)
 				comp_res = true;
 			break;
 		case 4:
-			if(*output >= *value)
+			if(*o >= *v)
 				comp_res = true;
 			break;
 		case 5:
-			if(*output < *value)
+			if(*o < *v)
 				comp_res = true;
 			break;
 		case 6:
-			if(*output <= *value)
+			if(*o <= *v)
 				comp_res = true;
 			break;
 		default:
 			std::cerr<<"invalid comparison in scoped_win_wait!!!"<<std::endl;
 
 		}
+	}
+	}
+	else{
+		std::cerr<<"no implemented type in scoped_win_wait!!!"<<std::endl;
 	}
 }
 
@@ -374,12 +394,16 @@ long internal_MPIWin::get_scoped_sheap_size(){
 	return scoped_sheap_size;
 }
 
-mspace internal_MPIWin::get_heap_mspace(){
+void* internal_MPIWin::get_heap_mspace(){
 	return scoped_heap_mspace;
 }
 
 MpiWinLock *internal_MPIWin::get_scoped_win_lock(){
 	return scoped_win_lock;
+}
+
+MPI_Comm *internal_MPIWin::get_scoped_win_comm(){
+	return scoped_win_comm;
 }
 
 }// end namespace iUtc

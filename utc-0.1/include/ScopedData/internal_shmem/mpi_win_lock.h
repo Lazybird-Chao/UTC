@@ -43,10 +43,12 @@ private:
 	MPI_Comm *m_comm;
 	int m_root;
 	int m_rank;
+	MPI_Comm world_comm_copy;
+
 public:
 	MpiWinLock();
 
-	MpiWinLock(MPI_Comm &comm, int root);
+	MpiWinLock(MPI_Comm *comm, int root, int rank);
 
 	~MpiWinLock();
 
