@@ -1,7 +1,7 @@
 #################################
-BENCHMARK = utc_shmatrix
+BENCHMARK = utc_matrix
 BINDIR = .
-PROGRAM_SOURCE:= utc_shmatrix.cc
+PROGRAM_SOURCE:= utc_matrix.cc
 COMM_FILE = ../../../for-nodes.comm
 LIBMK_FILE = for-nodes.mk
 
@@ -12,24 +12,34 @@ default: $(PROGRAM)
 
 include $(COMM_FILE)
 
-libutc:
+LIBUTC = $(PROJECT_LIBDIR)/libutc
+#LIBUTC_GPU = $(PROJECT_LIBDIR)/libutcgpu
+#LIBUTC_SCOPED_DATA = $(PROJECT_LIBDIR)/libutc-scopeddata
+
+
+$(PROJECT_LIBDIR)/libutc:
 	cd $(PROJECT_HOMEDIR);$(MAKE) -f $(LIBMK_FILE)
+$(PROJECT_LIBDIR)/libutc-scopeddata:
+	cd $(PROJECT_SRCDIR)/ScopedData;$(MAKE) -f Make.mk
+$(PROJECT_LIBDIR)/libutcgpu:
+	cd $(PROJECT_SRCDIR)/gpu;$(MAKE) -f Make.mk
+
 
 
 ### helper function for test program
 HELPER_OBJ = helper_getopt.o 
 $(HELPER_OBJ): $(PROJECT_HOMEDIR)/test/bench/helper_getopt.c
-	$(G++) -o $(HELPER_OBJ) -c $<
+	$(C++) -o $(HELPER_OBJ) -c $<
 	
 PROGRAM_OBJ:= $(addsuffix .o, $(basename $(PROGRAM_SOURCE))) \
 				$(HELPER_OBJ)
 
-$(PROGRAM): $(PROGRAM_OBJ) libutc
-	$(G++)	$(CCFLAG) $(LINKFLAG) -o $(PROGRAM) $(PROGRAM_OBJ) $(LIB)
+$(PROGRAM): $(PROGRAM_OBJ) $(LIBUTC) $(LIBUTC_SCOPED_DATA)
+	$(C++)	$(CCFLAG) $(LINKFLAG) -o $(PROGRAM) $(PROGRAM_OBJ) $(LIB)
 	@echo "make target successful !!!" 
 
-utc_shmatrix.o:utc_shmatrix.cc
-	$(G++)	-c $< $(CCFLAG) $(INCLUDE)
+utc_matrix.o:utc_matrix.cc
+	$(C++)	-c $< $(CCFLAG) $(INCLUDE)
 
 				
 

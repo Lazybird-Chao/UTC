@@ -1,4 +1,5 @@
 ##################
+##################
 PROJECT_HOMEDIR = /home/chao/git/UTC/utc-0.1
 PROJECT_BINDIR = $(PROJECT_HOMEDIR)/bin
 PROJECT_LIBDIR = $(PROJECT_HOMEDIR)/lib
@@ -7,9 +8,13 @@ PROJECT_SRCDIR = $(PROJECT_HOMEDIR)/src
 
 ENABLE_GPU = 1
 
+ENABLE_SCOPED_DATA = 1
+
+
 ##################
-GCC = gcc
-G++ = g++
+##################
+CC = gcc
+C++ = g++
 MPICXX = mpicxx
 
 CFLAG := -Wall
@@ -23,11 +28,14 @@ BOOST_DIR = /opt/boost-1.60
 OSH_DIR = /opt/openmpi-1.10
 
 MPI_LIB :=	-pthread -Wl,-rpath -Wl,$(MPI_DIR)/lib -Wl,--enable-new-dtags \
-				-L$(MPI_DIR)/lib -lmpi_cxx -lmpi -loshmem
+				-L$(MPI_DIR)/lib -lmpi_cxx -lmpi
+ifeq($ENABLE_SCOPED_DATA), 1)
+	MPI_LIB += -loshmem
+endif
+				
 BOOST_LIB := $(BOOST_DIR)/lib/libboost_thread.a \
 				$(BOOST_DIR)/lib/libboost_system.a \
 				$(BOOST_DIR)/lib/libboost_filesystem.a
-OSH_LIB :=
 				
 LIB = $(PROJECT_LIBDIR)/libutc.a
 LIB += -lrt
@@ -36,7 +44,15 @@ LIB += $(MPI_LIB) $(BOOST_LIB)
 ###################		
 INCLUDE = -I$(MPI_DIR)/include
 INCLUDE += -I$(BOOST_DIR)/include
-INCLUDE += -I$(PROJECT_HOMEDIR)/include		
+INCLUDE += -I$(PROJECT_HOMEDIR)/include	
+INCLUDE += -I$(PROJECT_HOMEDIR)/include/thread_util	
+
+#####################
+
+ifeq ($(ENABLE_SCOPED_DATA), 1)
+	INCLUDE += -I$(PROJECT_HOMEDIR)/include/ScopedData
+	LIB += $(PROJECT_LIBDIR)/libutc-scopeddata.a
+endif
 
 
 #####################
@@ -50,7 +66,7 @@ GENCODE_SM35 = -gencode arch=compute_35,code=sm_35
 
 NVCCFLAG = $(GENCODE_SM20)
 
-CUDA_LIB := -L$(CUDA_DIR)/lib64 -lcuda -lcudart
+CUDA_LIB := -L$(CUDA_DIR)/lib64 -lcudart  -lcuda
 
 NVLINKFLAG = $(GENCODE_SM20)
 
@@ -67,10 +83,16 @@ endif
 .PHONY: cleanlib cleanlog cleanbin
 
 cleanlib:
-	rm  $(PROJECT_LIBDIR)/*
-	rm 	$(PROJECT_SRCDIR)/gpu/*.o $(PROJECT_SRCDIR)/gpu/*.a
+	rm  -rf $(PROJECT_LIBDIR)/*
+ifeq ($(ENABLE_GPU), 1)
+	rm 	-rf $(PROJECT_SRCDIR)/gpu/*.o $(PROJECT_SRCDIR)/gpu/*.a
+endif
+ifeq ($(ENALBE_SCOPED_DATA), 1)
+	rm	-rf $(PROJECT_SRCDIR)/ScopedData/*.o $(PROJECT_SRCDIR)/ScopedData/*.a
+endif
+
 cleanlog:
-	rm  $(PROJECT_HOMEDIR)/log/*
+	rm	-rf $(PROJECT_HOMEDIR)/log/*
 cleanbin:
-	rm  $(PROJECT_BINDIR)/*
+	rm	-rf $(PROJECT_BINDIR)/*
 		

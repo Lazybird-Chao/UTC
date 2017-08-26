@@ -24,6 +24,8 @@
 
 #include "GpuKernel.h"
 
+#include "GpuData.h"
+
 #include "helper_cuda.h"
 
 

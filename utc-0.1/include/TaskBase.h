@@ -123,6 +123,10 @@ protected:
     TaskBase();
 
 
+
+    // an array to map world-mpi-rank to task-mpi-goup-rank
+    std::map<int, int> m_worldRankToTaskGroupRank;
+
 };
 
 }

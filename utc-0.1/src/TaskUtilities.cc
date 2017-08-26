@@ -313,6 +313,7 @@ void SharedDataBcast(void* Data, DataSize_t DataSize, Rank_t rootthread){
 	static thread_local int numProcs = -1;
 	static thread_local int numLocalThreads=-1;
 	int rootproc;
+	std::cerr<<"Deprecated, should not use anymore!!!"<<std::endl;
 	if(currentProcRank == -1){
 		currentProcRank= getPrank();
 		currentThreadRank = getGrank();
@@ -383,6 +384,7 @@ void SharedDataBcast(void* Data, DataSize_t DataSize, Rank_t rootthread){
 
 void SharedDataGather(void *DataSend, DataSize_t DataSize, void *DataGathered,
 		Rank_t rootthread){
+	std::cerr<<"Deprecated, should not use anymore!!!"<<std::endl;
 	static thread_local int currentProcRank = -1;
 	static thread_local int currentThreadRank = -1;
 	static thread_local SpinBarrier* sbarrier=nullptr;

@@ -11,7 +11,10 @@
 #include "AffinityUtilities.h"
 #include "TaskArtifact.h"
 #include "TaskCPU.h"
-#include "gpu/TaskGPU.h"
+#include "FastBarrier.h"
+#if ENABLE_GPU_TASK
+	#include "TaskGPU.h"
+#endif
 
 #include <thread>
 #include <mutex>
@@ -51,6 +54,9 @@ public:
 
 
 	//
+	template <typename... Args>
+	void init(Args... args);
+	/*
 	void init();
 
 	template<typename T1>
@@ -82,12 +88,27 @@ public:
 
 	template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9, typename T10>
 	void init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8, T9 arg9, T10 arg10);
+	*/
 
 	//
+	template <typename... Args>
+	void run(Args... args);
+
+	/*
 	void run();
 
 	template<typename T1>
 	void run(T1 arg1);
+
+	template<typename T1, typename T2>
+	void run(T1 arg1, T2 arg2);
+
+	template<typename T1, typename T2, typename T3>
+	void run(T1 arg1, T2 arg2, T3 arg3);
+
+	template<typename T1, typename T2, typename T3, typename T4>
+	void run(T1 arg1, T2 arg2, T3 arg3, T4 arg4);
+	*/
 
 	//
 	void wait();
@@ -96,10 +117,15 @@ public:
 	void finish();
 
 	//
+	template<typename... Args>
+	void exec(void (T::*user_fun)(Args...), Args... args);
+
+	/*
 	void exec(void (T::*user_fun)());
 
 	template<typename T1>
 	void exec(void (T::*user_fun)(T1), T1 arg1);
+	*/
 
 	//
 	int setUserTaskObj(T &userTaskObj);
@@ -118,6 +144,7 @@ private:
 	// barrier obj, shared by all threads in one task
 	Barrier *m_taskBarrierObjPtr;
 	SpinBarrier *m_taskSpinBarrierObjPtr;
+	FastBarrier *m_taskFastBarrierObjPtr;
 
 	// mpi comm related obj
 #ifdef USE_MPI_BASE

@@ -30,4 +30,12 @@ int getCurrentCudaDeviceId(){
 		return crtUtcGpuCtx->getCudaDeviceId();
 }
 
+cudaStream_t getCurrentStream(){
+	static thread_local cudaStream_t crtStream = NULL;
+	if(crtStream == NULL){
+		(TaskManager::getTaskInfo()->gpuSpecInfo.utcGpuCtx)->getDefaultStream();
+	}
+	return crtStream;
+}
+
 }

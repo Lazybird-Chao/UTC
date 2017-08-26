@@ -43,6 +43,18 @@ public:
 	int getCudaDeviceId();
 
 	cudaStream_t getBoundStream();
+	cudaStream_t getDefaultStream();
+
+	int setNonblockingDefaultStream();
+
+	cudaStream_t getNewStream();
+	void destroyStream(cudaStream_t &stream);
+
+	cudaEvent_t getNewEvent();
+	void destroyEvent(cudaEvent_t &event);
+
+	int getCurrentDeviceAttr(cudaDeviceAttr attr);
+	int getCurrentDeviceAttr(cudaDeviceAttr attr, int cudaDevId);
 
 private:
 	// the actual related cuda context
@@ -55,7 +67,7 @@ private:
 	int		m_cudaDeviceId;    //the real gpuid that can be use by cudaSetDevice()
 	CUdevice	m_cudaDevice;
 
-	int 	m_utcGpuId;  // different from the m_gpuDeviceId
+	int 	m_utcGpuId;  // different from the m_cudaDeviceId
 
 	//
 	cudaCtxMapMode	m_cudaCtxMapMode;

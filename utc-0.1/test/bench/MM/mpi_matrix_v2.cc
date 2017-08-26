@@ -92,7 +92,7 @@ int main(int argc, char** argv){
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
 	double *a_tmp;
-	if(np>1){
+	if(np>=1){
 		a_tmp = (double*)malloc(ROWS*blocksize*sizeof(double));
 	}
 	t2=0;

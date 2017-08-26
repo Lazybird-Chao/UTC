@@ -69,28 +69,6 @@ void intra_Barrier();
 void inter_Barrier();
 
 
-
-
-
-class SpinBarrier{
-public:
-	SpinBarrier();
-
-	SpinBarrier(int nthreads);
-
-	void set(int nthreads);
-
-	void wait();
-
-private:
-	std::atomic<int> m_barrierCounter;
-	std::atomic<int> m_generation;
-	int m_numThreadsForSync;
-	std::atomic<int> m_barrierReady;
-};
-
-void intra_SpinBarrier();
-
 }// namespace iUtc
 
 #endif

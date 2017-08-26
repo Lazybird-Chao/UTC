@@ -95,7 +95,10 @@ public:
 			}
 			runtime[__localThreadId*2+1] += timer1.stop();
 		}
-		inter_Barrier();
+		//inter_Barrier();
+		//intra_Barrier();
+		//intra_SpinBarrier();
+		__fastIntraSync.wait();
 		runtime[__localThreadId*2] = timer.stop();
 		if(__numProcesses>1 && getUniqueExecution())
 			free(localPtrA);

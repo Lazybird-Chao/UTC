@@ -68,13 +68,18 @@ extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
                               //  MPI_THREAD_SERIALIZED,
 
 /*
- * openSHMEM environment
+ * Scoped data related
  */
+#define ENABLE_SCOPED_DATA 1     // enable the use of global shared data feature
+
+#if ENABLE_SCOPED_DATA
+
 #define USE_OPENSHMEM
 #ifdef USE_OPENSHMEM
 	#include "shmem.h"
 #endif
 
+#endif
 /*
  *
  */
@@ -118,13 +123,18 @@ const int CONDUIT_LATCH_ATOMI_THRESHHOLD = (32*1024);
  * some data used for thread pause
  */
 #include <time.h>
-const long USE_PAUSE=2000; // about 5~10us for 1000 mm_pause
+const long USE_PAUSE=1000; // about 5~10us for 1000 mm_pause
 const long USE_SHORT_SLEEP=10000; //about 500us for 1000 thread_yield
 const long USE_LONG_SLEEP =20000; //about 50ms  for 1000 nano_sleep(1us)
 extern struct timespec SHORT_PERIOD; // use 1000ns=1us
 extern struct timespec LONG_PERIOD;  // use 100us
 
 
+
+/*
+ * GPU task related info
+ */
+#define ENABLE_GPU_TASK		1  //enalbe the use of GPU task
 
 
 #endif

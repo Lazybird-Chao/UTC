@@ -1,6 +1,8 @@
 #ifndef UTC_TASKARTIFACT_H_
 #define UTC_TASKARTIFACT_H_
 
+#include "UserTaskBase.h"
+
 #include <functional>
 
 namespace iUtc{

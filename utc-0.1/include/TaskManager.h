@@ -16,6 +16,12 @@ namespace iUtc{
     /**
      *  TaskManager is a singleton that holds all the tasks in a process
      */
+/*TODO:
+	* As this class is designed as singleton, no need to use so many
+	* static data member and method members.
+	* Should change these static to normal members.
+	*/
+
     class TaskManager
     {
         public:

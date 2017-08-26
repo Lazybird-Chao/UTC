@@ -58,6 +58,8 @@ namespace iUtc{
                     <<"Current proc rank="<<m_rank<<"("<<getpid()<<")"<<std::endl;
 #endif
 
+
+#if ENABLE_SCOPED_DATA
 #ifdef USE_OPENSHMEM
             // for openmpi-1.8.3, call this with mpi_init_thread() before will cause dead
             // lock(bug maybe); shmem_init inside will check if mpi_init called, if not it
@@ -65,6 +67,7 @@ namespace iUtc{
             // support, so we need call mpi_init_thread explicitely in advance, and then
             // call shmem_init
             shmem_init();
+#endif
 #endif
 
         }
@@ -77,15 +80,17 @@ namespace iUtc{
             //
             MPI_Barrier(MPI_COMM_WORLD);
 
+#if ENABLE_SCOPED_DATA
 #ifdef USE_OPENSHMEM
             //shmem_finalize should be called first, and inside will finalize mpi
             // so after this can't call mpi_finalize again
             //std::cout<<ERROR_LINE<<std::endl;
             shmem_finalize();
+#endif
 #else
+
             MPI_Finalize();
 #endif
-
 
 #ifdef USE_DEBUG_LOG
             std::cout<<"[SYSTEM LOG]>>>>>>>>>:";

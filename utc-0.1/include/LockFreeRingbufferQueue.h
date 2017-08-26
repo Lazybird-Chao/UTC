@@ -160,8 +160,8 @@ private:
 		unsigned long head, tail;
 	};
 	int USE_PAUSE=1000;
-	int USE_SHORT_SLEEP=2000;
-	int USE_LONG_SLEEP =3000;
+	int USE_SHORT_SLEEP=10000;
+	int USE_LONG_SLEEP =20000;
 
 
 public:
@@ -271,7 +271,7 @@ public:
 				_mm_pause();
 			else if(_counter<USE_SHORT_SLEEP){
 				__asm__ __volatile__ ("pause" ::: "memory");
-				std::this_thread::yield();
+				if(_counter%1000 ==0) std::this_thread::yield();
 			}
 			else if(_counter<USE_LONG_SLEEP)
 				nanosleep(&SHORT_PERIOD, nullptr);
@@ -318,8 +318,10 @@ public:
 				_counter++;
 				if(_counter<USE_PAUSE)
 					_mm_pause();
-				else if(_counter<USE_SHORT_SLEEP)
+				else if(_counter<USE_SHORT_SLEEP){
 					__asm__ __volatile__ ("pause" ::: "memory");
+					if(_counter%1000 ==0) std::this_thread::yield();
+				}
 				else if(_counter<USE_LONG_SLEEP)
 					nanosleep(&SHORT_PERIOD, nullptr);
 				else
@@ -342,7 +344,7 @@ public:
 
 		
 		long _counter=0;
-		struct timepsec rem;
+		//struct timepsec rem;
 		while (__builtin_expect(thr_p_[thread_id].head >= last_tail_ + Q_SIZE, 0))
 		{
 			auto min = tail_;
@@ -366,7 +368,7 @@ public:
 				_mm_pause();
 			else if(_counter<USE_SHORT_SLEEP){
 				__asm__ __volatile__ ("pause" ::: "memory");
-				std::this_thread::yield();
+				if(_counter%1000 ==0) std::this_thread::yield();
 			}
 			else if(_counter<USE_LONG_SLEEP)
 				nanosleep(&SHORT_PERIOD, nullptr);
@@ -422,7 +424,7 @@ T *pop()
 				_mm_pause();
 			else if(_counter<USE_SHORT_SLEEP){
 				__asm__ __volatile__ ("pause" ::: "memory");
-				std::this_thread::yield();
+				if(_counter%1000 ==0) std::this_thread::yield();
 			}
 			else if(_counter<USE_LONG_SLEEP)
 				nanosleep(&SHORT_PERIOD, nullptr);
@@ -466,7 +468,7 @@ T *pop(unsigned int my_id)
 				_mm_pause();
 			else if(_counter<USE_SHORT_SLEEP){
 				__asm__ __volatile__ ("pause" ::: "memory");
-				std::this_thread::yield();
+				if(_counter%1000 ==0) std::this_thread::yield();
 			}
 			else if(_counter<USE_LONG_SLEEP)
 				nanosleep(&SHORT_PERIOD, nullptr);

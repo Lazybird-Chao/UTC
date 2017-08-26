@@ -109,19 +109,27 @@ int main(int argc, char** argv){
 	// exchange data with other proc and comput
 	tv2[1]= MPI_Wtime();
 	t2+=tv2[1] - tv2[0];
-	int neighbour = rank;
+	int rneighbour = (rank+1)%np;
+	int lneighbour = (rank-1+np)%np;
 	for(p=2; p<=np; p++){
-		neighbour = (neighbour+1)%np;
+		//rneighbour = (rneighbour+1)%np;
+		//lneighbour = (lneighbour -1 +np)%np;
 		if(rank ==np-1){
-			MPI_Recv(a_tmp, blocksize*ROWS, MPI_DOUBLE, neighbour, neighbour, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			MPI_Send(&a_local[0][0], blocksize*ROWS, MPI_DOUBLE, neighbour, rank, MPI_COMM_WORLD);
-			//memcpy(a_local[0], a_tmp,blocksize*ROWS*sizeof(double));
+			//printf("1-%d %d\n", rank, p);
+			MPI_Recv(a_tmp, blocksize*ROWS, MPI_DOUBLE, lneighbour, lneighbour, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			//printf("2-%d %d\n", rank, p);
+			MPI_Send(&a_local[0][0], blocksize*ROWS, MPI_DOUBLE, rneighbour, rank, MPI_COMM_WORLD);
+			//printf("3-%d %d\n", rank, p);
 		}
 		else{
-			MPI_Send(&a_local[0][0], blocksize*ROWS, MPI_DOUBLE, neighbour, rank, MPI_COMM_WORLD);
-			MPI_Recv(a_tmp, blocksize*ROWS, MPI_DOUBLE, neighbour, neighbour, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			//printf("1-%d %d\n", rank, p);
+			MPI_Send(&a_local[0][0], blocksize*ROWS, MPI_DOUBLE, rneighbour, rank, MPI_COMM_WORLD);
+			//printf("2-%d %d\n", rank, p);
+			MPI_Recv(a_tmp, blocksize*ROWS, MPI_DOUBLE, lneighbour, lneighbour, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			//printf("3-%d %d\n", rank, p);
 		}
-		B_matrix_displacement = neighbour * blocksize;
+
+		B_matrix_displacement = (B_matrix_displacement+blocksize)%COLUMNS;
 
 
 		MPI_Barrier(MPI_COMM_WORLD);
@@ -138,6 +146,7 @@ int main(int argc, char** argv){
 		tv2[1]= MPI_Wtime();
 		t2+=tv2[1] - tv2[0];
 		//MPI_Barrier(MPI_COMM_WORLD);
+		memcpy(a_local[0], a_tmp,blocksize*ROWS*sizeof(double));
 
 	}
 	tv[1] = MPI_Wtime();

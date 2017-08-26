@@ -3,10 +3,12 @@
 
 #include "UtcBasics.h"
 #include "Barrier.h"
+#include "SpinBarrier.h"
 #include "UniqueExeTag.h"
-#include "gpu/UtcGpuBasics.h"
+#include "FastBarrier.h"
 #if ENABLE_GPU_TASK
-#include "gpu/UtcGpuContext.h"
+	#include "UtcGpuBasics.h"
+	#include "UtcGpuContext.h"
 #endif
 
 
@@ -61,10 +63,15 @@ namespace iUtc{
 
     Barrier* barrierObjPtr = nullptr;   // same value in one task
     SpinBarrier* spinBarrierObjPtr = nullptr;
+    FastBarrier* fastBarrierObjPtr = nullptr;
 
 #ifdef USE_MPI_BASE
     MPI_Comm* commPtr = nullptr;  // same value in one task
     MPI_Group* mpigroupPtr = nullptr; // same value in one task
+
+    MPI_Comm* worldCommPtr = nullptr;
+    MPI_Group* worldGroupPtr = nullptr;
+    std::map<int,int> *worldRankToGrouprRank;
 #endif
 
     struct CPUTaskSpecInfo cpuSpecInfo;
@@ -80,7 +87,11 @@ struct ThreadPrivateData
 	 //
 	 std::ofstream *threadOstream = nullptr;
 	 UniqueExeTag *taskUniqueExeTagObj = nullptr;
-	 //
+
+	 /*
+	  * related to two  deprecated  functions
+	  * TODO: delete these members
+	  */
 	 std::atomic<int> *bcastAvailable;
 	 std::atomic<int> *gatherAvailable;
 };

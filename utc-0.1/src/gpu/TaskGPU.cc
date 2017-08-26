@@ -15,7 +15,8 @@
 
 namespace iUtc{
 
-TaskGPU::TaskGPU(int numLocalThreads,
+TaskGPU::TaskGPU(TaskType taskType,
+				int numLocalThreads,
 				 int currentProcessRank,
 				 int numProcesses,
 				 int numTotalThreads,
@@ -29,6 +30,7 @@ TaskGPU::TaskGPU(int numLocalThreads,
 				 boost::thread_specific_ptr<ThreadPrivateData>* threadPrivateData,
 				 UserTaskBase* realUserTaskObj){
 
+	m_taskType = taskType;
 	m_numLocalThreads = numLocalThreads;
 	m_currentProcessRank = currentProcessRank;
 	m_numProcesses = numProcesses;
@@ -78,12 +80,15 @@ TaskGPU::TaskGPU(int numLocalThreads,
 }
 
 TaskGPU::~TaskGPU(){
+	//std::cout<<"enter gpu task destructor"<<std::endl;
 	for(auto& th : m_taskThreads)
 	{
 		if(th.joinable())
 		{
 			ThreadId_t id = th.get_id();
+			//std::cout<<"start finish one thread"<<std::endl;
 			th.join();
+			//std::cout<<"end finish one thread"<<std::endl;
 #ifdef USE_DEBUG_LOG
 		PRINT_TIME_NOW(*m_procOstream)
 		(*m_procOstream)<<"cputask thread "<<id<<" join on "<<getpid()
@@ -115,7 +120,7 @@ TaskGPU::~TaskGPU(){
 	/****************************/
 	m_gpuIdBindList.clear();
 	free(m_allLocalThreadUtcGpuContexPtr);
-
+	//std::cout<<"end gputask desctructor"<<std::endl;
 
 }
 
@@ -134,10 +139,11 @@ void TaskGPU::launchThreads(){
 	(*m_procOstream)<<"start launching gputask threads for ["<<m_Name<<"] on proc "<<m_processRank
 			<<"..."<<std::endl;
 #endif
-	//
+	/*
 	std::unique_lock<std::mutex> LCK(m_activeLocalThreadMutex);
 	m_activeLocalThreadCount = m_numLocalThreads;
 	LCK.unlock();
+	*/
 	int trank=0;
 	ThreadId_t id;
 	for(int i=0; i<m_numLocalThreads; i++)
@@ -226,8 +232,12 @@ void TaskGPU::threadImpl(ThreadRank_t trank,
 	taskInfoPtr->threadId = std::this_thread::get_id();
 	taskInfoPtr->barrierObjPtr = m_commonTaskInfo->barrierObjPtr;
 	taskInfoPtr->spinBarrierObjPtr = m_commonTaskInfo->spinBarrierObjPtr;
+	taskInfoPtr->fastBarrierObjPtr = m_commonTaskInfo->fastBarrierObjPtr;
 	taskInfoPtr->commPtr = m_commonTaskInfo->commPtr;
 	taskInfoPtr->mpigroupPtr = m_commonTaskInfo->mpigroupPtr;
+	taskInfoPtr->worldCommPtr = m_commonTaskInfo->worldCommPtr;
+	taskInfoPtr->worldGroupPtr = m_commonTaskInfo->worldGroupPtr;
+	taskInfoPtr->worldRankToGrouprRank = m_commonTaskInfo->worldRankToGrouprRank;
 	taskInfoPtr->gpuSpecInfo.gpuId = gpuToBind;   /****/
 	TaskManager::setTaskInfo(taskInfoPtr);
 	//std::cout<<trank<<" "<<ERROR_LINE<<std::endl;
@@ -241,12 +251,14 @@ void TaskGPU::threadImpl(ThreadRank_t trank,
 	//std::cout<<trank<<" "<<ERROR_LINE<<std::endl;
 
 	/****** setup the gpu context *****/
+#if ENABLE_GPU_TASK
 	m_allLocalThreadUtcGpuContexPtr[lrank] = new UtcGpuContext(gpuToBind, m_cudaCtxMode);
 	UtcGpuContext *myUtcGpuContext = m_allLocalThreadUtcGpuContexPtr[lrank];
-#if ENABLE_GPU_TASK
+
 	taskInfoPtr->gpuSpecInfo.utcGpuCtx = myUtcGpuContext;
-#endif
+
 	myUtcGpuContext->ctxInit();
+#endif
 
 
 	// do preInit()
@@ -260,7 +272,9 @@ void TaskGPU::threadImpl(ThreadRank_t trank,
 							m_commonTaskInfo->pRank,
 							m_numLocalThreads,
 							m_numProcesses,
-							m_numTotalThreads);
+							m_numTotalThreads,
+							m_commonTaskInfo->worldRankToGrouprRank,
+							(void*)myUtcGpuContext);
 
 	while(1){
 		std::unique_lock<std::mutex> LCK1(m_jobExecMutex);
@@ -352,10 +366,10 @@ int TaskGPU::execImpl(std::function<void()> execHandle){
 }
 
 int TaskGPU::waitImpl(){
-	m_jobHandleQueue.push_back(m_nullJobHandle);
 	std::unique_lock<std::mutex> LCK1(m_jobExecMutex);
 	m_jobDoneWait->reset(m_numLocalThreads);
 	m_jobQueue.push_back(threadJobType::job_wait);
+	m_jobHandleQueue.push_back(m_nullJobHandle);
 	LCK1.unlock();
 	m_jobExecCond.notify_all();
 #ifdef USE_DEBUG_LOG
@@ -369,9 +383,9 @@ int TaskGPU::waitImpl(){
 }
 
 int TaskGPU::finishImpl(){
-	m_jobHandleQueue.push_back(m_nullJobHandle);
 	std::unique_lock<std::mutex> LCK1(m_jobExecMutex);
 	m_jobQueue.push_back(threadJobType::job_finish);
+	m_jobHandleQueue.push_back(m_nullJobHandle);
 	LCK1.unlock();
 	m_jobExecCond.notify_all();
 	// will wait all thread calling thread exit
@@ -385,15 +399,14 @@ void TaskGPU::threadSync(){
 
 void TaskGPU::threadSync(ThreadRank_t lrank){
 	// here is an synchronization point for task's all threads
-	m_threadSync->count_down_and_wait();
 	if(m_numProcesses>1){
 		if(lrank ==0){
 	#ifdef USE_MPI_BASE
 			MPI_Barrier(*m_commonTaskInfo->commPtr);
 	#endif
 		}
-		m_threadSync->count_down_and_wait();
 	}
+	m_threadSync->count_down_and_wait();
 }
 
 void TaskGPU::threadExit(ThreadRank_t trank){
@@ -415,12 +428,15 @@ void TaskGPU::threadExit(ThreadRank_t trank){
 	}
 	m_threadPrivateData->reset();  // clear TSS data
 
-	std::lock_guard<std::mutex> lock(m_activeLocalThreadMutex);
+	//std::lock_guard<std::mutex> lock(m_activeLocalThreadMutex);
+	m_activeLocalThreadMutex.lock();
 	m_activeLocalThreadCount--;
+	m_activeLocalThreadMutex.unlock();
 	// notify main thread which is waiting for finish
 	// only let last thread do notify
 	if(m_activeLocalThreadCount == 0)
-		m_activeLocalThreadCond.notify_one(); // only main thread would wait for this
+		//m_activeLocalThreadCond.notify_one(); // only main thread would wait for this
+		m_activeLocalThreadCond.signal();
 
 }
 
@@ -430,20 +446,32 @@ void TaskGPU::threadWait(){
 
 bool TaskGPU::hasActiveLocalThread()
 {
+	/*
     std::lock_guard<std::mutex> lock(m_activeLocalThreadMutex);
     if(m_activeLocalThreadCount > 0)
         return true;
     else
         return false;
+        */
+	m_activeLocalThreadMutex.lock();
+	bool ret = m_activeLocalThreadCount>0 ? true: false;
+	m_activeLocalThreadMutex.unlock();
+	return ret;
 }
 
 void TaskGPU::waitLocalThreadFinish()
 {
+	/*
     std::unique_lock<std::mutex> LCK(m_activeLocalThreadMutex);
     while(m_activeLocalThreadCount!=0)
     {
         m_activeLocalThreadCond.wait(LCK);
     }
+    */
+	m_activeLocalThreadMutex.lock();
+	while(m_activeLocalThreadCount!=0){
+		m_activeLocalThreadCond.wait(&m_activeLocalThreadMutex);
+	}
 }
 
 

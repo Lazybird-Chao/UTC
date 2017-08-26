@@ -18,6 +18,7 @@ RootTask* UtcContext::root = nullptr;
 int UtcContext::HARDCORES_TOTAL_CURRENT_NODE=getConcurrency();
 int UtcContext::HARDCORES_ID_FOR_USING = 0;
 UtcContext* UtcContext::m_ContextInstance = nullptr;
+UtcContext::dummyContext UtcContext::m_dummyInstance;
 
 /* This singleton implementation is not thread safe.
  * However, the first time using it is at start of program,
@@ -86,7 +87,8 @@ TaskManager* UtcContext::getTaskManager()
     return taskManager;
 }
 
-std::mutex* UtcContext::getCtxMutex(){
+//std::mutex* UtcContext::getCtxMutex(){
+FastMutex* UtcContext::getCtxMutex(){
 	return &m_ctxMutex;
 }
 
@@ -110,6 +112,8 @@ void UtcContext::initialize(int& argc, char** argv)
 #endif
     TaskManager* taskMgr= getTaskManager();    // The very first time and only this time to create a
                                                // TaskManager instance in current process.
+    //std::cout<<"TaskManager created!\n";
+
     int nProcs= Utcbase_provider->numProcs();
     int pRank = Utcbase_provider->rank();
 
@@ -117,6 +121,7 @@ void UtcContext::initialize(int& argc, char** argv)
 
     root= new RootTask(nProcs, pRank);          // The very first time and only this time to create a
                                                 // RootTask instance in current process.
+    //std::cout<<"RootTask created!\n";
 
     m_rootTaskId= taskMgr->registerTask(root);
 
@@ -124,6 +129,24 @@ void UtcContext::initialize(int& argc, char** argv)
 
     ConduitManager* cdtMgr = ConduitManager::getInstance(); // The very first time and only this
     														// time to create a ConduitManager obj
+    //std::cout<<"ConduitManger created!\n";
+
+    /******** init gpu related staff *****/
+#if ENABLE_GPU_TASK
+#ifdef USE_DEBUG_LOG
+    PRINT_TIME_NOW(*procOstream)
+    *procOstream<<"Utc context init cudaDeviceManager!!!"<<std::endl;
+#endif
+    CudaDeviceManager& cudaDevMgr = CudaDeviceManager::getCudaDeviceManager();
+	/*
+    #if CUDA_CONTEXT_MAP_MODE==3
+    	for(int i=0; i<cudaDevMgr.getNumDevices(); i++)
+    		cudaDevMgr.initDevice(i);
+	#endif
+	*/
+    //std::cout<<cudaDevMgr.getNumDevices()<<std::endl;
+#endif
+    //std::cout<<"CudaDeviceManager created!\n";
 
 #ifdef USE_MPI_BASE
     MPI_Barrier(*(root->getWorldComm()));
@@ -133,20 +156,6 @@ void UtcContext::initialize(int& argc, char** argv)
     std::ofstream *procOstream = root->getProcOstream();
     PRINT_TIME_NOW(*procOstream)
     *procOstream<<"Utc context created on proc "<<pRank<<" ("<<getpid()<<")..."<<std::endl;
-#endif
-
-    /******** init gpu related staff *****/
-#if ENABLE_GPU_TASK
-#ifdef USE_DEBUG_LOG
-    PRINT_TIME_NOW(*procOstream)
-    *procOstream<<"Utc context init cudaDeviceManager!!!"<<std::endl;
-#endif
-    CudaDeviceManager& cudaDevMgr = CudaDeviceManager::getCudaDeviceManager();
-	#if CUDA_CONTEXT_MAP_MODE==3
-    	for(int i=0; i<cudaDevMgr.getNumDevices(); i++)
-    		cudaDevMgr.initDevice(i);
-	#endif
-    	//std::cout<<cudaDevMgr.getNumDevices()<<std::endl;
 #endif
 
 }
@@ -161,7 +170,9 @@ void UtcContext::finalize()
     CudaDeviceManager& cudaDevMgr = CudaDeviceManager::getCudaDeviceManager();
 	#if CUDA_CONTEXT_MAP_MODE==3
     	for(int i=0; i<cudaDevMgr.getNumDevices(); i++)
-    		cudaDevMgr.resetDevice(i);
+    		// Here may be a bug of cuda, will post erro when it's called
+    		// when the process is actually do exiting
+    		//cudaDevMgr.resetDevice(i);
     	cudaDevMgr.~CudaDeviceManager();
 	#endif
 #endif

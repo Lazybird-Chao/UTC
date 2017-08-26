@@ -7,9 +7,21 @@
 #ifndef UTC_USER_TASK_BASE_H_
 #define UTC_USER_TASK_BASE_H_
 
-#include "PrivateScopedDataBase.h"
+#include "UtcBasics.h"
+#include "FastBarrier.h"
+#include "FastMutex.h"
+#include "SpinLock.h"
+#if ENABLE_SCOPED_DATA
+	#include "PrivateScopedDataBase.h"
+#endif
+
+#if ENABLE_GPU_TASK
+	#include "UtcGpuContext.h"
+	#include <cuda_runtime.h>
+#endif
 
 #include <vector>
+#include <map>
 #include <mutex>
 
 
@@ -28,12 +40,15 @@ public:
 	virtual void runImpl();
 
 
-
+#if ENABLE_SCOPED_DATA
 	/* other useful member functions */
 	void registerPrivateScopedData(iUtc::PrivateScopedDataBase* psData);
+#endif
 
 	void preInit(int lrank, int trank, int prank, int numLocalThreads,
-			int numProcesses, int numTotalThreads);
+			int numProcesses, int numTotalThreads,
+			std::map<int,int> *worldRankTranslate,
+			void *gpuCtx);
 	void preExit();
 
 	/* useful data members */
@@ -43,14 +58,29 @@ public:
 	int __numLocalThreads=0;
 	int __numGlobalThreads=0;
 	int __numProcesses=0;
+	std::map<int,int> *__worldRankTranslate=nullptr;
+
+	FastBarrier __fastIntraSync;
+	FastMutex __fastLock;
+	iUtc::SpinLock __fastSpinLock;
+
+#if ENABLE_GPU_TASK
+	static thread_local cudaStream_t __streamId;
+	static thread_local int __deviceId;
+
+#endif
 
 private:
 	/* other useful member functions */
 
 
 	/* other useful data members */
+#if ENABLE_SCOPED_DATA
 	std::vector<iUtc::PrivateScopedDataBase *> __psDataRegistry;
-	std::mutex __opMutex;
+#endif
+	//std::mutex __opLock;
+	FastMutex __opLock;
+	iUtc::SpinLock __opSpinLock;
 
 protected:
 	/* other useful member functions */

@@ -47,6 +47,12 @@ TaskBase* getParentTask();
 
 bool getUniqueExecution();
 
+
+
+/*
+ * Following two functions should be deprecated and do not use any more.
+ * TODO: delete these two functions
+ */
 void SharedDataBcast(void* Data, DataSize_t DataSize, Rank_t rootthread);
 
 void SharedDataGather(void *DataSend, DataSize_t DataSize, void *DataGathered,Rank_t rootthread);

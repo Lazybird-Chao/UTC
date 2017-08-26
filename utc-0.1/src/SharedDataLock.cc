@@ -54,29 +54,12 @@ void SharedDataLock::read_unlock()
 }
 
 
-
-SpinLock::SpinLock(){
-	m_state = Unlocked;
+void SharedDataLock::fastlock(){
+	m_FastMutex.lock();
 }
 
-void SpinLock::lock(){
-	long _counter=0;
-	while(m_state.exchange(Locked, std::memory_order_acquire) == Locked){
-		if(_counter<USE_PAUSE)
-			_mm_pause();
-		else if(_counter<USE_SHORT_SLEEP){
-			__asm__ __volatile__ ("pause" ::: "memory");
-			std::this_thread::yield();
-		}
-		else if(_counter<USE_LONG_SLEEP)
-			nanosleep(&SHORT_PERIOD, nullptr);
-		else
-			nanosleep(&LONG_PERIOD, nullptr);
-	}
-}
-
-void SpinLock::unlock(){
-	m_state.store(Unlocked, std::memory_order_release);
+void SharedDataLock::fastunlock(){
+	m_FastMutex.unlock();
 }
 
 }// end namespace iUtc

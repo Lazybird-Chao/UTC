@@ -1,0 +1,94 @@
+##################
+PROJECT_HOMEDIR = /home/chao/Desktop/utc-0.1
+PROJECT_BINDIR = $(PROJECT_HOMEDIR)/bin
+PROJECT_LIBDIR = $(PROJECT_HOMEDIR)/lib
+PROJECT_INCLUDEDIR = $(PROJECT_HOMEDIR)/include
+PROJECT_SRCDIR = $(PROJECT_HOMEDIR)/src
+
+ENABLE_GPU = 1
+
+ENABLE_SCOPED_DATA = 1
+
+##################
+CC = gcc
+C++ = g++
+MPICXX = mpicxx
+
+CFLAG := -Wall
+CCFLAG := -std=c++11 -O2
+CC_DEBUG = 0
+ifeq ($(CC_DEBUG), 1)
+	CCFLAGS += -g
+endif
+
+LINKFLAG = -lpthread
+
+###################
+MPI_DIR := /opt/openmpi-1.10
+MPI_INCLUDE := -I$(MPI_DIR)/include
+MPI_LIB :=	-pthread -Wl,-rpath -Wl,/opt/openmpi-1.10/lib -Wl,--enable-new-dtags \
+				-L/opt/openmpi-1.10/lib -lmpi_cxx -lmpi
+ifeq ($(ENABLE_SCOPED_DATA), 1)
+	MPI_LIB += -loshmem
+endif				
+
+BOOST_DIR := /opt/boost-1.60
+BOOST_INCLUDE := -I$(BOOST_DIR)/include
+BOOST_LIB := $(BOOST_DIR)/lib/libboost_thread.a \
+				$(BOOST_DIR)/lib/libboost_system.a \
+				$(BOOST_DIR)/lib/libboost_filesystem.a
+				
+LIB = $(PROJECT_LIBDIR)/libutc.a
+LIB += -lrt
+LIB += $(MPI_LIB) $(BOOST_LIB)
+				
+###################		
+INCLUDE = -I/opt/openmpi-1.10/include
+INCLUDE += -I/opt/boost-1.60/include
+INCLUDE += -I$(PROJECT_HOMEDIR)/include
+INCLUDE += -I$(PROJECT_HOMEDIR)/include/thread_util
+
+#####################
+
+ifeq ($(ENABLE_SCOPED_DATA), 1)
+	INCLUDE += -I$(PROJECT_HOMEDIR)/include/ScopedData
+	LIB += $(PROJECT_LIBDIR)/libutc-scopeddata.a
+endif
+
+
+#####################
+CUDA_DIR = /usr/local/cuda
+CUDA_INCLUDE := -I$(CUDA_DIR)/include
+
+NVCC = nvcc
+
+#GENCODE_SM20 = -gencode arch=compute_20,code=sm_20
+#GENCODE_SM30 = -gencode arch=compute_30,code=sm_30
+#GENCODE_SM35 = -gencode arch=compute_35,code=sm_35
+
+#NVCCFLAG = $(GENCODE_SM20)
+
+CUDA_LIB := -Wl,-rpath,$(CUDA_DIR)/lib64 -L$(CUDA_DIR)/lib64 -lcuda -lcudart
+
+#NVLINKFLAG = $(GENCODE_SM20)
+
+
+ifeq ($(ENABLE_GPU), 1)
+	INCLUDE += -I$(CUDA_DIR)/include
+	INCLUDE += -I$(PROJECT_HOMEDIR)/include/gpu
+	LIB += $(PROJECT_LIBDIR)/libutcgpu.a
+	LIB += $(CUDA_LIB)
+	
+endif
+
+#####################
+.PHONY: cleanlib cleanlog cleanbin
+
+cleanlib:
+	rm  -f $(PROJECT_LIBDIR)/*
+	rm  -f	$(PROJECT_SRCDIR)/gpu/*.o $(PROJECT_SRCDIR)/gpu/*.a
+cleanlog:
+	rm  -f $(PROJECT_HOMEDIR)/log/*
+cleanbin:
+	rm  -f $(PROJECT_BINDIR)/*
+	

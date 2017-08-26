@@ -66,7 +66,7 @@ public:
 		int startRowA = __localThreadId * blockRows;
 		int currentColumIdx = subMatrixColumIdx;
 		int startRowB = currentColumIdx * blockColums;
-		std::cout<<startRowA<<blockRows<<blockColums<<std::endl;
+		//std::cout<<startRowA<<blockRows<<blockColums<<std::endl;
 		for(int i= startRowA; i< startRowA + blockRows; i++){
 			for(int k = 0; k< blockColums; k++){
 			for(int j = 0; j< blockColums; j++){
@@ -123,8 +123,8 @@ public:
 			free(tmpMatrixA);
 		if(__localThreadId ==0){
 			std::cout<<"task: "<<getCurrentTask()->getName()<<" finish runImpl.\n";
-			std::cout<<subMatrixC[1*blockColums+ 10 ]<<std::endl;
-			std::cout<<subMatrixC[10*blockColums+100]<<std::endl;
+			//std::cout<<subMatrixC[1*blockColums+ 10 ]<<std::endl;
+			//std::cout<<subMatrixC[10*blockColums+100]<<std::endl;
 		}
 	}
 
@@ -259,6 +259,8 @@ int main(int argc, char* argv[]){
 	subMM3.wait();
 	subMM4.wait();
 
+	ctx.Barrier();
+
 	double avg_runtime1=0;
 	double avg_runtime2=0;
 	double avg_runtime3=0;
@@ -271,15 +273,26 @@ int main(int argc, char* argv[]){
 	}
 	avg_runtime1/=nthreads;
 	avg_runtime2/=nthreads;
-	std::cout<<"average run() time: "<<avg_runtime1<<" "<<avg_runtime2
-			<<" "<<avg_runtime3<<" "<<avg_runtime4<<std::endl;
+	if(myproc ==0)
+		std::cout<<"average run() time: "<<std::endl;
+	if(myproc ==0)
+		std::cout<<avg_runtime1<<std::endl;
+	ctx.Barrier();
+	if(myproc == 1)
+		std::cout<<avg_runtime2<<std::endl;
+	ctx.Barrier();
+	if(myproc == 2)
+		std::cout<<avg_runtime3<<std::endl;
+	ctx.Barrier();
+	if(myproc ==3)
+		std::cout<<avg_runtime4<<std::endl;
 	delete runtime1;
 	delete runtime2;
 	delete runtime3;
 	delete runtime4;
 #endif
 
-
+	//delete &ctx;
 	return 0;
 
 }

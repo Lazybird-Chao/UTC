@@ -7,19 +7,33 @@
 #include "UtcMpi.h"
 #include "RootTask.h"
 #include "SharedDataLock.h"
+#include "SpinLock.h"
+#include "FastMutex.h"
 
 #include <vector>
 #include <string>
 
 namespace iUtc{
 class UtcContext{
-
+/*TODO:
+	* As this class is designed as singleton, no need to use so many
+	* static data member and method members.
+	* Should change these static to normal members.
+	*/
     public:
 
         ~UtcContext();
 
         static UtcContext& getContext();
         static UtcContext& getContext(int &argc, char** &argv);
+
+        /*
+         * TODO: add this utc overall finish method for explicitly use in main program,
+         * 		 do some necessary clean work before program exit.
+         * 		 Because put some clean work in destructor with automatic invoke when program
+         * 		 is exiting may call system error. (like call cudaSetDevice())
+         */
+        static void Finish();
 
         int getProcRank();
 
@@ -29,7 +43,8 @@ class UtcContext{
 
         void Barrier();
 
-        std::mutex* getCtxMutex();
+        //std::mutex* getCtxMutex();
+        FastMutex* getCtxMutex();
         SpinLock* getCtxSpinMutex();
 
         //
@@ -41,6 +56,18 @@ class UtcContext{
     protected:
 
     private:
+        class dummyContext{
+        public:
+        	int dummy;
+
+        	~dummyContext(){
+        		if(m_ContextInstance)
+        			delete m_ContextInstance;
+        		m_ContextInstance = nullptr;
+        	}
+        };
+        static dummyContext m_dummyInstance;
+
         UtcContext();
 
         UtcContext(int &argc, char** &argv);
@@ -57,7 +84,8 @@ class UtcContext{
         static int m_nCount;    // may not be useful!
         static UtcContext *m_ContextInstance;
 
-        std::mutex m_ctxMutex;
+        //std::mutex m_ctxMutex;
+        FastMutex m_ctxMutex;
         SpinLock m_ctxSpinMutex;
         //
         UtcContext(const UtcContext& other);

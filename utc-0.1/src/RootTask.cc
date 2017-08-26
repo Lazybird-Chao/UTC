@@ -49,10 +49,15 @@ RootTask::RootTask(int WorldSize, int currentProcess)
 
 
 #ifdef USE_MPI_BASE
+    /*
     MPI_Comm_group(MPI_COMM_WORLD, &m_worldGroup);
     m_worldComm = MPI_COMM_WORLD;
+    */
+    MPI_Comm_dup(MPI_COMM_WORLD, &m_worldComm);
+    MPI_Comm_group(m_worldComm, &m_worldGroup);
+    for(int i=0; i<WorldSize; i++)
+       m_worldRankToTaskGroupRank.insert(std::pair<int, int>(i,i));
 #endif
-
     // create TaskInfo structure
     TaskInfo* taskInfoPtr = new TaskInfo();
     taskInfoPtr->pRank = pRank;
@@ -66,12 +71,16 @@ RootTask::RootTask(int WorldSize, int currentProcess)
 #ifdef USE_MPI_BASE
     taskInfoPtr->commPtr = &m_worldComm;
     taskInfoPtr->mpigroupPtr = &m_worldGroup;
+
+    taskInfoPtr->worldCommPtr = &m_worldComm;
+    taskInfoPtr->worldGroupPtr = &m_worldGroup;
+    taskInfoPtr->worldRankToGrouprRank = &m_worldRankToTaskGroupRank;
 #endif
 
     TaskManager::setTaskInfo(taskInfoPtr);    // reside in main thread of current process, same as
                                               // TaskManager instance, only one instance in current
                                               // process.
-
+    MPI_Barrier(m_worldComm);
 }
 
 
@@ -89,6 +98,12 @@ RootTask::~RootTask()
 		}
 	}
 	delete m_barrierObjPtr;
+
+	//
+	MPI_Barrier(m_worldComm);
+	MPI_Comm_free(&m_worldComm);
+	MPI_Group_free(&m_worldGroup);
+
     return;
 }
 

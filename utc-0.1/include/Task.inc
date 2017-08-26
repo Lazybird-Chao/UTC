@@ -154,7 +154,7 @@ Task<T>::~Task()
 	(*m_procOstream)<<"["<<m_Name<<"] finish run!"<<std::endl;
 #endif
 		}
-
+		//std::cout<<m_Name<<" finish "<<std::endl;
 		delete m_realTaskInstance;
 
 	}
@@ -165,6 +165,8 @@ Task<T>::~Task()
 		m_taskBarrierObjPtr=nullptr;
 		delete m_taskSpinBarrierObjPtr;
 		m_taskSpinBarrierObjPtr=nullptr;
+		delete m_taskFastBarrierObjPtr;
+		m_taskFastBarrierObjPtr = nullptr;
 	}
 
 	if(m_userSupplyObj == false && m_userTaskObjPtr)
@@ -180,8 +182,29 @@ Task<T>::~Task()
 		PRINT_TIME_NOW(*m_procOstream)
 		(*m_procOstream)<<"["<<m_Name<<"] destroyed on proc "<<m_processRank<<" !!!"<<std::endl;
 #endif
+	//std::cout<<"end task destructor"<<std::endl;
 }
 
+template<class T>
+template<typename... Args>
+void Task<T>::init(Args... args)
+{
+    // no task threads on this process, just return
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
+
+	//set up user task's init function
+	m_userTaskInitFunctionHandle = std::bind(&T::initImpl, m_userTaskObjPtr, args...);
+
+	m_realTaskInstance->initImpl(m_userTaskInitFunctionHandle);
+
+	return;
+}
+
+/*
 template<class T>
 void Task<T>::init()
 {
@@ -327,9 +350,25 @@ void Task<T>::init(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7
 	m_realTaskInstance->initImpl(m_userTaskInitFunctionHandle);
 	return;
 }
+*/
 
 
+template<class T>
+template <typename... Args>
+void Task<T>::run(Args... args)
+{
+    // no task threads on this process, just return.
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
+    m_userTaskRunFunctionHandle = std::bind(&T::runImpl, m_userTaskObjPtr, args...);
+    m_realTaskInstance->runImpl(m_userTaskRunFunctionHandle);
+    return;
+}
 
+/*
 template<class T>
 void Task<T>::run()
 {
@@ -359,6 +398,51 @@ void Task<T>::run(T1 arg1)
     return;
 }
 
+template<class T>
+template<typename T1, typename T2>
+void Task<T>::run(T1 arg1, T2 arg2)
+{
+    // no task threads on this process, just return.
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
+    m_userTaskRunFunctionHandle = std::bind(&T::runImpl, m_userTaskObjPtr, arg1, arg2);
+    m_realTaskInstance->runImpl(m_userTaskRunFunctionHandle);
+    return;
+}
+
+template<class T>
+template<typename T1, typename T2, typename T3>
+void Task<T>::run(T1 arg1, T2 arg2, T3 arg3)
+{
+    // no task threads on this process, just return.
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
+    m_userTaskRunFunctionHandle = std::bind(&T::runImpl, m_userTaskObjPtr, arg1, arg2, arg3);
+    m_realTaskInstance->runImpl(m_userTaskRunFunctionHandle);
+    return;
+}
+
+template<class T>
+template<typename T1, typename T2, typename T3, typename T4>
+void Task<T>::run(T1 arg1, T2 arg2, T3 arg3, T4 arg4)
+{
+    // no task threads on this process, just return.
+    // same as m_userTaskObjPtr==nullptr
+    if(m_numLocalThreads ==0)
+    {
+        return;
+    }
+    m_userTaskRunFunctionHandle = std::bind(&T::runImpl, m_userTaskObjPtr, arg1, arg2, arg3, arg4);
+    m_realTaskInstance->runImpl(m_userTaskRunFunctionHandle);
+    return;
+}
+*/
 
 template<class T>
 void Task<T>::wait(){
@@ -410,6 +494,18 @@ void Task<T>::finish()
 }
 
 template<class T>
+template<typename... Args>
+void Task<T>::exec(void (T::*user_fun)(Args...), Args... args){
+	if(m_numLocalThreads ==0)
+		return;
+	m_userTaskExecHandle = std::bind(user_fun, m_userTaskObjPtr, args...);
+
+	m_realTaskInstance->execImpl(m_userTaskExecHandle);
+	return;
+}
+
+/*
+template<class T>
 void Task<T>::exec(void (T::*user_fun)()){
 	if(m_numLocalThreads ==0)
 		return;
@@ -428,6 +524,9 @@ void Task<T>::exec(void (T::*user_fun)(T1), T1 arg1){
 	m_realTaskInstance->execImpl(m_userTaskExecHandle);
 	return;
 }
+*/
+
+
 
 /*
  * TODO: we also need to update the task artifact(CPU task or GPU task)
@@ -496,8 +595,18 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 #ifdef USE_MPI_BASE
 	MPI_Group_incl(*(root->getWorldGroup()), m_numProcesses, inc_rank, &m_taskmpiGroup);
 	MPI_Comm_create(*(root->getWorldComm()), m_taskmpiGroup, &m_taskComm);
-#endif
 
+	/*
+	 * for each task, we careat a new communicator, so the process rank in
+	 * this m_taskComm is different from the world_rank value.
+	 * we record the map from world_rank to task_mpi_group_rank
+	 */
+	int *rankInGroup = new int[m_numProcesses];
+	MPI_Group_translate_ranks(*(root->getWorldGroup()), m_numProcesses, inc_rank,
+			m_taskmpiGroup, rankInGroup);
+	for(int i=0; i<m_numProcesses; i++)
+		m_worldRankToTaskGroupRank.insert(std::pair<int,int>(inc_rank[i], rankInGroup[i]));
+#endif
 	// create obj of user defined task class"T". With this design all threads in
 	// one process will share this user taskobj, the data members of the this obj
 	// will be accessed by all threads. Also each processes will has a same copy
@@ -519,6 +628,7 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 		// create the barrier object in a task
 		m_taskBarrierObjPtr = new Barrier(m_numLocalThreads, m_TaskId, &m_taskComm);
 		m_taskSpinBarrierObjPtr = new SpinBarrier(m_numLocalThreads);
+		m_taskFastBarrierObjPtr = new FastBarrier(m_numLocalThreads);
 	}
 
 	if(m_numLocalThreads !=0){
@@ -533,9 +643,14 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 		m_commonTaskInfo.taskId = m_TaskId;
 		m_commonTaskInfo.barrierObjPtr = m_taskBarrierObjPtr;
 		m_commonTaskInfo.spinBarrierObjPtr = m_taskSpinBarrierObjPtr;
+		m_commonTaskInfo.fastBarrierObjPtr = m_taskFastBarrierObjPtr;
 		#ifdef USE_MPI_BASE
 		m_commonTaskInfo.commPtr = &m_taskComm;
 		m_commonTaskInfo.mpigroupPtr = &m_taskmpiGroup;
+
+		m_commonTaskInfo.worldCommPtr = root->getWorldComm();
+		m_commonTaskInfo.worldGroupPtr = root->getWorldGroup();
+		m_commonTaskInfo.worldRankToGrouprRank = &m_worldRankToTaskGroupRank;
 		#endif
 
 		m_commonThreadPrivateData.taskUniqueExeTagObj = m_uniqueExeObjPtr;
@@ -547,7 +662,8 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 	if(m_numLocalThreads!=0)  // there are threads need to be created on current process
 	{
 		if(tType==TaskType::cpu_task){
-			m_realTaskInstance = new TaskCPU(m_numLocalThreads,
+			m_realTaskInstance = new TaskCPU(tType,
+											m_numLocalThreads,
 											m_processRank,
 											m_numProcesses,
 											m_numTotalThreads,
@@ -562,7 +678,9 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 											m_userTaskObjPtr);
 		}
 		else if(tType==TaskType::gpu_task){
-			m_realTaskInstance = new TaskGPU(m_numLocalThreads,
+#if ENABLE_GPU_TASK
+			m_realTaskInstance = new TaskGPU(tType,
+											m_numLocalThreads,
 											m_processRank,
 											m_numProcesses,
 											m_numTotalThreads,
@@ -576,6 +694,10 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 											&m_threadPrivateData,
 											m_userTaskObjPtr
 											);
+#else
+			m_realTaskInstance = nullptr;
+			std::cerr<<"Error, gpu task unabled!!!\n";
+#endif
 		}
 		else{
 			std:cerr<<"Error, unsupported task type!!!\n";

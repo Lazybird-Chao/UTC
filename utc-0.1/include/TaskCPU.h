@@ -2,9 +2,13 @@
 #define UTC_TASK_CPU_H_
 
 #include "UtcBasics.h"
+#include "TaskBase.h"
 #include "TaskArtifact.h"
 #include "TaskInfo.h"
 #include "UserTaskBase.h"
+#include "FastMutex.h"
+#include "FastCond.h"
+#include "FastBarrier.h"
 
 #include <vector>
 #include <map>
@@ -17,7 +21,8 @@ namespace iUtc{
 
 class TaskCPU : public TaskArtifact{
 public:
-	TaskCPU(int numLocalThreads,
+	TaskCPU(TaskType taskType,
+			int numLocalThreads,
 				 int currentProcessRank,
 				 int numProcesses,
 				 int numTotalThreads,
@@ -60,6 +65,8 @@ public:
 
 private:
 	//
+	TaskType m_taskType;
+
 	std::vector<std::thread> m_taskThreads;
 
 	int m_numLocalThreads;
@@ -114,8 +121,10 @@ private:
 	// used for conduit to check all running threads of a task are finish,
 	// and can destroy the conduit
 	int m_activeLocalThreadCount;
-	std::mutex m_activeLocalThreadMutex;
-	std::condition_variable m_activeLocalThreadCond;
+	//std::mutex m_activeLocalThreadMutex;
+	//std::condition_variable m_activeLocalThreadCond;
+	FastMutex m_activeLocalThreadMutex;
+	FastCond m_activeLocalThreadCond;
 
 	TaskInfo *m_commonTaskInfo;
 	ThreadPrivateData *m_commonThreadPrivateData;
