@@ -23,14 +23,22 @@ internal_MPIWin::internal_MPIWin(MPI_Comm *mpi_comm, long heap_size, int root){
 	scoped_win_finalized = 0;
 	scoped_win_comm = mpi_comm;
 	MPI_Comm_group(*scoped_win_comm, &scoped_win_group);
-	MPI_Comm_rank(*scoped_win_comm, &scoped_win_comm_size);
-	MPI_Comm_size(*scoped_win_comm, &scoped_win_comm_rank);
+	MPI_Comm_rank(*scoped_win_comm, &scoped_win_comm_rank);
+	MPI_Comm_size(*scoped_win_comm, &scoped_win_comm_size);
 
 	scoped_sheap_size = heap_size;
-
+	scoped_sheap_base_ptr = NULL;
 	scoped_win_root = root;
+	scoped_heap_mspace = NULL;
 
 
+}
+
+internal_MPIWin::~internal_MPIWin(){
+	if(scoped_heap_mspace)
+		destroy_mspace(scoped_heap_mspace);
+	if(scoped_sheap_base_ptr)
+		free(scoped_sheap_base_ptr);
 }
 
 void internal_MPIWin::scoped_win_init(){
@@ -39,11 +47,21 @@ void internal_MPIWin::scoped_win_init(){
 		MPI_Info_create(&sheap_info);
 		MPI_Info_set(sheap_info, "same_size", "true");
 		MPI_Info_set(sheap_info, "alloc_shm", "true");
-		int rc = MPI_Win_allocate((MPI_Aint)scoped_sheap_size,
-									1 /* disp_unit */, sheap_info,
+		real_scoped_sheap_size = scoped_sheap_size + 128*sizeof(size_t); //be more safe to put here!!!
+		/*int rc = MPI_Win_allocate((MPI_Aint)real_scoped_sheap_size,
+									1, //displacement
+									sheap_info,
 		                            *scoped_win_comm,
 									&scoped_sheap_base_ptr,
-									&scoped_sheap_win);
+									&scoped_sheap_win);*/
+		scoped_sheap_base_ptr = malloc(real_scoped_sheap_size);
+		int rc = MPI_Win_create(scoped_sheap_base_ptr,
+								real_scoped_sheap_size,
+								1,
+								sheap_info,
+								*scoped_win_comm,
+								&scoped_sheap_win);
+
 		if (rc!=MPI_SUCCESS) {
 			char errmsg[MPI_MAX_ERROR_STRING];
 			int errlen;
@@ -58,16 +76,19 @@ void internal_MPIWin::scoped_win_init(){
 		 * locked may not need to be 0 if SHMEM makes no multithreaded access... */
 		 /* Part (less than 128*sizeof(size_t) bytes) of this space is used for bookkeeping,
 		 * so the capacity must be at least this large */
-		 scoped_sheap_size += 128*sizeof(size_t);
+		 //scoped_sheap_size += 128*sizeof(size_t);
 		 scoped_heap_mspace = create_mspace_with_base(scoped_sheap_base_ptr,
-				 	 	 	 	 	 	 	 scoped_sheap_size,
+				 	 	 	 	 	 	 	 real_scoped_sheap_size,
 											 0 /* locked */);
 		 /*
 		  * should set the limit size of mspace;
 		  * similar to shmem_symetirc space size, that shared data can not
 		  * exceed this size from shmalloc()
+		  *
+		  * we have do proximate check in internal_shmem_malloc()
+		  *
 		  */
-		 mspace_set_footprint_limit(scoped_heap_mspace, scoped_sheap_size);
+		 //mspace_set_footprint_limit(scoped_heap_mspace, real_scoped_sheap_size);
 
 		 MPI_Info_free(&sheap_info);
 
@@ -396,6 +417,10 @@ long internal_MPIWin::get_scoped_sheap_size(){
 
 void* internal_MPIWin::get_heap_mspace(){
 	return scoped_heap_mspace;
+}
+
+void* internal_MPIWin::get_heap_base_address(){
+	return scoped_sheap_base_ptr;
 }
 
 MpiWinLock *internal_MPIWin::get_scoped_win_lock(){

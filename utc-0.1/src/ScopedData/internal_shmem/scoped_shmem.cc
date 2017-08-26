@@ -53,13 +53,53 @@ int scoped_shmem_addr_accessible(void* addr, int pe, internal_MPIWin &scoped_win
 	return 0;
 }
 
+long scoped_shmem_addr_offset(void* addr, internal_MPIWin &scoped_win){
+	enum window_id_e win_id;
+	MPI_Aint win_offset;
+	if(scoped_win.scoped_win_offset(addr, 0, &win_id, &win_offset) == 0)
+		return (long)win_offset;
+	else
+		return -1;
+}
 
 /*
  *
  */
 void *scoped_shmem_malloc(size_t size, internal_MPIWin &scoped_win){
+	//std::cout<<scoped_win.get_heap_base_address()<<std::endl;
+	//std::cout<<scoped_win.get_heap_mspace()<<std::endl;
+	//mspace_malloc_stats(scoped_win.get_heap_mspace());
+	void *mspace = scoped_win.get_heap_mspace();
+	if (size > scoped_win.get_scoped_sheap_size() - mspace_footprint(mspace)){
+		//std::cerr<<"Error: not enough shared space !!!"<<std::endl;
+		return NULL;
+	}
+	void* m = mspace_malloc(mspace, size);
+	//std::cout<<(long)m<<std::endl;
 
-	return mspace_malloc(scoped_win.get_heap_mspace(), size);
+	/*
+	 * int MPI_Gather(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+               void *recvbuf, int recvcount, MPI_Datatype recvtype,
+               int root, MPI_Comm comm)
+	   int MPI_Bcast( void *buffer, int count, MPI_Datatype datatype, int root,
+	   	   	   MPI_Comm comm )
+	 */
+#ifdef SHMEM_MALLOC_CHECK_SYMETRIC_ADDR
+	enum window_id_e win_id;
+	long offset;
+	scoped_win.scoped_win_offset(m, 0, &win_id, &offset );
+	long offset_compare = -1;
+	if(scoped_win.get_scoped_win_comm_rank()==0)
+		offset_compare = offset;
+	MPI_Bcast(&offset_compare, 1, MPI_LONG, 0, *scoped_win.get_scoped_win_comm());
+	if(offset_compare != offset){
+		mspace_free(mspace, m);
+		std::cerr<<"Error: var offsets in shared space are not same for all !!!"<<std::endl;
+		return NULL;
+	}
+#endif
+
+	return m;
 }
 
 void *scoped_shmem_align(size_t alignment, size_t size, internal_MPIWin &scoped_win){
@@ -70,7 +110,7 @@ void *scoped_shmem_realloc(void* ptr, size_t size, internal_MPIWin &scoped_win){
 	return mspace_realloc(scoped_win.get_heap_mspace(), ptr, size);
 }
 
-void scoped_free(void* ptr, internal_MPIWin &scoped_win){
+void scoped_shmem_free(void* ptr, internal_MPIWin &scoped_win){
 	return mspace_free(scoped_win.get_heap_mspace(), ptr);
 }
 

@@ -13,8 +13,8 @@ C++	= mpicxx
 CCFLAGS  = -g -O2 -std=c++11
 
 
-internal_win_test: internal_win_test.o $(OBJS)
-	$(C++) -o $@ $^
+internal_win_test: internal_win_test.o
+	$(C++) -o $@ $^ $(LIB)
 
 internal_win_test.o: internal_win_test.cc
 	$(C++)	-o $@ -c $< $(CCFLAGS) $(INCLUDE)

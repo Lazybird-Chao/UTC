@@ -3536,6 +3536,7 @@ static void internal_malloc_stats(mstate m) {
       used = fp - (m->topsize + TOP_FOOT_SIZE);
 
       while (s != 0) {
+    	//fprintf(stderr, "next base: %p\n", s->base);
         mchunkptr q = align_as_chunk(s->base);
         while (segment_holds(s, q) &&
                q != m->top && q->head != FENCEPOST_HEAD) {

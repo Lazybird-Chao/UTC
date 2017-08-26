@@ -25,9 +25,13 @@ MpiWinLock::MpiWinLock(){
 
 	MPI_Info_set(lock_info,"same_size","true");
 
-
+	/*
 	MPI_Win_allocate(4*sizeof(int), sizeof(int), lock_info,
 			*m_comm, &m_mpi_win_baseptr, &m_mpi_win);
+	*/
+	m_mpi_win_baseptr = (int*)malloc(4*sizeof(int));
+	MPI_Win_create(m_mpi_win_baseptr, 4*sizeof(int), 1,
+			lock_info, *m_comm, &m_mpi_win);
 	m_mpi_win_baseptr[NEXT_DISP] = -1;
 	m_mpi_win_baseptr[PREV_DISP] = -1;
 	m_mpi_win_baseptr[TAIL_DISP] = -1;
@@ -49,8 +53,12 @@ MpiWinLock::MpiWinLock(MPI_Comm *comm, int root, int rank){
 	MPI_Info_set(lock_info,"same_size","true");
 
 
-	MPI_Win_allocate(4*sizeof(int), sizeof(int), lock_info,
+	/*MPI_Win_allocate(4*sizeof(int), sizeof(int), lock_info,
 			*m_comm, &m_mpi_win_baseptr, &m_mpi_win);
+	*/
+	m_mpi_win_baseptr = (int*)malloc(4*sizeof(int));
+	MPI_Win_create(m_mpi_win_baseptr, 4*sizeof(int), 1,
+			lock_info, *m_comm, &m_mpi_win);
 	m_mpi_win_baseptr[NEXT_DISP] = -1;
 	m_mpi_win_baseptr[PREV_DISP] = -1;
 	m_mpi_win_baseptr[TAIL_DISP] = -1;
@@ -63,6 +71,7 @@ MpiWinLock::MpiWinLock(MPI_Comm *comm, int root, int rank){
 MpiWinLock::~MpiWinLock(){
 	MPI_Win_unlock_all(m_mpi_win);
 	MPI_Win_free(&m_mpi_win);
+	free(m_mpi_win_baseptr);
 }
 
 

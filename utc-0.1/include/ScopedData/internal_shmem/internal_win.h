@@ -57,6 +57,7 @@ private:
 	MPI_Win scoped_sheap_win;
 	long    scoped_sheap_size;
 	void *  scoped_sheap_base_ptr;
+	long	real_scoped_sheap_size;
 
 	//mspace scoped_heap_mspace;
 	void* scoped_heap_mspace;
@@ -67,6 +68,8 @@ private:
 
 public:
 	internal_MPIWin(MPI_Comm *mpi_comm, long heap_size, int root);
+
+	~internal_MPIWin();
 
 	void scoped_win_init();
 	void scoped_win_finalize();
@@ -120,6 +123,8 @@ public:
 
 	//mspace get_heap_mspace();
 	void* get_heap_mspace();
+
+	void* get_heap_base_address();
 
 	MpiWinLock *get_scoped_win_lock();
 

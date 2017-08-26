@@ -29,6 +29,12 @@ extern "C" {
  */
 
 
+/*
+ * with this define, we will check if allocated address has same offset
+ * in different process, may slow down the shared var allocation procedure
+ */
+#define SHMEM_MALLOC_CHECK_SYMETRIC_ADDR
+
 #define SCOPED_SHMEM_CMP_EQ 1
 #define SCOPED_SHMEM_CMP_NE 2
 #define SCOPED_SHMEM_CMP_GT 3
@@ -54,7 +60,7 @@ int scoped_shmem_my_pe_comm( internal_MPIWin &scoped_win);
 
 int scoped_shmem_pe_accessible(int pe, internal_MPIWin &scoped_win);
 int scoped_shmem_addr_accessible(void* addr, int pe,  internal_MPIWin &scoped_win);
-
+long scoped_shmem_addr_offset(void* addr, internal_MPIWin &scoped_win);
 
 void *scoped_shmem_malloc(size_t size,  internal_MPIWin &scoped_win);
 void *scoped_shmem_align(size_t alignment, size_t size,  internal_MPIWin &scoped_win);
