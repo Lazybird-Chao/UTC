@@ -10,6 +10,7 @@ vpath %.cc $(PROJECT_SRCDIR)
 vpath %.h  $(PROJECT_INCLUDEDIR)/ScopedData
 vpath %.inc $(PROJECT_INCLUDEDIR)/ScopedData
 vpath %.cc $(PROJECT_SRCDIR)/ScopedData
+vpath %.h  $(PROJECT_INCLUDEDIR)/ScopedData/internal_shmem
 ifeq ($(ENABLE_GPU), 1)
     vpath %.h  $(PROJECT_INCLUDEDIR)/gpu
     vpath %.inc $(PROJECT_INCLUDEDIR)/gpu

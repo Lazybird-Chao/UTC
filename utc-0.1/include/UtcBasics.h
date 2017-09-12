@@ -74,9 +74,14 @@ extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
 
 #if ENABLE_SCOPED_DATA
 
-#define USE_OPENSHMEM
+//#define USE_OPENSHMEM
 #ifdef USE_OPENSHMEM
 	#include "shmem.h"
+#endif
+
+#define USE_INTERNALSHMEM
+#ifdef USE_INTERNALSHMEM
+#define SHMEM_SIZE (128*1024*1024)
 #endif
 
 #endif

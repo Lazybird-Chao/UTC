@@ -32,6 +32,7 @@
 #if ENABLE_SCOPED_DATA
 #include "ScopedData/PrivateScopedDataBase.h"
 #include "ScopedData/PrivateScopedData.h"
+#include "ScopedData/internal_shmem/internal_win.h"
 #endif
 
 //R

@@ -11,6 +11,13 @@
 	#include "UtcGpuContext.h"
 #endif
 
+#if ENABLE_SCOPED_DATA
+#ifdef USE_INTERNALSHMEM
+    #include "internal_win.h"
+#endif
+#endif
+
+
 
 #include <pthread.h>
 #include <atomic>
@@ -77,6 +84,12 @@ namespace iUtc{
     struct CPUTaskSpecInfo cpuSpecInfo;
 
     struct GPUTaskSpecInfo gpuSpecInfo;
+
+#if ENABLE_SCOPED_DATA
+#ifdef USE_INTERNALSHMEM
+    internal_MPIWin *taskMpiInternalWindow;
+#endif
+#endif
 
  };
 

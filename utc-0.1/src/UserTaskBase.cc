@@ -6,6 +6,7 @@
  */
 
 #include "UserTaskBase.h"
+#include "TaskBase.h"
 #include "TaskUtilities.h"
 
 #include <iostream>
@@ -14,6 +15,7 @@
 thread_local int UserTaskBase::__localThreadId = -1;
 thread_local int UserTaskBase::__globalThreadId = -1;
 thread_local int UserTaskBase::__processId = -1;
+thread_local int UserTaskBase::__processIdInGroup = -1;
 
 #if ENABLE_GPU_TASK
 thread_local cudaStream_t UserTaskBase::__streamId = nullptr;
@@ -70,6 +72,7 @@ void UserTaskBase::preInit(int lrank,
 	__localThreadId = lrank;
 	__globalThreadId = trank;
 	__processId = prank;
+	__processIdInGroup = worldRankTranslate->at(prank);
 	__numLocalThreads = numLocalThreads;
 	__numGlobalThreads = numTotalThreads;
 	__numProcesses = numProcesses;
@@ -92,6 +95,10 @@ void UserTaskBase::preInit(int lrank,
 			(*item)->init();
 		}
 	}
+#ifdef USE_INTERNALSHMEM
+	iUtc::getCurrentTask()->getTaskMpiWindow()->scoped_win_init();
+#endif
+
 #endif
 
 }
@@ -102,6 +109,11 @@ void UserTaskBase::preExit(){
 	for(auto& item: __psDataRegistry ){
 		item->destroy();
 	}
+
+#ifdef USE_INTERNALSHMEM
+	iUtc::getCurrentTask()->getTaskMpiWindow()->scoped_win_finalize();
+#endif
+
 #endif
 
 }

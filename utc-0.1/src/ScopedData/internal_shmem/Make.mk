@@ -23,6 +23,9 @@ OBJS:= 	dlmalloc.o \
 		
 libutc-scopedshmem.a: $(OBJS)
 	ar -r -uv libutc-scopedshmem.a $(OBJS)
+	cp libutc-scopedshmem.a $(PROJECT_LIBDIR)
+	cp $(OBJS) $(PROJECT_LIBDIR)
+	@echo "make scopedshmem library succefful !!!"
 
 internal_win.o: internal_win.cc internal_win.h dlmalloc.h
 	$(C++)	-o $@ -c $< $(CCFLAGS) $(INCLUDE)

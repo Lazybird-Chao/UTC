@@ -21,6 +21,8 @@ Task<T>::Task()
 	std::vector<int> rlist;
 	for(int i=0;i<numProcess;i++)
 		rlist.push_back(i);
+
+
 	CreateTask(name, ProcList(rlist), TaskType::cpu_task);
  }
 
@@ -40,6 +42,8 @@ Task<T>::Task(ProcList rList)
 	int ntasks = TaskManager::getNumTasks();
 	std::string name = "Task";
 	name.append(std::to_string(ntasks));
+
+
 	CreateTask(name, rList, TaskType::cpu_task);
  }
 
@@ -60,6 +64,8 @@ Task<T>::Task(ProcList rList, TaskType tType)
 	int ntasks = TaskManager::getNumTasks();
 	std::string name = "Task";
 	name.append(std::to_string(ntasks));
+
+
 	CreateTask(name, rList, tType);
  }
 
@@ -79,6 +85,8 @@ Task<T>::Task(T* userTaskObj, ProcList rList, TaskType tType)
 	int ntasks = TaskManager::getNumTasks();
 	std::string name = "Task";
 	name.append(std::to_string(ntasks));
+
+
 	CreateTask(name, rList, tType);
  }
 
@@ -100,6 +108,8 @@ Task<T>::Task(std::string name)
 	std::vector<int> rlist;
 	for(int i=0;i<numProcess;i++)
 		rlist.push_back(i);
+
+
 	CreateTask(name, rlist, TaskType::cpu_task);
  }
 
@@ -117,6 +127,7 @@ Task<T>::Task( std::string name,  ProcList rList)
 	m_realTaskInstance= nullptr;
 	m_TaskType = TaskType::cpu_task;
 
+
 	CreateTask(name, rList, TaskType::cpu_task);
  }
 
@@ -133,6 +144,27 @@ Task<T>::Task(std::string name, ProcList rList, TaskType tType)
 	callTaskFinish = false;
 	m_realTaskInstance= nullptr;
 	m_TaskType = tType;
+
+	CreateTask(name, rList, tType);
+ }
+
+template<class T>
+Task<T>::Task(std::string name, ProcList rList, TaskType tType, long shmemSize)
+:TaskBase()
+ {
+
+	m_userTaskObjPtr = nullptr;
+	m_userSupplyObj = false;
+	m_procOstream = nullptr;
+	m_taskBarrierObjPtr = nullptr;
+	m_taskSpinBarrierObjPtr = nullptr;
+	callTaskFinish = false;
+	m_realTaskInstance= nullptr;
+	m_TaskType = tType;
+
+#if ENABLE_SCOPED_DATA
+	m_shmemSize = shmemSize;
+#endif
 
 	CreateTask(name, rList, tType);
  }
@@ -607,6 +639,15 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 	for(int i=0; i<m_numProcesses; i++)
 		m_worldRankToTaskGroupRank.insert(std::pair<int,int>(inc_rank[i], rankInGroup[i]));
 #endif
+
+#if ENABLE_SCOPED_DATA
+#ifdef USE_INTERNALSHMEM
+	if(m_shmemSize ==0)
+		m_taskMpiInternalWindow = new internal_MPIWin(&m_taskComm, SHMEM_SIZE, 0);
+	else
+		m_taskMpiInternalWindow = new internal_MPIWin(&m_taskComm, m_shmemSize, 0);
+#endif
+#endif
 	// create obj of user defined task class"T". With this design all threads in
 	// one process will share this user taskobj, the data members of the this obj
 	// will be accessed by all threads. Also each processes will has a same copy
@@ -651,6 +692,12 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 		m_commonTaskInfo.worldCommPtr = root->getWorldComm();
 		m_commonTaskInfo.worldGroupPtr = root->getWorldGroup();
 		m_commonTaskInfo.worldRankToGrouprRank = &m_worldRankToTaskGroupRank;
+		#endif
+
+		#if ENABLE_SCOPED_DATA
+		#ifdef USE_INTERNALSHMEM
+		m_commonTaskInfo.taskMpiInternalWindow = m_taskMpiInternalWindow;
+		#endif
 		#endif
 
 		m_commonThreadPrivateData.taskUniqueExeTagObj = m_uniqueExeObjPtr;

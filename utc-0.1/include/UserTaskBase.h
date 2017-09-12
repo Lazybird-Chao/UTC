@@ -55,6 +55,7 @@ public:
 	static thread_local int __localThreadId;
 	static thread_local int __globalThreadId;
 	static thread_local int __processId;
+	static thread_local int __processIdInGroup;
 	int __numLocalThreads=0;
 	int __numGlobalThreads=0;
 	int __numProcesses=0;
@@ -81,6 +82,8 @@ private:
 	//std::mutex __opLock;
 	FastMutex __opLock;
 	iUtc::SpinLock __opSpinLock;
+
+
 
 protected:
 	/* other useful member functions */

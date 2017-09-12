@@ -128,6 +128,12 @@ void TaskBase::waitLocalThreadFinish(){
 	return;
 }
 
+#if ENABLE_SCOPED_DATA
+	internal_MPIWin* TaskBase::getTaskMpiWindow(){
+		return m_taskMpiInternalWindow;
+	}
+#endif
+
 ///
 TaskBase::TaskBase()
 :m_Name(""),
@@ -150,6 +156,7 @@ m_uniqueExeObjPtr(nullptr)
     m_gatherAvailable.store(0);
 
     m_worldRankToTaskGroupRank.clear();
+    m_shmemSize = 0;
 }
 
 TaskBase::~TaskBase()
