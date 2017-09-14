@@ -37,5 +37,7 @@
 
 #define CHECK_GPU_ABILITY	0
 
+#define ENABLE_GLOBAL_GPU_DATA	0
+
 
 #endif /* UTC_GPU_UTCGPUBASICS_H_ */

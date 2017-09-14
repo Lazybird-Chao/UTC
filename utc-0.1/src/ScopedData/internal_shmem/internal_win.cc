@@ -67,7 +67,7 @@ void internal_MPIWin::scoped_win_init(){
 			int errlen;
 			MPI_Error_string(rc, errmsg, &errlen);
 			printf("MPI_Win_allocate_shared error message = %s\n",errmsg);
-			MPI_Abort(*scoped_win_comm, rc);
+			//MPI_Abort(*scoped_win_comm, rc);
 		}
 
 		 MPI_Win_lock_all(MPI_MODE_NOCHECK /* use 0 instead if things break */,

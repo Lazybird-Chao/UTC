@@ -132,6 +132,11 @@ void TaskBase::waitLocalThreadFinish(){
 	internal_MPIWin* TaskBase::getTaskMpiWindow(){
 		return m_taskMpiInternalWindow;
 	}
+
+	std::map<int, int>* TaskBase::getProcWorldToTaskGroupMap(){
+		return &m_worldRankToTaskGroupRank;
+	}
+
 #endif
 
 ///

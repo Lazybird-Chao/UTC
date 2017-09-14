@@ -1,18 +1,24 @@
 #####################
 default:libutc-scopedshmem.a
 
-#include ../../for-dis.comm
+include ../../../for-dis.comm
 
 #####################
-vpath %.h  ../../../include/ScopedData/internal_shmem
+vpath %.h  $(PROJECT_INCLUDEDIR)
+vpath %.inc $(PROJECT_INCLUDEDIR)
+vpath %.cc $(PROJECT_SRCDIR)
+vpath %.h  $(PROJECT_INCLUDEDIR)/ScopedData
+vpath %.inc $(PROJECT_INCLUDEDIR)/ScopedData
+vpath %.cc $(PROJECT_SRCDIR)/ScopedData
+vpath %.h  $(PROJECT_INCLUDEDIR)/ScopedData/internal_shmem
+vpath %.inc  $(PROJECT_INCLUDEDIR)/ScopedData/internal_shmem
+vpath %.cc  $(PROJECT_SRCDIR)/ScopedData/internal_shmem
 
-INCLUDE = -I../../../include/ScopedData/internal_shmem
-
-CC	= mpicc
-C++	= mpicxx
-
-CCFLAGS  = -g -O2 -std=c++11
-
+ifeq ($(ENABLE_GPU), 1)
+    vpath %.h  $(PROJECT_INCLUDEDIR)/gpu
+    vpath %.inc $(PROJECT_INCLUDEDIR)/gpu
+    vpath %.cc $(PROJECT_SRCDIR)/gpu
+endif
 
 #####################
 OBJS:= 	dlmalloc.o \

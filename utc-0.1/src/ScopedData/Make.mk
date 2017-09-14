@@ -10,7 +10,11 @@ vpath %.cc $(PROJECT_SRCDIR)
 vpath %.h  $(PROJECT_INCLUDEDIR)/ScopedData
 vpath %.inc $(PROJECT_INCLUDEDIR)/ScopedData
 vpath %.cc $(PROJECT_SRCDIR)/ScopedData
-vpath %.h  $(PROJECT_INCLUDEDIR)/ScopedData/internal_shmem
+ifeq ($(ENABLE_INTERNAL_SHMEM), 1)
+	vpath %.h  $(PROJECT_INCLUDEDIR)/ScopedData/internal_shmem
+	vpath %.inc  $(PROJECT_INCLUDEDIR)/ScopedData/internal_shmem
+	vpath %.cc  $(PROJECT_SRCDIR)/ScopedData/internal_shmem
+endif
 ifeq ($(ENABLE_GPU), 1)
     vpath %.h  $(PROJECT_INCLUDEDIR)/gpu
     vpath %.inc $(PROJECT_INCLUDEDIR)/gpu
@@ -29,7 +33,7 @@ libutc-scopeddata.a: $(OBJS)
 	@echo "make scopeddata library succefful !!!"
 PrivateScopedData.o: PrivateScopedData.cc PrivateScopedData.h PrivateScopedData.inc
 	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
-GlobalScopedData.o: GlobalScopedData.cc GlobalScopedData.h GlobalScopedData.inc
+GlobalScopedData.o: GlobalScopedData.cc GlobalScopedData.h GlobalScopedData.inc GlobalScopedData_internal.h GlobalScopedData_internal.inc
 	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 
 	

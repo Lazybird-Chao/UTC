@@ -13,7 +13,7 @@
 namespace iUtc{
 
 template<typename T>
-GlobalScopedData<T>::GlobalScopedData(UserTaskBase* userTaskObj, long size)
+GlobalScopedData<T>::GlobalScopedData(long size)
 :GlobalScopedDataBase(){
 	m_size = size;
 	m_typesize = sizeof(T);
@@ -35,11 +35,11 @@ GlobalScopedData<T>::GlobalScopedData(UserTaskBase* userTaskObj, long size)
 		m_datatype = metaDataType::_longdouble;
 	else
 		m_datatype = metaDataType::unknown;
-	m_userTaskObj = userTaskObj;
+	m_userTaskObj = NULL;
 
-	m_globalPrank = userTaskObj->__processId;
-	m_taskPrank = userTaskObj->__worldRankTranslate->at(m_globalPrank);
-	m_worldToGroup = *(userTaskObj->__worldRankTranslate);
+	m_globalPrank = getCurrentTask()->getCurrentProcRank();
+	m_worldToGroup = (*getCurrentTask()->getProcWorldToTaskGroupMap());
+	m_taskPrank = m_worldToGroup.at(m_globalPrank);
 
 	m_taskMpiWindow = getCurrentTask()->getTaskMpiWindow();
 	/* the task mpiwindow init/finalize procedures are done in usertaskbase's

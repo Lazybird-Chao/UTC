@@ -10,7 +10,12 @@ ENABLE_GPU = 0
 
 ENABLE_SCOPED_DATA = 1
 
+ENABLE_INTERNAL_SHMEM = 1
+
+ENABLE_GLOBAL_GPU_DATA = 0
+
 OPEN_MPI = 1
+
 DEFAULT_MPI = 0
 
 ##################
@@ -43,15 +48,19 @@ endif
 MPI_INCLUDE := -I$(MPI_DIR)/include
 
 ifeq ($(ENABLE_SCOPED_DATA), 1)
+ifeq ($(ENABLE_INTERNAL_SHMEM), 0)
 	MPI_LIB += -loshmem
 endif
 
+####################
 
 BOOST_DIR = /shared/apps/boost/boost_1_58_0/INSTALL
 BOOST_INCLUDE := -I$(BOOST_DIR)/include				
 BOOST_LIB = $(BOOST_DIR)/lib/libboost_thread.a \
 				$(BOOST_DIR)/lib/libboost_system.a \
 				$(BOOST_DIR)/lib/libboost_filesystem.a
+
+#####################
 				
 LIB = $(PROJECT_LIBDIR)/libutc.a
 LIB += -lrt
@@ -68,6 +77,10 @@ INCLUDE += -I$(PROJECT_HOMEDIR)/include/thread_util
 ifeq ($(ENABLE_SCOPED_DATA), 1)
 	INCLUDE += -I$(PROJECT_HOMEDIR)/include/ScopedData
 	LIB += $(PROJECT_LIBDIR)/libutc-scopeddata.a
+	ifeq($(ENABLE_INTERNAL_SHMEM), 1)
+		INCLUDE += -I$(PROJECT_HOMEDIR)/include/ScopedData/internal_shmem
+		LIB += $(PROJECT_LIBDIR)/libutc-scopedshmem.a
+	endif
 endif
 
 

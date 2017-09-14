@@ -26,6 +26,10 @@
 
 #include "GpuData.h"
 
+#if ENABLE_GLOBAL_GPU_DATA
+#include "GlobalGpuData.h"
+#endif
+
 #include "helper_cuda.h"
 
 

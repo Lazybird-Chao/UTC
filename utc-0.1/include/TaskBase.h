@@ -79,6 +79,7 @@ public:
     //
 #if ENABLE_SCOPED_DATA
 	internal_MPIWin *getTaskMpiWindow();
+	std::map<int, int> *getProcWorldToTaskGroupMap();
 #endif
 
 protected:

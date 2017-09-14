@@ -26,7 +26,7 @@
 template <typename T>
 class GlobalScopedData: public GlobalScopedDataBase{
 public:
-	GlobalScopedData(UserTaskBase* userTaskObj, long size=1);
+	GlobalScopedData(long size=1);
 
 	~GlobalScopedData();
 
