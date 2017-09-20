@@ -41,9 +41,9 @@ OBJS:= 	UtcContext.o \
 #OBJ_UTC = $(addprefix ./lib/, $(OBJS))
 
 ### library required object files
-libutc.a: $(OBJ_UTC)
-	ar -r -uv libutc.a $(OBJ_UTC)
-	cp libutc.a $(PROJECT_LIBDIR)
+libutc.a: $(OBJS)
+	ar -r -uv libutc.a $(OBJS)
+	mv libutc.a $(PROJECT_LIBDIR)
 	cp $(OBJS) $(PROJECT_LIBDIR)
 	@echo "make utc library successful !!!" 
 ProcList.o: ProcList.cc
@@ -98,3 +98,9 @@ SharedDataLock.o: SharedDataLock.cc
 	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 SpinLock.o: SpinLock.cc
 	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
+
+
+
+clean:
+	rm -rf *.o *.a
+

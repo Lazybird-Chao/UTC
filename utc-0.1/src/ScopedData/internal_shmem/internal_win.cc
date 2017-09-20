@@ -6,7 +6,9 @@
 #include "dlmalloc.h"
 
 
-#include <stdlib.h>
+#include <iostream>
+#include <cstdlib>
+#include <cstdio>
 
 //extern "C"  void* create_mspace_with_base(void* base, size_t capacity, int locked);
 //extern "C" size_t mspace_set_footprint_limit(mspace msp, size_t bytes);

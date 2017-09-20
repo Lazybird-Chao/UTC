@@ -28,12 +28,12 @@ OBJS:= 	PrivateScopedData.o \
 		
 libutc-scopeddata.a: $(OBJS)
 	ar -r -uv libutc-scopeddata.a $(OBJS)
-	cp libutc-scopeddata.a $(PROJECT_LIBDIR)
+	mv libutc-scopeddata.a $(PROJECT_LIBDIR)
 	cp $(OBJS) $(PROJECT_LIBDIR)
 	@echo "make scopeddata library succefful !!!"
 PrivateScopedData.o: PrivateScopedData.cc PrivateScopedData.h PrivateScopedData.inc
 	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
-GlobalScopedData.o: GlobalScopedData.cc GlobalScopedData.h GlobalScopedData.inc GlobalScopedData_internal.h GlobalScopedData_internal.inc
+GlobalScopedData.o: GlobalScopedData.cc GlobalScopedData.h GlobalScopedData.inc GlobalScopedData_internal.inc
 	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 
 	

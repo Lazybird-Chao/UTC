@@ -112,8 +112,8 @@ const int MAX_PROCS_IN_WORLD=32;
 const int LOG_MAX_PROCS=5;
 const int MAX_TASKS_IN_WORLD=128;
 const int LOG_MAX_TASKS=7;
-const int MAX_THREADS_IN_WORLD=256;
-const int LOG_MAX_THREADS=8;
+const int MAX_THREADS_IN_WORLD=1024;
+const int LOG_MAX_THREADS=10;
 
 const int MAX_CONDUITS_IN_WORLD = 1024;
 const int LOG_MAX_CONDUITS = 10;

@@ -1,6 +1,6 @@
 ##################
 ##################
-PROJECT_HOMEDIR = /home/liu.chao/utc-0.1
+PROJECT_HOMEDIR = /home/liu.chao/utc-workingon
 PROJECT_BINDIR = $(PROJECT_HOMEDIR)/bin
 PROJECT_LIBDIR = $(PROJECT_HOMEDIR)/lib
 PROJECT_INCLUDEDIR = $(PROJECT_HOMEDIR)/include
@@ -24,8 +24,7 @@ CC = gcc
 C++ = g++
 MPICXX = mpicxx
 
-CFLAG := -Wall
-CCFLAG := -g -std=c++11 -O2
+CCFLAG := -Wall -g -std=c++11 -O2 -fmax-errors=10
 ifeq ($(DEFAULT_MPI), 1)
 	 CCFLAG += -Wno-deprecated
 endif
@@ -50,6 +49,7 @@ MPI_INCLUDE := -I$(MPI_DIR)/include
 ifeq ($(ENABLE_SCOPED_DATA), 1)
 ifeq ($(ENABLE_INTERNAL_SHMEM), 0)
 	MPI_LIB += -loshmem
+endif
 endif
 
 ####################
@@ -77,10 +77,11 @@ INCLUDE += -I$(PROJECT_HOMEDIR)/include/thread_util
 ifeq ($(ENABLE_SCOPED_DATA), 1)
 	INCLUDE += -I$(PROJECT_HOMEDIR)/include/ScopedData
 	LIB += $(PROJECT_LIBDIR)/libutc-scopeddata.a
-	ifeq($(ENABLE_INTERNAL_SHMEM), 1)
-		INCLUDE += -I$(PROJECT_HOMEDIR)/include/ScopedData/internal_shmem
-		LIB += $(PROJECT_LIBDIR)/libutc-scopedshmem.a
-	endif
+endif
+
+ifeq ($(ENABLE_INTERNAL_SHMEM), 1)
+	INCLUDE += -I$(PROJECT_HOMEDIR)/include/ScopedData/internal_shmem
+	LIB += $(PROJECT_LIBDIR)/libutc-scopedshmem.a
 endif
 
 
@@ -110,15 +111,21 @@ endif
 
 
 #####################
-.PHONY: cleanlib cleanlog cleanbin
+.PHONY: cleanlib cleanlog cleanbin cleanobj
 
 cleanlib:
 	rm  -rf $(PROJECT_LIBDIR)/*
+
+cleanobj:
+	rm -rf $(PROJECT_SRCDIR)/gpu/*.o
 ifeq ($(ENABLE_GPU), 1)
-	rm  -rf	$(PROJECT_SRCDIR)/gpu/*.o $(PROJECT_SRCDIR)/gpu/*.a
+	rm  -rf	$(PROJECT_SRCDIR)/gpu/*.o #$(PROJECT_SRCDIR)/gpu/*.a
 endif
 ifeq ($(ENABLE_SCOPED_DATA), 1)
-	rm -rf $(PROJECT_SRCDIR)/ScopedData/*.o $(PROJECT_SRCDIR)/ScopedData/*.a
+	rm -rf $(PROJECT_SRCDIR)/ScopedData/*.o #$(PROJECT_SRCDIR)/ScopedData/*.a
+endif
+ifeq ($(ENALBE_INTERNAL_SHMEM), 1)
+	rm -rf $(PROJECT_SRCDIR)/ScopedData/internal_shmem/*.o
 endif
 
 cleanlog:

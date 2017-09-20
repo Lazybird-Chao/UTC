@@ -9,6 +9,7 @@
 #include "dlmalloc.h"
 
 #include <mpi.h>
+#include <iostream>
 
 //extern void* mspace_malloc(mspace msp, size_t bytes);
 //extern void mspace_free(mspace msp, void* mem);

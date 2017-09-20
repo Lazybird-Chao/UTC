@@ -6,6 +6,7 @@
  */
 
 #include "mpi_win_lock.h"
+#include <cstdlib>
 
 #define NEXT_DISP 1
 #define PREV_DISP 0

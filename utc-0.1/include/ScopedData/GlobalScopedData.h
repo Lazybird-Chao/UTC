@@ -14,7 +14,12 @@
 #include "SpinLock.h"
 #include "UserTaskBase.h"
 #include "FastMutex.h"
+#include "TaskUtilities.h"
+#include "TaskBase.h"
+#include "UtcContext.h"
 
+#include <typeinfo>
+#include <map>
 #include <mutex>
 
 #ifdef USE_OPENSHMEM
@@ -42,12 +47,12 @@ enum class metaDataType{
 
 enum class condCMPType{
 	unknown=-1,
-	_eq = SHMEM_CMP_EQ,
-	_ne = SHMEM_CMP_NE,
-	_gt = SHMEM_CMP_GT,
-	_le = SHMEM_CMP_LE,
-	_lt = SHMEM_CMP_LT,
-	_ge = SHMEM_CMP_GE
+	_eq = SCOPED_SHMEM_CMP_EQ,
+	_ne = SCOPED_SHMEM_CMP_NE,
+	_gt = SCOPED_SHMEM_CMP_GT,
+	_le = SCOPED_SHMEM_CMP_LE,
+	_lt = SCOPED_SHMEM_CMP_LT,
+	_ge = SCOPED_SHMEM_CMP_GE
 };
 
 
@@ -154,14 +159,15 @@ private:
 
 };
 
+#endif
+
 }// end namespace iUtc
 
+#ifdef USE_OPENSHMEM
 #include "GlobalScopedData.inc"
-
 #endif
 
 #ifdef USE_INTERNALSHMEM
-#include "GlobalScopedData_internal.h"
 
 #include "GlobalScopedData_internal.inc"
 

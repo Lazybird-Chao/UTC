@@ -29,16 +29,16 @@ OBJS:= 	dlmalloc.o \
 		
 libutc-scopedshmem.a: $(OBJS)
 	ar -r -uv libutc-scopedshmem.a $(OBJS)
-	cp libutc-scopedshmem.a $(PROJECT_LIBDIR)
+	mv libutc-scopedshmem.a $(PROJECT_LIBDIR)
 	cp $(OBJS) $(PROJECT_LIBDIR)
 	@echo "make scopedshmem library succefful !!!"
 
 internal_win.o: internal_win.cc internal_win.h dlmalloc.h
-	$(C++)	-o $@ -c $< $(CCFLAGS) $(INCLUDE)
+	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 mpi_win_lock.o: mpi_win_lock.cc mpi_win_lock.h
-	$(C++)	-o $@ -c $< $(CCFLAGS) $(INCLUDE)
+	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 scoped_shmem.o: scoped_shmem.cc scoped_shmem.h dlmalloc.h internal_win.h mpi_win_lock.h
-	$(C++)	-o $@ -c $< $(CCFLAGS) $(INCLUDE)
+	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 dlmalloc.o: dlmalloc.c dlmalloc.h
 	$(C++)	-o $@ -c $< -g -O2  $(INCLUDE)
 	
