@@ -24,20 +24,27 @@ GlobalGpuData<T>::GlobalGpuData(unsigned long size, MemType memtype ){
 	m_hostPtr = m_devicePtr = NULL;
 	m_memtype = memtype;
 
-	m_worldToGroup = getCurrentTask()->getProcWorldToTaskGroupMap();
-	m_win_comm = getCurrentTask()->getTaskMpiWindow()->get_scoped_win_comm();
+	m_worldToGroup = NULL;
+	m_win_comm = NULL;
+
 }
 
 template<typename T>
 GlobalGpuData<T>::~GlobalGpuData(){
 	m_worldToGroup = NULL;
 	m_win_comm = NULL;
+	if(isinitialized == true && iscleaned == false){
+		destroy();
+	}
 }
 
 template<typename T>
 int GlobalGpuData<T>::init(){
 	m_objMutex.lock();
 	if(isinitialized == false && iscleaned == false){
+		m_worldToGroup = getCurrentTask()->getProcWorldToTaskGroupMap();
+		m_win_comm = getCurrentTask()->getTaskMpiWindow()->get_scoped_win_comm();
+
 		if(getCurrentUtcGpuCtx()->getCurrentDeviceAttr(cudaDevAttrManagedMemory) ==1){
 			//std::cout<<"using cuda managed for umem"<<std::endl;
 			checkCudaRuntimeErrors(cudaMallocManaged(&m_devicePtr, m_size_inbytes));
@@ -78,7 +85,7 @@ int GlobalGpuData<T>::init(){
 }
 
 template<typename T>
-int GlobalGpuData<T>::clean(){
+int GlobalGpuData<T>::destroy(){
 	m_objMutex.lock();
 	if(isinitialized == true && iscleaned == false){
 		MPI_Barrier(*m_win_comm);
@@ -94,7 +101,7 @@ int GlobalGpuData<T>::clean(){
 
 template<typename T>
 int GlobalGpuData<T>::rload(T* dst, int PE){
-	int remotePE = m_worldToGroup->at(remotePE);
+	//int remotePE = m_worldToGroup->at(remotePE);
 	m_objMutex.lock();
 	if(m_size_inbytes < (1<<32))
 		MPI_Get(dst, m_size_inbytes,
@@ -112,7 +119,7 @@ int GlobalGpuData<T>::rload(T* dst, int PE){
 
 template<typename T>
 int GlobalGpuData<T>::rstore(T* src, int PE){
-	int remotePE = m_worldToGroup->at(remotePE);
+	//int remotePE = m_worldToGroup->at(remotePE);
 	m_objMutex.lock();
 	if(m_size_inbytes < (1<<32))
 		MPI_Put(src, m_size_inbytes,

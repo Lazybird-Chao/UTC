@@ -225,6 +225,9 @@ void TaskGPU::threadImpl(ThreadRank_t trank,
 	// create task info in this thread TSS
 	TaskInfo* taskInfoPtr = new TaskInfo();
 	taskInfoPtr->pRank = m_commonTaskInfo->pRank;
+	taskInfoPtr->numGroupProcesses = m_commonTaskInfo->numGroupProcesses;
+	taskInfoPtr->numWorldProcesses = m_commonTaskInfo->numWorldProcesses;
+	taskInfoPtr->procGroupRank = m_commonTaskInfo->procGroupRank;
 	taskInfoPtr->parentTaskId = m_commonTaskInfo->parentTaskId;
 	taskInfoPtr->tRank = trank;
 	taskInfoPtr->lRank = lrank;
@@ -238,6 +241,7 @@ void TaskGPU::threadImpl(ThreadRank_t trank,
 	taskInfoPtr->worldCommPtr = m_commonTaskInfo->worldCommPtr;
 	taskInfoPtr->worldGroupPtr = m_commonTaskInfo->worldGroupPtr;
 	taskInfoPtr->worldRankToGrouprRank = m_commonTaskInfo->worldRankToGrouprRank;
+	taskInfoPtr->groupRankToWorldRank = m_commonTaskInfo->groupRankToWorldRank;
 	taskInfoPtr->gpuSpecInfo.gpuId = gpuToBind;   /****/
 	TaskManager::setTaskInfo(taskInfoPtr);
 	//std::cout<<trank<<" "<<ERROR_LINE<<std::endl;
@@ -272,8 +276,10 @@ void TaskGPU::threadImpl(ThreadRank_t trank,
 							m_commonTaskInfo->pRank,
 							m_numLocalThreads,
 							m_numProcesses,
+							m_commonTaskInfo->numWorldProcesses,
 							m_numTotalThreads,
 							m_commonTaskInfo->worldRankToGrouprRank,
+							m_commonTaskInfo->groupRankToWorldRank,
 							(void*)myUtcGpuContext);
 
 	while(1){

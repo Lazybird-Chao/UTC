@@ -30,50 +30,54 @@ public:
 						<<"gId: "<<__globalThreadId<<std::endl
 						<<"lId: "<<__localThreadId<<std::endl
 						<<"gSize: "<<__numGlobalThreads<<std::endl
-						<<"lSize: "<<__numLocalThreads<<std::endl;
+						<<"lSize: "<<__numLocalThreads<<std::endl
+						<<"prankInGroup: "<<__processIdInGroup<<std::endl
+						<<"prankInWorld: "<<__processIdInWorld<<std::endl;
 	}
 
 	void runImpl(){
 		sleep(__globalThreadId);
-		if(__globalThreadId ==0){
+		if(__processIdInGroup ==0){
 			std::cout<<"store value to global data objs in thread "
 					<<__globalThreadId<<std::endl;
 			for(int i=0; i< arrayVar.getSize(); i++){
-				arrayVar.store(__globalThreadId*arrayVar.getSize()+i, i);
+				arrayVar.store(__processIdInWorld*arrayVar.getSize()+i, i);
 				std::cout<<i<<" ";
 			}
 			std::cout<<std::endl;
 		}
 		inter_Barrier();
 
+
 		sleep(__numGlobalThreads-__globalThreadId);
-		if(__globalThreadId == 1){
+		if(__processIdInGroup == 1){
 			std::cout<<"load value from global data objs in thread "
 					<<__globalThreadId<<std::endl;
 			std::cout<<"\t"<<arrayVar.load(10)<<std::endl;
 		}
 		inter_Barrier();
 
+
 		sleep(__numGlobalThreads-__globalThreadId);
-		if(__globalThreadId == 1){
+		if(__processIdInGroup == 1){
 			std::cout<<"remote load value from global data objs in thread "
 					<<__globalThreadId<<std::endl;
-			std::cout<<"\t"<<arrayVar.rload((__processId+1)%__numProcesses,10)<<std::endl;
+			std::cout<<"\t"<<arrayVar.rload(0,10)<<std::endl;
 		}
 		inter_Barrier();
 
 		sleep(__globalThreadId);
-		if(__globalThreadId ==1){
+		if(__processIdInGroup ==1){
 			std::cout<<"remote store value to global data objs in thread "
 					<<__globalThreadId<<std::endl;
 			for(int i=0; i< arrayVar.getSize(); i++)
-				arrayVar.rstore((__processId+1)%__numProcesses,__globalThreadId*arrayVar.getSize()+i, i);
+				arrayVar.rstore(0,__processIdInWorld*arrayVar.getSize()+i, i);
 			arrayVar.fence();
 		}
 		inter_Barrier();
 
 		sleep(__globalThreadId);
-		if(__globalThreadId ==0){
+		if(__processIdInGroup ==0){
 			std::cout<<"load after remote store of global data objs in thread "
 					<<__globalThreadId<<std::endl;
 			for(int i=0; i< arrayVar.getSize(); i++){
@@ -120,20 +124,29 @@ int main(int argc, char* argv[]){
 	}
 	std::cout<<getpid()<<"---->"<<ctx.getProcRank()<<std::endl;
 
-	int process_ids[] = {0,1};
+	int process_ids[] = {0,1,2,3,4};
 	ProcList plist(2, process_ids);
-	Task<TaskGsData>  test(plist);
+	Task<TaskGsData>  test1(plist);
+	ProcList plist2(2, &process_ids[0]);
+	Task<TaskGsData>  test2(plist2);
 
 	std::cout<<"call task::init\n";
-	test.init();
-	test.wait();
+	test1.init();
+	test1.wait();
+
+	test2.init();
+	test2.wait();
 
 	std::cout<<"call task::run\n";
-	test.run();
-	test.wait();
+	test1.run();
+	test1.wait();
+
+	test2.run();
+	test2.wait();
 
 	std::cout<<"call task::finish\n";
-	test.finish();
+	test1.finish();
+	test2.finish();
 
 	//char c;
 	//std::cin>>c;

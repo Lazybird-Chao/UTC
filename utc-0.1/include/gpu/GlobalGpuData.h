@@ -41,7 +41,7 @@ private:
 
 public:
 	int init();
-	int clean();
+	int destroy();
 
 	GlobalGpuData(unsigned long size, MemType memtype = MemType::unified);
 	~GlobalGpuData();

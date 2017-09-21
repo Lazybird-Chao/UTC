@@ -655,8 +655,11 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 	int *rankInGroup = new int[m_numProcesses];
 	MPI_Group_translate_ranks(*(root->getWorldGroup()), m_numProcesses, inc_rank,
 			m_taskmpiGroup, rankInGroup);
-	for(int i=0; i<m_numProcesses; i++)
+	for(int i=0; i<m_numProcesses; i++){
 		m_worldRankToTaskGroupRank.insert(std::pair<int,int>(inc_rank[i], rankInGroup[i]));
+		m_taskGroupRankToWorldRank.insert(std::pair<int,int>(rankInGroup[i], inc_rank[i]));
+	}
+
 #endif
 
 #if ENABLE_SCOPED_DATA
@@ -677,7 +680,9 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 			m_taskMpiInternalWindow = new internal_MPIWin(&m_taskComm, m_shmemSize, 0);
 
 #ifdef SHOW_DEBUG
-	std::cout<<ERROR_LINE<<"internal mpiwin created."<<std::endl;
+	std::cout<<ERROR_LINE<<"internal mpiwin created. "<<
+			"["<<m_processRank<<" "<<m_worldRankToTaskGroupRank[m_processRank]
+			 <<"]"<<std::endl;
 #endif
 	}
 #endif
@@ -715,6 +720,9 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 	if(m_numLocalThreads !=0){
 		// create common taskInfo and threadPrivateData structure
 		m_commonTaskInfo.pRank = m_processRank;
+		m_commonTaskInfo.numWorldProcesses = nProcWorld;
+		m_commonTaskInfo.procGroupRank = m_worldRankToTaskGroupRank[m_processRank];
+		m_commonTaskInfo.numGroupProcesses = m_numProcesses;
 		m_commonTaskInfo.parentTaskId = m_ParentTaskId;
 		m_commonTaskInfo.taskId = m_TaskId;
 		m_commonTaskInfo.barrierObjPtr = m_taskBarrierObjPtr;
@@ -727,6 +735,7 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 		m_commonTaskInfo.worldCommPtr = root->getWorldComm();
 		m_commonTaskInfo.worldGroupPtr = root->getWorldGroup();
 		m_commonTaskInfo.worldRankToGrouprRank = &m_worldRankToTaskGroupRank;
+		m_commonTaskInfo.groupRankToWorldRank = &m_taskGroupRankToWorldRank;
 		#endif
 
 		#if ENABLE_SCOPED_DATA
@@ -805,6 +814,9 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 	// move to here, after task Register, to avoid possible bug
 	if(m_numLocalThreads != 0){
 		m_realTaskInstance->launchThreads();
+
+		MPI_Barrier(m_taskComm);
+
 #ifdef SHOW_DEBUG
 	std::cout<<ERROR_LINE<<"task threads launched."<<std::endl;
 #endif

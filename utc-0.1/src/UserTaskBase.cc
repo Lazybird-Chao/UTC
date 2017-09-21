@@ -14,7 +14,7 @@
 
 thread_local int UserTaskBase::__localThreadId = -1;
 thread_local int UserTaskBase::__globalThreadId = -1;
-thread_local int UserTaskBase::__processId = -1;
+thread_local int UserTaskBase::__processIdInWorld = -1;
 thread_local int UserTaskBase::__processIdInGroup = -1;
 
 #if ENABLE_GPU_TASK
@@ -66,20 +66,24 @@ void UserTaskBase::preInit(int lrank,
 							int prank,
 							int numLocalThreads,
 							int numProcesses,
+							int numTotalProcesses,
 							int numTotalThreads,
 							std::map<int,int> *worldRankTranslate,
+							std::map<int,int> *groupRankTranslate,
 							void* gpuCtx){
 #ifdef SHOW_DEBUG
 	std::cout<<ERROR_LINE<<"pre Taskinit start"<<std::endl;
 #endif
 	__localThreadId = lrank;
 	__globalThreadId = trank;
-	__processId = prank;
+	__processIdInWorld = prank;
 	__processIdInGroup = worldRankTranslate->at(prank);
 	__numLocalThreads = numLocalThreads;
 	__numGlobalThreads = numTotalThreads;
-	__numProcesses = numProcesses;
+	__numWorldProcesses = numTotalProcesses;
+	__numGroupProcesses = numProcesses;
 	__worldRankTranslate = worldRankTranslate;
+	__groupRankTranslate = groupRankTranslate;
 
 	__fastIntraSync.init(numLocalThreads);
 

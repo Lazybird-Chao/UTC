@@ -79,8 +79,10 @@ public:
     //
 #if ENABLE_SCOPED_DATA
 	internal_MPIWin *getTaskMpiWindow();
-	std::map<int, int> *getProcWorldToTaskGroupMap();
 #endif
+	std::map<int, int> *getProcWorldToTaskGroupMap();
+	std::map<int, int> *getProcTaskGroupToWorldMap();
+
 
 protected:
     std::string m_Name;
@@ -132,6 +134,7 @@ protected:
 
     // an array to map world-mpi-rank to task-mpi-goup-rank
     std::map<int, int> m_worldRankToTaskGroupRank;
+    std::map<int, int> m_taskGroupRankToWorldRank;
 
 	//a mpi window used for implement global shared data object
 #if ENABLE_SCOPED_DATA

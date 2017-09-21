@@ -169,7 +169,8 @@ int GlobalScopedData<T>::init(){
 		destroied = false;
 
 #ifdef SHOW_DEBUG
-	std::cout<<ERROR_LINE<<"global scoped data initialized."<<std::endl;
+	std::cout<<ERROR_LINE<<"global scoped data initialized."
+			<<m_globalPrank<<" "<<m_taskPrank<<std::endl;
 #endif
 	}
 	m_objMutex.unlock();
@@ -241,7 +242,7 @@ T GlobalScopedData<T>::rload(int remotePE, int index){
 		return (T)0;
 	}
 	T tmpdata;
-	remotePE = m_worldToGroup->at(remotePE);
+	//remotePE = m_worldToGroup->at(remotePE);
 	m_objMutex.lock();
 	switch(m_datatype){
 		case metaDataType::_char:
@@ -275,7 +276,7 @@ void GlobalScopedData<T>::rstore(int remotePE, T value, int index){
 	if( !initialized  || destroied){
 		std::cerr<<"Error: global data not initialized or destroied."<<std::endl;
 	}
-	remotePE = m_worldToGroup->at(remotePE);
+	//remotePE = m_worldToGroup->at(remotePE);
 	m_objMutex.lock();
 	switch(m_datatype){
 		case metaDataType::_char:
@@ -330,7 +331,7 @@ int GlobalScopedData<T>::rloadblock(int remotePE, T* dst, int startIdx, int bloc
 		std::cerr<<"Error: global data not initialized or destroied."<<std::endl;
 		return 0;
 	}
-	remotePE = m_worldToGroup->at(remotePE);
+	//remotePE = m_worldToGroup->at(remotePE);
 	m_objMutex.lock();
 	scoped_shmem_getmem((void*)dst, (void*)&(m_dataPtr[startIdx]), blocks*m_typesize, remotePE, *m_taskMpiWindow);
 	m_objMutex.unlock();
@@ -343,7 +344,7 @@ int GlobalScopedData<T>::rstoreblock(int remotePE, T* src, int startIdx, int blo
 		std::cerr<<"Error: global data not initialized or destroied."<<std::endl;
 		return 0;
 	}
-	remotePE = m_worldToGroup->at(remotePE);
+	//remotePE = m_worldToGroup->at(remotePE);
 	m_objMutex.lock();
 	scoped_shmem_putmem((void*)&(m_dataPtr[startIdx]), (void*)src, blocks*m_typesize, remotePE, *m_taskMpiWindow);
 	m_objMutex.unlock();
