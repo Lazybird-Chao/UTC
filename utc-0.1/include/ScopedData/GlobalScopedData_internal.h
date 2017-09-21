@@ -5,6 +5,11 @@
  *      Author: Chao
  */
 
+/*
+ * Not used this file, all contents are included in GlobalScopedData_internal.inc
+ */
+
+
 #ifndef INCLUDE_SCOPEDDATA_GLOBALSCOPEDDATA_INTERNAL_H_
 #define INCLUDE_SCOPEDDATA_GLOBALSCOPEDDATA_INTERNAL_H_
 #include <map>

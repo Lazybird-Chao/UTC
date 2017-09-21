@@ -4,7 +4,7 @@
  *  Created on: Jun 17, 2016
  *      Author: chaoliu
  */
-
+#include "UtcBasics.h"
 #include "UserTaskBase.h"
 #include "TaskBase.h"
 #include "TaskUtilities.h"
@@ -69,6 +69,9 @@ void UserTaskBase::preInit(int lrank,
 							int numTotalThreads,
 							std::map<int,int> *worldRankTranslate,
 							void* gpuCtx){
+#ifdef SHOW_DEBUG
+	std::cout<<ERROR_LINE<<"pre Taskinit start"<<std::endl;
+#endif
 	__localThreadId = lrank;
 	__globalThreadId = trank;
 	__processId = prank;
@@ -95,8 +98,13 @@ void UserTaskBase::preInit(int lrank,
 			(*item)->init();
 		}
 	}
+
 #ifdef USE_INTERNALSHMEM
 	iUtc::getCurrentTask()->getTaskMpiWindow()->scoped_win_init();
+#endif
+
+#ifdef SHOW_DEBUG
+	std::cout<<ERROR_LINE<<"pre Taskinit finish"<<std::endl;
 #endif
 
 #endif
@@ -105,6 +113,9 @@ void UserTaskBase::preInit(int lrank,
 
 
 void UserTaskBase::preExit(){
+#ifdef SHOW_DEBUG
+	std::cout<<ERROR_LINE<<"pre Taskexit start"<<std::endl;
+#endif
 #if ENABLE_SCOPED_DATA
 	for(auto& item: __psDataRegistry ){
 		item->destroy();
@@ -112,6 +123,10 @@ void UserTaskBase::preExit(){
 
 #ifdef USE_INTERNALSHMEM
 	iUtc::getCurrentTask()->getTaskMpiWindow()->scoped_win_finalize();
+#endif
+
+#ifdef SHOW_DEBUG
+	std::cout<<ERROR_LINE<<"pre Taskexit finish"<<std::endl;
 #endif
 
 #endif

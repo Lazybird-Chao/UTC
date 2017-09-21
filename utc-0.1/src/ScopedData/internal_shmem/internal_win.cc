@@ -37,6 +37,9 @@ internal_MPIWin::internal_MPIWin(MPI_Comm *mpi_comm, long heap_size, int root){
 }
 
 internal_MPIWin::~internal_MPIWin(){
+	if(scoped_win_initialized && !scoped_win_finalized){
+		scoped_win_finalize();
+	}
 	if(scoped_heap_mspace)
 		destroy_mspace(scoped_heap_mspace);
 	if(scoped_sheap_base_ptr)

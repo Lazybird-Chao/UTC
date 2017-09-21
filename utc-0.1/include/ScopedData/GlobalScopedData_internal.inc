@@ -28,6 +28,9 @@ class GlobalScopedData: public GlobalScopedDataBase{
 public:
 	GlobalScopedData(long size=1);
 
+	int init();
+	int destroy();
+
 	~GlobalScopedData();
 
 	T* getPtr();
@@ -81,10 +84,14 @@ private:
 	UserTaskBase* m_userTaskObj;
 	int m_globalPrank;
 	int m_taskPrank;
-	std::map<int, int> &m_worldToGroup;
+	std::map<int, int> *m_worldToGroup;
 
 	//std::mutex m_objMutex;
 	FastMutex m_objMutex;
+
+	//
+	bool initialized;
+	bool destroied;
 
 };
 
@@ -117,24 +124,81 @@ GlobalScopedData<T>::GlobalScopedData(long size)
 		m_datatype = metaDataType::unknown;
 	m_userTaskObj = NULL;
 
-	m_globalPrank = getCurrentTask()->getCurrentProcRank();
-	m_worldToGroup = (*getCurrentTask()->getProcWorldToTaskGroupMap());
-	m_taskPrank = m_worldToGroup.at(m_globalPrank);
+	initialized = false;
+	destroied = false;
 
-	m_taskMpiWindow = getCurrentTask()->getTaskMpiWindow();
+	/*
+	 * these things need to be done after task threads are launched, as
+	 * we use some data( stored in task thread local data etc.) that are set
+	 * after task threads launched. so we add separate init destroy methods
+	 * and do it explicitly in user task implementation codes
+	 */
+	/*
+	m_globalPrank = getCurrentTask()->getCurrentProcRank();
+	m_worldToGroup = getCurrentTask()->getProcWorldToTaskGroupMap();
+	m_taskPrank = m_worldToGroup->at(m_globalPrank);
+	*/
+
+	//m_taskMpiWindow = getCurrentTask()->getTaskMpiWindow();
 	/* the task mpiwindow init/finalize procedures are done in usertaskbase's
 	 * preInit() and preExit()
 	 */
 	//scoped_shmem_init_comm(*m_taskMpiWindow);
-	m_dataPtr = (T*)scoped_shmem_malloc(m_size*m_typesize, *m_taskMpiWindow);
+	//m_dataPtr = (T*)scoped_shmem_malloc(m_size*m_typesize, *m_taskMpiWindow);
+
+	m_globalPrank = -1;
+	m_worldToGroup = NULL;
+	m_taskPrank = -1;
+	m_taskMpiWindow = NULL;
+	m_dataPtr = NULL;
 
 }
 
 
 template<typename T>
+int GlobalScopedData<T>::init(){
+	m_objMutex.lock();
+	if( !initialized && !destroied){
+		m_globalPrank = getCurrentTask()->getCurrentProcRank();
+		m_worldToGroup = getCurrentTask()->getProcWorldToTaskGroupMap();
+		m_taskPrank = m_worldToGroup->at(m_globalPrank);
+
+		m_taskMpiWindow = getCurrentTask()->getTaskMpiWindow();
+		m_dataPtr = (T*)scoped_shmem_malloc(m_size*m_typesize, *m_taskMpiWindow);
+		initialized = true;
+		destroied = false;
+
+#ifdef SHOW_DEBUG
+	std::cout<<ERROR_LINE<<"global scoped data initialized."<<std::endl;
+#endif
+	}
+	m_objMutex.unlock();
+	return 0;
+}
+
+template<typename T>
+int GlobalScopedData<T>::destroy(){
+	m_objMutex.lock();
+	if(initialized && !destroied){
+		if(m_dataPtr){
+			scoped_shmem_free(m_dataPtr, *m_taskMpiWindow);
+		}
+		destroied = true;
+	}
+	m_objMutex.unlock();
+	return 0;
+}
+
+template<typename T>
 GlobalScopedData<T>::~GlobalScopedData(){
-	if(m_dataPtr){
-		scoped_shmem_free(m_dataPtr, *m_taskMpiWindow);
+#ifdef SHOW_DEBUG
+	std::cout<<ERROR_LINE<<"global scoped data do destructor." <<std::endl;
+#endif
+	if(initialized && !destroied){
+		if(m_dataPtr){
+			scoped_shmem_free(m_dataPtr, *m_taskMpiWindow);
+		}
+		destroied = true;
 	}
 }
 
@@ -155,18 +219,29 @@ int GlobalScopedData<T>::getCurrentPE(){
 
 template<typename T>
 T GlobalScopedData<T>::load(int index){
+	if( !initialized  || destroied){
+		std::cerr<<"Error: global data not initialized or destroied."<<std::endl;
+		return (T)0;
+	}
 	return m_dataPtr[index];
 }
 
 template<typename T>
 void GlobalScopedData<T>::store(T value, int index){
+	if( !initialized  || destroied){
+		std::cerr<<"Error: global data not initialized or destroied."<<std::endl;
+	}
 	m_dataPtr[index] = value;
 }
 
 template<typename T>
 T GlobalScopedData<T>::rload(int remotePE, int index){
+	if( !initialized  || destroied){
+		std::cerr<<"Error: global data not initialized or destroied."<<std::endl;
+		return (T)0;
+	}
 	T tmpdata;
-	remotePE = m_worldToGroup[remotePE];
+	remotePE = m_worldToGroup->at(remotePE);
 	m_objMutex.lock();
 	switch(m_datatype){
 		case metaDataType::_char:
@@ -197,7 +272,10 @@ T GlobalScopedData<T>::rload(int remotePE, int index){
 
 template<typename T>
 void GlobalScopedData<T>::rstore(int remotePE, T value, int index){
-	remotePE = m_worldToGroup[remotePE];
+	if( !initialized  || destroied){
+		std::cerr<<"Error: global data not initialized or destroied."<<std::endl;
+	}
+	remotePE = m_worldToGroup->at(remotePE);
 	m_objMutex.lock();
 	switch(m_datatype){
 		case metaDataType::_char:
@@ -228,19 +306,31 @@ void GlobalScopedData<T>::rstore(int remotePE, T value, int index){
 
 template<typename T>
 int GlobalScopedData<T>::loadblock(T* dst, int startIdx, int blocks){
+	if( !initialized  || destroied){
+		std::cerr<<"Error: global data not initialized or destroied."<<std::endl;
+		return 0;
+	}
 	memcpy(dst, &m_dataPtr[startIdx], blocks*m_typesize);
 	return 0;
 }
 
 template<typename T>
 int GlobalScopedData<T>::storeblock(T* src, int startIdx, int blocks){
+	if( !initialized  || destroied){
+		std::cerr<<"Error: global data not initialized or destroied."<<std::endl;
+		return 0;
+	}
 	memcpy(&m_dataPtr[startIdx], src, blocks*m_typesize);
 	return 0;
 }
 
 template<typename T>
 int GlobalScopedData<T>::rloadblock(int remotePE, T* dst, int startIdx, int blocks){
-	remotePE = m_worldToGroup[remotePE];
+	if( !initialized  || destroied){
+		std::cerr<<"Error: global data not initialized or destroied."<<std::endl;
+		return 0;
+	}
+	remotePE = m_worldToGroup->at(remotePE);
 	m_objMutex.lock();
 	scoped_shmem_getmem((void*)dst, (void*)&(m_dataPtr[startIdx]), blocks*m_typesize, remotePE, *m_taskMpiWindow);
 	m_objMutex.unlock();
@@ -249,7 +339,11 @@ int GlobalScopedData<T>::rloadblock(int remotePE, T* dst, int startIdx, int bloc
 
 template<typename T>
 int GlobalScopedData<T>::rstoreblock(int remotePE, T* src, int startIdx, int blocks){
-	remotePE = m_worldToGroup[remotePE];
+	if( !initialized  || destroied){
+		std::cerr<<"Error: global data not initialized or destroied."<<std::endl;
+		return 0;
+	}
+	remotePE = m_worldToGroup->at(remotePE);
 	m_objMutex.lock();
 	scoped_shmem_putmem((void*)&(m_dataPtr[startIdx]), (void*)src, blocks*m_typesize, remotePE, *m_taskMpiWindow);
 	m_objMutex.unlock();

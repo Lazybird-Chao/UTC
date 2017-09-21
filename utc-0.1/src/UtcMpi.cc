@@ -82,6 +82,10 @@ namespace iUtc{
             //
             MPI_Barrier(MPI_COMM_WORLD);
 
+#ifdef SHOW_DEBUG
+	std::cout<<ERROR_LINE<<"Finish base mpi environment in process rank "<<m_rank<<std::endl;
+#endif
+
 #if ENABLE_SCOPED_DATA
 #ifdef USE_OPENSHMEM
             //shmem_finalize should be called first, and inside will finalize mpi
@@ -89,10 +93,10 @@ namespace iUtc{
             //std::cout<<ERROR_LINE<<std::endl;
             shmem_finalize();
 #endif
-#else
+#endif
 
             MPI_Finalize();
-#endif
+
 
 #ifdef USE_DEBUG_LOG
             std::cout<<"[SYSTEM LOG]>>>>>>>>>:";

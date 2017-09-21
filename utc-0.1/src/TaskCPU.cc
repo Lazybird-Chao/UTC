@@ -217,7 +217,9 @@ void TaskCPU::threadImpl(ThreadRank_t trank,
 							m_numProcesses,
 							m_numTotalThreads,
 							m_commonTaskInfo->worldRankToGrouprRank, nullptr);
-
+#ifdef SHOW_DEBUG
+	std::cout<<ERROR_LINE<<"task thread launched, wait for command"<<std::endl;
+#endif
 	while(1){
 		std::unique_lock<std::mutex> LCK1(m_jobExecMutex);
 		m_jobExecCond.wait(LCK1,
@@ -325,6 +327,7 @@ int TaskCPU::finishImpl(){
 	m_jobExecCond.notify_all();
 	// will wait all thread calling thread exit
 	waitLocalThreadFinish();
+	return 0;
 }
 
 void TaskCPU::threadSync(){
