@@ -205,6 +205,10 @@ GlobalScopedData<T>::~GlobalScopedData(){
 
 template<typename T>
 T* GlobalScopedData<T>::getPtr(){
+	if( !initialized  || destroied){
+		std::cerr<<"Error: global data not initialized or destroied."<<std::endl;
+		return 0;
+	}
 	return (T*)m_dataPtr;
 }
 

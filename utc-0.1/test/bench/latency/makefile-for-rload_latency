@@ -1,0 +1,34 @@
+mainobj = utc_rload_latency.o
+
+bin = utc_rload_latency
+default: $(bin)
+
+C++ = g++
+CCFLAGS = -O2  -std=c++11
+NWARNING = -w
+
+
+#####################################################
+UTC_HOMEDIR = /home/liu.chao/utc-workingon
+# this comm_file define some useful include dir and lib dir:(eg.mpi, boost, cuda)
+COMM_FILE = $(UTC_HOMEDIR)/for-dis.comm
+include $(COMM_FILE)
+
+#######################################################
+
+COMMONDIR = $(UTC_HOMEDIR)/benchapps/common
+helperObj = helperObj.o
+$(helperObj): $(COMMONDIR)/helper_getopt.c
+	$(C++) -o $@  -c $<
+
+utc_rload_latency.o: utc_rload_latency.cc
+	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
+    
+$(bin): $(mainobj) $(helperObj)
+	$(C++) -o $@ $^ $(LIB)
+    
+.PHONY: clean
+clean:
+	rm -f $(mainobj) $(bin)
+    
+    
