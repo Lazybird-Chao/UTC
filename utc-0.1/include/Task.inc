@@ -21,6 +21,8 @@ Task<T>::Task()
 	std::vector<int> rlist;
 	for(int i=0;i<numProcess;i++)
 		rlist.push_back(i);
+
+
 	CreateTask(name, ProcList(rlist), TaskType::cpu_task);
  }
 
@@ -40,6 +42,8 @@ Task<T>::Task(ProcList rList)
 	int ntasks = TaskManager::getNumTasks();
 	std::string name = "Task";
 	name.append(std::to_string(ntasks));
+
+
 	CreateTask(name, rList, TaskType::cpu_task);
  }
 
@@ -60,6 +64,8 @@ Task<T>::Task(ProcList rList, TaskType tType)
 	int ntasks = TaskManager::getNumTasks();
 	std::string name = "Task";
 	name.append(std::to_string(ntasks));
+
+
 	CreateTask(name, rList, tType);
  }
 
@@ -79,6 +85,8 @@ Task<T>::Task(T* userTaskObj, ProcList rList, TaskType tType)
 	int ntasks = TaskManager::getNumTasks();
 	std::string name = "Task";
 	name.append(std::to_string(ntasks));
+
+
 	CreateTask(name, rList, tType);
  }
 
@@ -100,6 +108,8 @@ Task<T>::Task(std::string name)
 	std::vector<int> rlist;
 	for(int i=0;i<numProcess;i++)
 		rlist.push_back(i);
+
+
 	CreateTask(name, rlist, TaskType::cpu_task);
  }
 
@@ -117,6 +127,7 @@ Task<T>::Task( std::string name,  ProcList rList)
 	m_realTaskInstance= nullptr;
 	m_TaskType = TaskType::cpu_task;
 
+
 	CreateTask(name, rList, TaskType::cpu_task);
  }
 
@@ -133,6 +144,52 @@ Task<T>::Task(std::string name, ProcList rList, TaskType tType)
 	callTaskFinish = false;
 	m_realTaskInstance= nullptr;
 	m_TaskType = tType;
+
+	CreateTask(name, rList, tType);
+ }
+
+template<class T>
+Task<T>::Task(std::string name, ProcList rList, TaskType tType, long shmemSize)
+:TaskBase()
+ {
+
+	m_userTaskObjPtr = nullptr;
+	m_userSupplyObj = false;
+	m_procOstream = nullptr;
+	m_taskBarrierObjPtr = nullptr;
+	m_taskSpinBarrierObjPtr = nullptr;
+	callTaskFinish = false;
+	m_realTaskInstance= nullptr;
+	m_TaskType = tType;
+
+#if ENABLE_SCOPED_DATA
+	m_shmemSize = shmemSize;
+#endif
+
+	CreateTask(name, rList, tType);
+ }
+
+template<class T>
+Task<T>::Task(ProcList rList, TaskType tType, long shmemSize)
+:TaskBase()
+ {
+
+	m_userTaskObjPtr = nullptr;
+	m_userSupplyObj = false;
+	m_procOstream = nullptr;
+	m_taskBarrierObjPtr = nullptr;
+	m_taskSpinBarrierObjPtr = nullptr;
+	callTaskFinish = false;
+	m_realTaskInstance= nullptr;
+	m_TaskType = tType;
+
+#if ENABLE_SCOPED_DATA
+	m_shmemSize = shmemSize;
+#endif
+
+	int ntasks = TaskManager::getNumTasks();
+	std::string name = "Task";
+	name.append(std::to_string(ntasks));
 
 	CreateTask(name, rList, tType);
  }
@@ -156,7 +213,9 @@ Task<T>::~Task()
 		}
 		//std::cout<<m_Name<<" finish "<<std::endl;
 		delete m_realTaskInstance;
-
+#ifdef SHOW_DEBUG
+std::cout<<ERROR_LINE<<"Base task object destructed on required process."<<m_processRank<<std::endl;
+#endif
 	}
 
 	if(m_taskBarrierObjPtr!=nullptr)
@@ -169,12 +228,27 @@ Task<T>::~Task()
 		m_taskFastBarrierObjPtr = nullptr;
 	}
 
+	/*
+	 * we should only delete user task object on processes that
+	 * this task running on
+	 */
 	if(m_userSupplyObj == false && m_userTaskObjPtr)
 	{   // will call user task class's destructor
 			delete m_userTaskObjPtr;
 	}
 	m_userTaskObjPtr = nullptr;
 
+	//
+#if ENABLE_SCOPED_DATA
+#ifdef USE_INTERNALSHMEM
+	/*
+	 * task related mpi window should be deleted after user object
+	 */
+	if(m_numLocalThreads !=0){
+		delete m_taskMpiInternalWindow;
+	}
+#endif
+#endif
 
 	TaskManager::unregisterTask(this, m_TaskId);
 
@@ -182,7 +256,9 @@ Task<T>::~Task()
 		PRINT_TIME_NOW(*m_procOstream)
 		(*m_procOstream)<<"["<<m_Name<<"] destroyed on proc "<<m_processRank<<" !!!"<<std::endl;
 #endif
-	//std::cout<<"end task destructor"<<std::endl;
+#ifdef SHOW_DEBUG
+	std::cout<<ERROR_LINE<<"end task destructor process rank "<<m_processRank<<std::endl;
+#endif
 }
 
 template<class T>
@@ -604,9 +680,39 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 	int *rankInGroup = new int[m_numProcesses];
 	MPI_Group_translate_ranks(*(root->getWorldGroup()), m_numProcesses, inc_rank,
 			m_taskmpiGroup, rankInGroup);
-	for(int i=0; i<m_numProcesses; i++)
+	for(int i=0; i<m_numProcesses; i++){
 		m_worldRankToTaskGroupRank.insert(std::pair<int,int>(inc_rank[i], rankInGroup[i]));
+		m_taskGroupRankToWorldRank.insert(std::pair<int,int>(rankInGroup[i], inc_rank[i]));
+	}
+
 #endif
+
+#if ENABLE_SCOPED_DATA
+#ifdef USE_INTERNALSHMEM
+	/*
+	 * Noticing: we created base task object on every processes, but we only launch
+	 * threads on those processes that a task required, so only on those processes,
+	 * the base task object has meaning, also we will create user task object on those
+	 * processes. So all kinds of data that are useful with a task should be created
+	 * in those base task objects, like this window object. If we create some data
+	 * on every process, but it's related to a task's required processes, it may cause
+	 * fatal error when other process is running or finish.
+	 */
+	if(m_numLocalThreads != 0){
+		if(m_shmemSize ==0)
+			m_taskMpiInternalWindow = new internal_MPIWin(&m_taskComm, SHMEM_SIZE, 0);
+		else
+			m_taskMpiInternalWindow = new internal_MPIWin(&m_taskComm, m_shmemSize, 0);
+
+#ifdef SHOW_DEBUG
+	std::cout<<ERROR_LINE<<"internal mpiwin created. "<<
+			"["<<m_processRank<<" "<<m_worldRankToTaskGroupRank[m_processRank]
+			 <<"]"<<std::endl;
+#endif
+	}
+#endif
+#endif
+
 	// create obj of user defined task class"T". With this design all threads in
 	// one process will share this user taskobj, the data members of the this obj
 	// will be accessed by all threads. Also each processes will has a same copy
@@ -639,6 +745,9 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 	if(m_numLocalThreads !=0){
 		// create common taskInfo and threadPrivateData structure
 		m_commonTaskInfo.pRank = m_processRank;
+		m_commonTaskInfo.numWorldProcesses = nProcWorld;
+		m_commonTaskInfo.procGroupRank = m_worldRankToTaskGroupRank[m_processRank];
+		m_commonTaskInfo.numGroupProcesses = m_numProcesses;
 		m_commonTaskInfo.parentTaskId = m_ParentTaskId;
 		m_commonTaskInfo.taskId = m_TaskId;
 		m_commonTaskInfo.barrierObjPtr = m_taskBarrierObjPtr;
@@ -651,6 +760,13 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 		m_commonTaskInfo.worldCommPtr = root->getWorldComm();
 		m_commonTaskInfo.worldGroupPtr = root->getWorldGroup();
 		m_commonTaskInfo.worldRankToGrouprRank = &m_worldRankToTaskGroupRank;
+		m_commonTaskInfo.groupRankToWorldRank = &m_taskGroupRankToWorldRank;
+		#endif
+
+		#if ENABLE_SCOPED_DATA
+		#ifdef USE_INTERNALSHMEM
+		m_commonTaskInfo.taskMpiInternalWindow = m_taskMpiInternalWindow;
+		#endif
 		#endif
 
 		m_commonThreadPrivateData.taskUniqueExeTagObj = m_uniqueExeObjPtr;
@@ -658,7 +774,9 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 		m_commonThreadPrivateData.gatherAvailable = &m_gatherAvailable;
 
 	}
-	//std::cout<<ERROR_LINE<<std::endl;
+#ifdef SHOW_DEBUG
+	std::cout<<ERROR_LINE<<"pre create internal cpu/gpu taskobj."<<std::endl;
+#endif
 	if(m_numLocalThreads!=0)  // there are threads need to be created on current process
 	{
 		if(tType==TaskType::cpu_task){
@@ -676,6 +794,9 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 											&m_commonThreadPrivateData,
 											&m_threadPrivateData,
 											m_userTaskObjPtr);
+#ifdef SHOW_DEBUG
+	std::cout<<ERROR_LINE<<"cpu task obj created."<<std::endl;
+#endif
 		}
 		else if(tType==TaskType::gpu_task){
 #if ENABLE_GPU_TASK
@@ -698,19 +819,34 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 			m_realTaskInstance = nullptr;
 			std::cerr<<"Error, gpu task unabled!!!\n";
 #endif
+
+#ifdef SHOW_DEBUG
+	std::cout<<ERROR_LINE<<"gpu task created."<<std::endl;
+#endif
 		}
 		else{
 			std:cerr<<"Error, unsupported task type!!!\n";
 			exit(1);
 		}
 
-		m_realTaskInstance->launchThreads();
+		//m_realTaskInstance->launchThreads();
 		//std::cout<<ERROR_LINE<<std::endl;
 	}
 
-	// all task threads have launched, finish task creation
 	// register current task obj in taskmanager
 	RegisterTask();
+
+	// move to here, after task Register, to avoid possible bug
+	if(m_numLocalThreads != 0){
+		m_realTaskInstance->launchThreads();
+
+		MPI_Barrier(m_taskComm);
+
+#ifdef SHOW_DEBUG
+	std::cout<<ERROR_LINE<<"task threads launched."<<std::endl;
+#endif
+	}
+
 #ifdef USE_DEBUG_LOG
 	PRINT_TIME_NOW(*m_procOstream)
 	(*m_procOstream)<<"finish creating ["<<name<<"]"<<std::endl;

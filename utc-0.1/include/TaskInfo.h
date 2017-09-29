@@ -11,6 +11,13 @@
 	#include "UtcGpuContext.h"
 #endif
 
+#if ENABLE_SCOPED_DATA
+#ifdef USE_INTERNALSHMEM
+    #include "internal_win.h"
+#endif
+#endif
+
+
 
 #include <pthread.h>
 #include <atomic>
@@ -61,6 +68,10 @@ namespace iUtc{
 
     ThreadRank_t lRank = -1; // local thread rank of a task in one process
 
+    int	numWorldProcesses = 0;
+    int procGroupRank = -1;
+    int numGroupProcesses = 0;
+
     Barrier* barrierObjPtr = nullptr;   // same value in one task
     SpinBarrier* spinBarrierObjPtr = nullptr;
     FastBarrier* fastBarrierObjPtr = nullptr;
@@ -72,11 +83,18 @@ namespace iUtc{
     MPI_Comm* worldCommPtr = nullptr;
     MPI_Group* worldGroupPtr = nullptr;
     std::map<int,int> *worldRankToGrouprRank;
+    std::map<int, int> *groupRankToWorldRank;
 #endif
 
     struct CPUTaskSpecInfo cpuSpecInfo;
 
     struct GPUTaskSpecInfo gpuSpecInfo;
+
+#if ENABLE_SCOPED_DATA
+#ifdef USE_INTERNALSHMEM
+    internal_MPIWin *taskMpiInternalWindow;
+#endif
+#endif
 
  };
 

@@ -29,6 +29,8 @@ extern "C" {
 
 #include <stddef.h>   /* for size_t */
 
+#define ONLY_MSPACES 1
+
 #ifndef ONLY_MSPACES
 #define ONLY_MSPACES 0     /* define to a value */
 #elif ONLY_MSPACES != 0
@@ -614,7 +616,7 @@ void mspace_inspect_all(mspace msp,
 #endif  /* MSPACES */
 
 #ifdef __cplusplus
-};  /* end of extern "C" */
+}  /* end of extern "C" */
 #endif
 
 #endif /* MALLOC_280_H */

@@ -11,6 +11,7 @@
 /*
  *
  */
+/*
 #if ( defined(__GNUC__) && (__GNUC__ >= 3) ) || defined(__IBMC__) || defined(__INTEL_COMPILER) || defined(__clang__)
 #  define unlikely(x_) __builtin_expect(!!(x_),0)
 #  define likely(x_)   __builtin_expect(!!(x_),1)
@@ -18,14 +19,16 @@
 #  define unlikely(x_) (x_)
 #  define likely(x_)   (x_)
 #endif
-
+*/
 
 
 /*
  *
  */
-#define ONLY_MSPACES 1
-#include "dlmalloc.h"
+//#define ONLY_MSPACES 1
+extern "C"{
+	#include "dlmalloc.h"
+}
 
 #include <mpi.h>
 
@@ -37,6 +40,10 @@
  */
 
 namespace iUtc{
+
+enum window_id_e { _SHEAP_WINDOW = 0, _INVALID_WINDOW = -1 };
+enum coll_type_e { _BARRIER = 0, _BROADCAST = 1, _ALLREDUCE = 2, _FCOLLECT = 4, _COLLECT = 8};
+
 class internal_MPIWin{
 private:
 	MPI_Comm *scoped_win_comm;
@@ -51,11 +58,10 @@ private:
 	MPI_Win scoped_sheap_win;
 	long    scoped_sheap_size;
 	void *  scoped_sheap_base_ptr;
+	long	real_scoped_sheap_size;
 
-	mspace scoped_heap_mspace;
-
-	enum window_id_e { _SHEAP_WINDOW = 0, _INVALID_WINDOW = -1 };
-	enum coll_type_e { _BARRIER = 0, _BROADCAST = 1, _ALLREDUCE = 2, _FCOLLECT = 4, _COLLECT = 8};
+	//mspace scoped_heap_mspace;
+	void* scoped_heap_mspace;
 
 	int scoped_win_root;
 	MpiWinLock *scoped_win_lock;
@@ -63,6 +69,8 @@ private:
 
 public:
 	internal_MPIWin(MPI_Comm *mpi_comm, long heap_size, int root);
+
+	~internal_MPIWin();
 
 	void scoped_win_init();
 	void scoped_win_finalize();
@@ -84,6 +92,7 @@ public:
 	int scoped_win_offset(const void *address, const int pe,
 	                         enum window_id_e * win_id, MPI_Aint * win_offset);
 
+
 	void scoped_win_put(MPI_Datatype mpi_type, void *target, const void *source, size_t len, int pe);
 	void scoped_win_get(MPI_Datatype mpi_type, void *target, const void *source, size_t len, int pe);
 
@@ -93,7 +102,7 @@ public:
 	void scoped_win_fadd(MPI_Datatype mpi_type, void *output, void *remote, const void *input, int pe);
 
 	void scoped_win_wait(MPI_Datatype mpi_type, void *output, void *target, const void *value);
-	void scoped_win_wait_util(MPI_Datatype mpi_type, void *output, void *target, int cond, const void *value);
+	void scoped_win_wait_until(MPI_Datatype mpi_type, void *output, void *target, int cond, const void *value);
 	/*
 	 *  All collective operations will be implemented in other place as
 	 *  task utility functions; As those collective ops, such as bcast, gather,
@@ -113,9 +122,14 @@ public:
 
 	long get_scoped_sheap_size();
 
-	mspace get_heap_mspace();
+	//mspace get_heap_mspace();
+	void* get_heap_mspace();
+
+	void* get_heap_base_address();
 
 	MpiWinLock *get_scoped_win_lock();
+
+	MPI_Comm *get_scoped_win_comm();
 
 };
 

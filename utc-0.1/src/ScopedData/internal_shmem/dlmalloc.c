@@ -522,6 +522,8 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 */
 
 /* Version identifier to allow people to support multiple versions */
+#include "dlmalloc.h"
+
 #ifndef DLMALLOC_VERSION
 #define DLMALLOC_VERSION 20806
 #endif /* DLMALLOC_VERSION */
@@ -3534,6 +3536,7 @@ static void internal_malloc_stats(mstate m) {
       used = fp - (m->topsize + TOP_FOOT_SIZE);
 
       while (s != 0) {
+    	//fprintf(stderr, "next base: %p\n", s->base);
         mchunkptr q = align_as_chunk(s->base);
         while (segment_holds(s, q) &&
                q != m->top && q->head != FENCEPOST_HEAD) {

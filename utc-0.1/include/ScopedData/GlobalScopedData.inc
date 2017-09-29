@@ -4,9 +4,7 @@
  *  Created on: Jun 24, 2016
  *      Author: chaoliu
  */
-#include "UtcContext.h"
 
-#include <typeinfo>
 
 namespace iUtc{
 

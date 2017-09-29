@@ -15,9 +15,10 @@
 //#define USE_DEBUG_LOG
 //#define USE_DEBUG_ASSERT
 #ifndef ERROR_LINE
-#define ERROR_LINE " line:"<<__LINE__<<", file:"<<__FILE__<<" "
+#define ERROR_LINE "[ line:"<<__LINE__<<", file:"<<__FILE__<<" ]"
 #endif
 
+#define SHOW_DEBUG
 
 //#define SET_CPU_AFFINITY
 
@@ -74,9 +75,14 @@ extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
 
 #if ENABLE_SCOPED_DATA
 
-#define USE_OPENSHMEM
+//#define USE_OPENSHMEM
 #ifdef USE_OPENSHMEM
 	#include "shmem.h"
+#endif
+
+#define USE_INTERNALSHMEM
+#ifdef USE_INTERNALSHMEM
+#define SHMEM_SIZE (256*1024*1024)
 #endif
 
 #endif
@@ -107,8 +113,8 @@ const int MAX_PROCS_IN_WORLD=32;
 const int LOG_MAX_PROCS=5;
 const int MAX_TASKS_IN_WORLD=128;
 const int LOG_MAX_TASKS=7;
-const int MAX_THREADS_IN_WORLD=256;
-const int LOG_MAX_THREADS=8;
+const int MAX_THREADS_IN_WORLD=1024;
+const int LOG_MAX_THREADS=10;
 
 const int MAX_CONDUITS_IN_WORLD = 1024;
 const int LOG_MAX_CONDUITS = 10;
@@ -134,7 +140,7 @@ extern struct timespec LONG_PERIOD;  // use 100us
 /*
  * GPU task related info
  */
-#define ENABLE_GPU_TASK		1  //enalbe the use of GPU task
+#define ENABLE_GPU_TASK		0  //enalbe the use of GPU task
 
 
 #endif

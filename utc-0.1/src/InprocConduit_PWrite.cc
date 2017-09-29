@@ -1,7 +1,7 @@
 #include "InprocConduit.h"
 #include "TaskManager.h"
 #include "Task.h"
-#include "../include/TaskUtilities.h"
+#include "TaskUtilities.h"
 #include "TimerUtilities.h"
 
 #include <map>

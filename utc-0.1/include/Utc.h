@@ -14,6 +14,7 @@
 #include "ConduitManager.h"
 #include "ConduitBase.h"
 #include "Conduit.h"
+#include "CollectiveUtilities.h"
 
 //G
 #if ENABLE_SCOPED_DATA
@@ -32,6 +33,7 @@
 #if ENABLE_SCOPED_DATA
 #include "ScopedData/PrivateScopedDataBase.h"
 #include "ScopedData/PrivateScopedData.h"
+#include "ScopedData/internal_shmem/internal_win.h"
 #endif
 
 //R

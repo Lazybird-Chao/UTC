@@ -27,7 +27,7 @@ OBJS:= 	CudaDeviceManager.o \
 		
 libutcgpu.a: $(OBJS)
 	ar -r -uv libutcgpu.a $(OBJS)
-	cp libutcgpu.a $(PROJECT_LIBDIR)
+	mv libutcgpu.a $(PROJECT_LIBDIR)
 	cp $(OBJS) $(PROJECT_LIBDIR)
 	@echo "make gpulibrary succefful !!!"
 CudaDeviceManager.o: CudaDeviceManager.cc CudaDeviceManager.h  UtcGpuBasics.h

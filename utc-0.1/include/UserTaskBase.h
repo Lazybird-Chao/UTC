@@ -45,20 +45,30 @@ public:
 	void registerPrivateScopedData(iUtc::PrivateScopedDataBase* psData);
 #endif
 
-	void preInit(int lrank, int trank, int prank, int numLocalThreads,
-			int numProcesses, int numTotalThreads,
+	void preInit(int lrank, int trank, int prank,
+			int numLocalThreads,
+			int numProcesses,
+			int numTotalProcesses,
+			int numTotalThreads,
+			MPI_Comm *taskComm,
 			std::map<int,int> *worldRankTranslate,
+			std::map<int,int> *groupRankTranslate,
 			void *gpuCtx);
 	void preExit();
 
 	/* useful data members */
 	static thread_local int __localThreadId;
 	static thread_local int __globalThreadId;
-	static thread_local int __processId;
+	static thread_local int __processIdInWorld;
+	static thread_local int __processIdInGroup;
 	int __numLocalThreads=0;
 	int __numGlobalThreads=0;
-	int __numProcesses=0;
+	int __numWorldProcesses=0;
+	int __numGroupProcesses=0;
 	std::map<int,int> *__worldRankTranslate=nullptr;
+	std::map<int,int> *__groupRankTranslate=nullptr;
+
+	MPI_Comm *__taskComm=nullptr;
 
 	FastBarrier __fastIntraSync;
 	FastMutex __fastLock;
@@ -81,6 +91,8 @@ private:
 	//std::mutex __opLock;
 	FastMutex __opLock;
 	iUtc::SpinLock __opSpinLock;
+
+
 
 protected:
 	/* other useful member functions */

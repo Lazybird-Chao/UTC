@@ -8,15 +8,29 @@
 #ifndef UTC_GBLOBALSCOPEDDATA_H_
 #define UTC_GBLOBALSCOPEDDATA_H_
 
+#include "UtcBasics.h"
 #include "GlobalScopedDataBase.h"
 #include "SharedDataLock.h"
 #include "SpinLock.h"
 #include "UserTaskBase.h"
 #include "FastMutex.h"
+#include "TaskUtilities.h"
+#include "TaskBase.h"
+#include "UtcContext.h"
 
+#include <typeinfo>
+#include <map>
 #include <mutex>
-#include "shmem.h"
 
+#ifdef USE_OPENSHMEM
+#include "shmem.h"
+#endif
+
+#ifdef USE_INTERNALSHMEM
+#include "internal_shmem/internal_win.h"
+#include "internal_shmem/mpi_win_lock.h"
+#include "internal_shmem/scoped_shmem.h"
+#endif
 namespace iUtc{
 
 enum class metaDataType{
@@ -33,14 +47,16 @@ enum class metaDataType{
 
 enum class condCMPType{
 	unknown=-1,
-	_eq = SHMEM_CMP_EQ,
-	_ne = SHMEM_CMP_NE,
-	_gt = SHMEM_CMP_GT,
-	_le = SHMEM_CMP_LE,
-	_lt = SHMEM_CMP_LT,
-	_ge = SHMEM_CMP_GE
+	_eq = SCOPED_SHMEM_CMP_EQ,
+	_ne = SCOPED_SHMEM_CMP_NE,
+	_gt = SCOPED_SHMEM_CMP_GT,
+	_le = SCOPED_SHMEM_CMP_LE,
+	_lt = SCOPED_SHMEM_CMP_LT,
+	_ge = SCOPED_SHMEM_CMP_GE
 };
 
+
+#ifdef USE_OPENSHMEM
 template <typename T>
 class GlobalScopedData: public GlobalScopedDataBase{
 public:
@@ -78,8 +94,8 @@ public:
 	int rstoreblock(int remotePE, T* src, int startIdx, int blocks);
 
 	/* the openSHMEM fence/quiet only ensure the order of remote put ops
-	 * that happend in the calling PE, but not indicate if the data is
-	 * already writ to remote memory, only sh_barrier ensure the completion of
+	 * that happened in the calling PE, but not indicate if the data is
+	 * already write to remote memory, only sh_barrier ensure the completion of
 	 * remote memory update. However, sh_barrier is hard to use in our multithread
 	 * context, especially if there are several multithreads task runnint in one process,
 	 * the sh_barrier of different task may cause problem(pollute the barrier match procedure).
@@ -143,8 +159,20 @@ private:
 
 };
 
+#endif
+
 }// end namespace iUtc
 
+#ifdef USE_OPENSHMEM
 #include "GlobalScopedData.inc"
+#endif
+
+#ifdef USE_INTERNALSHMEM
+
+#include "GlobalScopedData_internal.inc"
+
+#endif
+
+
 
 #endif /* UTC_GBLOBALSCOPEDDATA_H_ */

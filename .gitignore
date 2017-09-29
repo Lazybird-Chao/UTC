@@ -32,3 +32,10 @@
 *.cproject
 
 /.DS_Store
+*.txt
+utc-0.1/benchapps/mc/utc-cpu/myhosts1
+utc-0.1/benchapps/mc/utc-cpu/myhosts16
+utc-0.1/benchapps/mc/utc-cpu/myhosts2
+utc-0.1/benchapps/mc/utc-cpu/myhosts4
+utc-0.1/benchapps/mc/utc-cpu/myhosts8
+utc-0.1/benchapps/mc/utc-cpu/total_time_record.txt-2proc-pernode

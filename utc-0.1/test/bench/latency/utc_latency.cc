@@ -18,7 +18,7 @@
 using namespace iUtc;
 
 #define MESSAGE_ALIGNMENT 64
-#define MAX_MSG_SIZE (1<<22)
+#define MAX_MSG_SIZE (1<<26)
 #define MYBUFSIZE (MAX_MSG_SIZE + MESSAGE_ALIGNMENT)
 #define SKIP_LARGE  10
 #define LOOP_LARGE  100

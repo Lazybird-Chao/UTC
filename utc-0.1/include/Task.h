@@ -15,6 +15,11 @@
 #if ENABLE_GPU_TASK
 	#include "TaskGPU.h"
 #endif
+#if ENABLE_SCOPED_DATA
+#ifdef USE_INTERNALSHMEM
+#include "internal_win.h"
+#endif
+#endif
 
 #include <thread>
 #include <mutex>
@@ -49,6 +54,8 @@ public:
 	Task(std::string name);
 	Task( std::string name , ProcList rList);
 	Task(std::string name, ProcList rList, TaskType tType);
+	Task(std::string name, ProcList rList, TaskType tType, long shmemSize);
+	Task(ProcList rList, TaskType tType, long shmemSize);
 
 	~Task();
 
@@ -176,6 +183,9 @@ private:
 	//
 	Task& operator=(const Task& other)=delete;
 	Task(const Task& other)=delete;
+
+
+
 
 };
 
