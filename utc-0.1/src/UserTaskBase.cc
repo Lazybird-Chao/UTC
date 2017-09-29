@@ -68,6 +68,7 @@ void UserTaskBase::preInit(int lrank,
 							int numProcesses,
 							int numTotalProcesses,
 							int numTotalThreads,
+							MPI_Comm *taskComm,
 							std::map<int,int> *worldRankTranslate,
 							std::map<int,int> *groupRankTranslate,
 							void* gpuCtx){
@@ -86,6 +87,8 @@ void UserTaskBase::preInit(int lrank,
 	__groupRankTranslate = groupRankTranslate;
 
 	__fastIntraSync.init(numLocalThreads);
+
+	__taskComm = taskComm;
 
 #if ENABLE_GPU_TASK
 	iUtc::UtcGpuContext *gCtx = (iUtc::UtcGpuContext*)gpuCtx;

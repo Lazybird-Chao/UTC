@@ -50,6 +50,7 @@ public:
 			int numProcesses,
 			int numTotalProcesses,
 			int numTotalThreads,
+			MPI_Comm *taskComm,
 			std::map<int,int> *worldRankTranslate,
 			std::map<int,int> *groupRankTranslate,
 			void *gpuCtx);
@@ -66,6 +67,8 @@ public:
 	int __numGroupProcesses=0;
 	std::map<int,int> *__worldRankTranslate=nullptr;
 	std::map<int,int> *__groupRankTranslate=nullptr;
+
+	MPI_Comm *__taskComm=nullptr;
 
 	FastBarrier __fastIntraSync;
 	FastMutex __fastLock;

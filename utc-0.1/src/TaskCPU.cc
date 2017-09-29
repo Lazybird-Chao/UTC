@@ -221,6 +221,7 @@ void TaskCPU::threadImpl(ThreadRank_t trank,
 							m_numProcesses,
 							m_commonTaskInfo->numWorldProcesses,
 							m_numTotalThreads,
+							m_commonTaskInfo->commPtr,
 							m_commonTaskInfo->worldRankToGrouprRank,
 							m_commonTaskInfo->groupRankToWorldRank,
 							nullptr);

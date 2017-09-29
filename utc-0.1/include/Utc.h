@@ -14,6 +14,7 @@
 #include "ConduitManager.h"
 #include "ConduitBase.h"
 #include "Conduit.h"
+#include "CollectiveUtilities.h"
 
 //G
 #if ENABLE_SCOPED_DATA
