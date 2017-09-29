@@ -435,15 +435,21 @@ void scoped_shmem_quiet( internal_MPIWin &scoped_win){
 	scoped_win.scoped_win_local_sync();
 }
 
+void scoped_shmem_quiet( internal_MPIWin &scoped_win, int pe){
+	scoped_win.scoped_win_remote_sync_pe(pe);
+	scoped_win.scoped_win_local_sync();
+}
+
 void scoped_shmem_fence( internal_MPIWin &scoped_win){
 	/*
 	 * TODO: use win_flush or win_flush_local ???
 	 */
-	scoped_win.scoped_win_remote_sync();
-	//scoped_win.scoped_win_local_complete();
+	//scoped_win.scoped_win_remote_sync();
+	scoped_win.scoped_win_local_complete();
 
 	scoped_win.scoped_win_local_sync();
 }
+
 
 
 void scoped_shmem_set_lock(long *lock,  internal_MPIWin &scoped_win){

@@ -170,6 +170,31 @@ Task<T>::Task(std::string name, ProcList rList, TaskType tType, long shmemSize)
  }
 
 template<class T>
+Task<T>::Task(ProcList rList, TaskType tType, long shmemSize)
+:TaskBase()
+ {
+
+	m_userTaskObjPtr = nullptr;
+	m_userSupplyObj = false;
+	m_procOstream = nullptr;
+	m_taskBarrierObjPtr = nullptr;
+	m_taskSpinBarrierObjPtr = nullptr;
+	callTaskFinish = false;
+	m_realTaskInstance= nullptr;
+	m_TaskType = tType;
+
+#if ENABLE_SCOPED_DATA
+	m_shmemSize = shmemSize;
+#endif
+
+	int ntasks = TaskManager::getNumTasks();
+	std::string name = "Task";
+	name.append(std::to_string(ntasks));
+
+	CreateTask(name, rList, tType);
+ }
+
+template<class T>
 Task<T>::~Task()
 {
 	if(m_numLocalThreads !=0)

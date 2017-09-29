@@ -179,6 +179,8 @@ void scoped_shmem_wait_until(long *var, int cmp, long value,  internal_MPIWin &s
 void scoped_shmem_barrier( internal_MPIWin &scoped_win);
 
 void scoped_shmem_quiet( internal_MPIWin &scoped_win);
+void scoped_shmem_quiet( internal_MPIWin &scoped_win, int pe);
+
 void scoped_shmem_fence( internal_MPIWin &scoped_win);
 
 /*

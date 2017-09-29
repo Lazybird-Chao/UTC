@@ -55,6 +55,7 @@ public:
 	Task( std::string name , ProcList rList);
 	Task(std::string name, ProcList rList, TaskType tType);
 	Task(std::string name, ProcList rList, TaskType tType, long shmemSize);
+	Task(ProcList rList, TaskType tType, long shmemSize);
 
 	~Task();
 

@@ -193,7 +193,11 @@ void internal_MPIWin::scoped_win_put(MPI_Datatype mpi_type,
 	MPI_Put(source, len, mpi_type,                   /* origin */
 	              pe, (MPI_Aint)win_offset, len, mpi_type, /* target */
 	                scoped_sheap_win);
-	MPI_Win_flush_local(pe, scoped_sheap_win);
+	/*
+	 *  as we assume put always be unblocking,
+	 *  so we can omit this flush_local here
+	 */
+	//MPI_Win_flush_local(pe, scoped_sheap_win);
 
 	return;
 
@@ -227,6 +231,11 @@ void internal_MPIWin::scoped_win_get(MPI_Datatype mpi_type,
 	MPI_Get(target, len, mpi_type,                   /* result */
 			pe, (MPI_Aint)win_offset, len, mpi_type, /* remote */
 			scoped_sheap_win);
+	/*
+	 * for get, we assume it always be blocking,
+	 * we need add this flush_local, and for mpi_get, flush_local
+	 * has same result as flush
+	 */
 	MPI_Win_flush_local(pe, scoped_sheap_win);
 }
 

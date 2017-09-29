@@ -82,7 +82,7 @@ extern std::chrono::system_clock::time_point SYSTEM_START_TIME;
 
 #define USE_INTERNALSHMEM
 #ifdef USE_INTERNALSHMEM
-#define SHMEM_SIZE (128*1024*1024)
+#define SHMEM_SIZE (256*1024*1024)
 #endif
 
 #endif
