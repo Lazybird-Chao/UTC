@@ -15,6 +15,10 @@
 #include <cstring>
 #include <vector>
 
+/* main UTC namespace */
+using namespace iUtc;
+
+
 #define ITERS_SMALL     (500)
 #define ITERS_LARGE     (50)
 #define LARGE_THRESHOLD (8192)
@@ -24,6 +28,13 @@
 #define MYBUFSIZE (MAX_MSG_SZ * ITERS_LARGE + MESSAGE_ALIGNMENT)
 
 #define SHARE_MEM_SIZE ()
+
+/*
+ * user defined task implementation
+ */
+class RstoreWorker: public UserTaskBase{
+
+};
 
 
 
