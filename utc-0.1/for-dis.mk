@@ -20,3 +20,8 @@ utcruntime:
 	cd $(PROJECT_HOMEDIR)/src/ScopedData/internal_shmem;$(MAKE) -f Make.mk
 	echo "finish !!!"
 
+.PHONY: cleanall
+	cd $(PROJECT_HOMEDIR)/src;$(MAKE) clean -f Make.mk
+	cd $(PROJECT_HOMEDIR)/src/gpu;$(MAkE) clean -f Make.mk
+	cd $(PROJECT_HOMEDIR)/src/ScopedData;$(MAKE) clean -f Make.mk
+	cd $(PROJECT_HOMEDIR)/src/ScopedData/internal_shmem;$(MAKE) clean -f Make.mk

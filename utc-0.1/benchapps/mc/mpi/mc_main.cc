@@ -67,8 +67,8 @@ public:
 			tmp_sum+=f(tmp_x);
 		}
 		m_res[0]=tmp_sum*(m_range_upper-m_range_lower)/m_loopN;
-		MPI_Barrier(MPI_COMM_WORLD);
 		t2 = MPI_Wtime();
+		MPI_Barrier(MPI_COMM_WORLD);
 		runtime[1] = t2-t1;
 
 		double *res_gather;

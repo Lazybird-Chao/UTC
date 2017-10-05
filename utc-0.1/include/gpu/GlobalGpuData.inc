@@ -5,15 +5,14 @@
  *      Author: chaoliu
  */
 
-#ifndef GLOBALGPUDATA_INC_
-#define GLOBALGPUDATA_INC_
+
 
 #include "cuda_runtime.h"
 #include "TaskUtilities.h"
 #include "TaskBase.h"
 
 
-namespace iUtc{
+
 
 template <typename T>
 GlobalGpuData<T>::GlobalGpuData(unsigned long size, MemType memtype ){
@@ -100,10 +99,10 @@ int GlobalGpuData<T>::destroy(){
 }
 
 template<typename T>
-int GlobalGpuData<T>::rload(T* dst, int PE){
+int GlobalGpuData<T>::rload(T* dst, int remotePE){
 	//int remotePE = m_worldToGroup->at(remotePE);
 	m_objMutex.lock();
-	if(m_size_inbytes < (1<<32))
+	if(m_size_inbytes < (1<<31))
 		MPI_Get(dst, m_size_inbytes,
 				remotePE, 0, m_size_inbytes, MPI_CHAR,
 				m_win);
@@ -118,10 +117,10 @@ int GlobalGpuData<T>::rload(T* dst, int PE){
 }
 
 template<typename T>
-int GlobalGpuData<T>::rstore(T* src, int PE){
+int GlobalGpuData<T>::rstore(T* src, int remotePE){
 	//int remotePE = m_worldToGroup->at(remotePE);
 	m_objMutex.lock();
-	if(m_size_inbytes < (1<<32))
+	if(m_size_inbytes < (1<<31))
 		MPI_Put(src, m_size_inbytes,
 				remotePE, 0, m_size_inbytes, MPI_CHAR,
 				m_win);
@@ -143,8 +142,6 @@ void GlobalGpuData<T>::fence(){
 	return;
 }
 
-}
 
 
 
-#endif /* GLOBALGPUDATA_INC_ */

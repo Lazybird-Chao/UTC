@@ -26,7 +26,7 @@
  *
  */
 #include <typeinfo>
-#include <iostrem>
+#include <iostream>
 #include "mpi.h"
 #include "UserTaskBase.h"
 
@@ -142,15 +142,15 @@ int TaskAllreduceSumBy(UserTaskBase *utask, void *sendbuffer, void *recvbuffer, 
 	if(utask->__localThreadId != localtId)
 		return 0;
 	if(typeid(T) == typeid(char)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_CHAR, MPI_SUM, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_CHAR, MPI_SUM, *(utask->__taskComm));
 	} else if(typeid(T) == typeid(int)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_INT, MPI_SUM, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_INT, MPI_SUM, *(utask->__taskComm));
 	} else if(typeid(T) == typeid(long)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_LONG, MPI_SUM, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_LONG, MPI_SUM, *(utask->__taskComm));
 	} else if(typeid(T) == typeid(float)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_FLOAT, MPI_SUM, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_FLOAT, MPI_SUM, *(utask->__taskComm));
 	} else if(typeid(T) == typeid(double)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_DOUBLE, MPI_SUM, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_DOUBLE, MPI_SUM, *(utask->__taskComm));
 	} else{
 		std::cerr<<"Error: unsupported data type !!!"<<std::endl;
 		return 1;
@@ -184,15 +184,15 @@ int TaskAllreduceProductBy(UserTaskBase *utask, void *sendbuffer, void *recvbuff
 	if(utask->__localThreadId != localtId)
 		return 0;
 	if(typeid(T) == typeid(char)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_CHAR, MPI_PROD, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_CHAR, MPI_PROD, *(utask->__taskComm));
 	} else if(typeid(T) == typeid(int)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_INT, MPI_PROD, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_INT, MPI_PROD, *(utask->__taskComm));
 	} else if(typeid(T) == typeid(long)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_LONG, MPI_PROD, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_LONG, MPI_PROD, *(utask->__taskComm));
 	} else if(typeid(T) == typeid(float)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_FLOAT, MPI_PROD, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_FLOAT, MPI_PROD, *(utask->__taskComm));
 	} else if(typeid(T) == typeid(double)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_DOUBLE, MPI_PROD, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_DOUBLE, MPI_PROD, *(utask->__taskComm));
 	} else{
 		std::cerr<<"Error: unsupported data type !!!"<<std::endl;
 		return 1;
@@ -226,15 +226,15 @@ int TaskAllreduceMinBy(UserTaskBase *utask, void *sendbuffer, void *recvbuffer, 
 	if(utask->__localThreadId != localtId)
 		return 0;
 	if(typeid(T) == typeid(char)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_CHAR, MPI_MIN, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_CHAR, MPI_MIN, *(utask->__taskComm));
 	} else if(typeid(T) == typeid(int)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_INT, MPI_MIN, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_INT, MPI_MIN, *(utask->__taskComm));
 	} else if(typeid(T) == typeid(long)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_LONG, MPI_MIN, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_LONG, MPI_MIN, *(utask->__taskComm));
 	} else if(typeid(T) == typeid(float)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_FLOAT, MPI_MIN, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_FLOAT, MPI_MIN, *(utask->__taskComm));
 	} else if(typeid(T) == typeid(double)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_DOUBLE, MPI_MIN, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_DOUBLE, MPI_MIN, *(utask->__taskComm));
 	} else{
 		std::cerr<<"Error: unsupported data type !!!"<<std::endl;
 		return 1;
@@ -269,15 +269,15 @@ int TaskAllreduceMaxBy(UserTaskBase *utask, void *sendbuffer, void *recvbuffer, 
 	if(utask->__localThreadId != localtId)
 		return 0;
 	if(typeid(T) == typeid(char)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_CHAR, MPI_MAX, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_CHAR, MPI_MAX, *(utask->__taskComm));
 	} else if(typeid(T) == typeid(int)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_INT, MPI_MAX, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_INT, MPI_MAX, *(utask->__taskComm));
 	} else if(typeid(T) == typeid(long)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_LONG, MPI_MAX, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_LONG, MPI_MAX, *(utask->__taskComm));
 	} else if(typeid(T) == typeid(float)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_FLOAT, MPI_MAX, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_FLOAT, MPI_MAX, *(utask->__taskComm));
 	} else if(typeid(T) == typeid(double)){
-		MPI_Reduce(sendbuffer, recvbuffer, count, MPI_DOUBLE, MPI_MAX, *(utask->__taskComm));
+		MPI_Allreduce(sendbuffer, recvbuffer, count, MPI_DOUBLE, MPI_MAX, *(utask->__taskComm));
 	} else{
 		std::cerr<<"Error: unsupported data type !!!"<<std::endl;
 		return 1;

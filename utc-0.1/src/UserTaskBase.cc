@@ -107,7 +107,10 @@ void UserTaskBase::preInit(int lrank,
 	}
 
 #ifdef USE_INTERNALSHMEM
+	// use lock to ensure only one threads do real win_init()
+	__fastSpinLock.lock();
 	iUtc::getCurrentTask()->getTaskMpiWindow()->scoped_win_init();
+	__fastSpinLock.unlock();
 #endif
 
 #ifdef SHOW_DEBUG
@@ -129,11 +132,16 @@ void UserTaskBase::preExit(){
 	}
 
 #ifdef USE_INTERNALSHMEM
+	// use the lock to prevent multiple threads call this at same time and casue
+	// free() error
+	__fastSpinLock.lock();
 	iUtc::getCurrentTask()->getTaskMpiWindow()->scoped_win_finalize();
+	__fastSpinLock.unlock();
 #endif
 
 #ifdef SHOW_DEBUG
-	std::cout<<ERROR_LINE<<"pre Taskexit finish"<<std::endl;
+	std::cout<<ERROR_LINE<<"pre Taskexit finish "<<__localThreadId
+			<<" "<<__processIdInWorld<<std::endl;
 #endif
 
 #endif
