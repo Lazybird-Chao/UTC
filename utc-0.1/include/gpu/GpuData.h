@@ -81,6 +81,9 @@ public:
 		return m_devicePtr;
 	}
 
+	/*
+	 * this function's meaning may not clear
+	 */
 	T *get(bool isModefied){
 		if(m_memtype == MemType::unified ||
 				m_status == MemStatus::host ||
@@ -204,7 +207,7 @@ public:
 	/*
 	 * host memory direct read/write
 	 */
-	T at(int index){
+	T at(long index){
 		return m_hostPtr[index];
 	}
 	void assign(unsigned long index, const T value){

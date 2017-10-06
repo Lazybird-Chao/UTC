@@ -18,7 +18,7 @@
 #define ERROR_LINE "[ line:"<<__LINE__<<", file:"<<__FILE__<<" ]"
 #endif
 
-#define SHOW_DEBUG
+//#define SHOW_DEBUG
 
 //#define SET_CPU_AFFINITY
 

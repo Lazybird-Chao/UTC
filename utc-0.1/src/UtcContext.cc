@@ -19,6 +19,7 @@ int UtcContext::HARDCORES_TOTAL_CURRENT_NODE=getConcurrency();
 int UtcContext::HARDCORES_ID_FOR_USING = 0;
 UtcContext* UtcContext::m_ContextInstance = nullptr;
 UtcContext::dummyContext UtcContext::m_dummyInstance;
+int UtcContext::m_numGPUs = 0;
 
 /* This singleton implementation is not thread safe.
  * However, the first time using it is at start of program,
@@ -138,15 +139,19 @@ void UtcContext::initialize(int& argc, char** argv)
     *procOstream<<"Utc context init cudaDeviceManager!!!"<<std::endl;
 #endif
     CudaDeviceManager& cudaDevMgr = CudaDeviceManager::getCudaDeviceManager();
+    m_numGPUs = cudaDevMgr.getNumDevices();
 	/*
     #if CUDA_CONTEXT_MAP_MODE==3
     	for(int i=0; i<cudaDevMgr.getNumDevices(); i++)
     		cudaDevMgr.initDevice(i);
 	#endif
 	*/
-    //std::cout<<cudaDevMgr.getNumDevices()<<std::endl;
+
 #endif
-    //std::cout<<"CudaDeviceManager created!\n";
+#ifdef SHOW_DEGUB
+    std::cout<<cudaDevMgr.getNumDevices()<<std::endl;
+    std::cout<<"CudaDeviceManager created!\n";
+#endif
 
 #ifdef USE_MPI_BASE
     MPI_Barrier(*(root->getWorldComm()));
@@ -169,7 +174,7 @@ void UtcContext::finalize()
 #endif
     CudaDeviceManager& cudaDevMgr = CudaDeviceManager::getCudaDeviceManager();
 	#if CUDA_CONTEXT_MAP_MODE==3
-    	for(int i=0; i<cudaDevMgr.getNumDevices(); i++)
+    	//for(int i=0; i<cudaDevMgr.getNumDevices(); i++)
     		// Here may be a bug of cuda, will post erro when it's called
     		// when the process is actually do exiting
     		//cudaDevMgr.resetDevice(i);
@@ -215,4 +220,7 @@ void UtcContext::finalize()
     }
 }
 
+int UtcContext::getNumGPUs(){
+	return m_numGPUs;
+}
 }// namespace iUtc

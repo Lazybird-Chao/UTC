@@ -36,7 +36,9 @@ void UtcGpuContext::ctxInit(){
 		 * bind cuda device primary ctx to this host thread
 		 */
 		checkCudaRuntimeErrors(cudaSetDevice(m_cudaDeviceId));
+#ifdef SHOW_DEBUG
 		std::cout<<"cuda device id:"<<m_cudaDeviceId<<std::endl;
+#endif
 		/*
 		 * set flag for device, should be done in other places,
 		 * here we just bind the primary cuda ctx to this host thread

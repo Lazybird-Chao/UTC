@@ -54,7 +54,8 @@ void IntegralCaculator::runImpl(double runtime[][2])
 	m_res +=tmp_sum*(m_range_upper-m_range_lower)/m_loopN;
 	__fastSpinLock.unlock();
 	runtime[__localThreadId][1] = timer.stop();
-	intra_Barrier();
+	//intra_Barrier();
+	__fastIntraSync.wait();
 	double *res_gather;
 	if(__localThreadId==0){
 		res_gather = (double*)malloc(__numGroupProcesses*sizeof(double));
@@ -66,7 +67,7 @@ void IntegralCaculator::runImpl(double runtime[][2])
 			result += res_gather[i];
 		}
 		result /= __numGlobalThreads;
-		//std::cout<<result<<std::endl;
+		std::cout<<result<<std::endl;
 	}
 	inter_Barrier();
 	runtime[__localThreadId][0] = timer0.stop();

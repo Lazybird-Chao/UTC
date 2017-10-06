@@ -40,8 +40,7 @@ public:
 			m_seed = seed;
 			m_range_lower = range_lower;
 			m_range_upper = range_upper;
-			m_loopN = loopN;;
-			m_res = (double*)malloc(sizeof(double));
+			m_loopN = loopN;
 
 
 	}
@@ -51,10 +50,7 @@ public:
 		double tmp_sum=0;
 		double tmp_x=0;
 		std::srand(m_seed);
-		int __numProcesses;
 		int myproc;
-		MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
-		MPI_Comm_size(MPI_COMM_WORLD, &__numProcesses);
 
 		double t1,t2;
 		t1 = MPI_Wtime();
@@ -66,40 +62,16 @@ public:
 			tmp_x = tmp_lower+((double)rand_r(&tmp_seed)/RAND_MAX)*(tmp_upper-tmp_lower);
 			tmp_sum+=f(tmp_x);
 		}
-		m_res[0]=tmp_sum*(m_range_upper-m_range_lower)/m_loopN;
+		m_res=tmp_sum*(m_range_upper-m_range_lower)/m_loopN;
 		t2 = MPI_Wtime();
-		MPI_Barrier(MPI_COMM_WORLD);
 		runtime[1] = t2-t1;
-
-		double *res_gather;
-
-		res_gather = (double*)malloc(__numProcesses*sizeof(double));
-
-		MPI_Gather(m_res,sizeof(double), MPI_CHAR, res_gather,sizeof(double), MPI_CHAR,  0, MPI_COMM_WORLD);
-		double result = 0.0;
-		if(myproc==0){
-			for(int i=0; i<__numProcesses; i++){
-				result += res_gather[i];
-			}
-			result /= __numProcesses;
-			//runtime[0] = timer0.stop();
-			std::cout<<result<<std::endl;
-		}
-		MPI_Barrier(MPI_COMM_WORLD);
 
 		t2 = MPI_Wtime();
 		runtime[0] = t2-t1;
-		if(myproc==0){
-		//	sleep_for(__processId);
-		//	std::cout<<__processId<<": "<<__localThreadId<<": "<<
-		//			__globalThreadId<<": "<<m_res[0]<<": "<<m_loopN<<std::endl;
-		}
+
+		//std::cout<<m_res<<": "<<m_loopN<<" "<<runtime[0]<<std::endl;
 	}
 
-	~IntegralCaculator(){
-		if(!m_res)
-			free(m_res);
-	}
 
 private:
 	long m_loopN;
@@ -107,7 +79,7 @@ private:
 	double m_range_lower;
 	double m_range_upper;
 
-	double *m_res;
+	double m_res;
 
 
 
@@ -121,31 +93,19 @@ int main(int argc, char*argv[])
 	 *  run like ./a.out  nthread   nloops
 	 */
 	long loopN = std::atol(argv[1]);
-	int __numProcesses;
-	int myproc;
-	MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
-	MPI_Comm_size(MPI_COMM_WORLD, &__numProcesses);
-	loopN /= __numProcesses;
 
 
 	IntegralCaculator integral_f;
 	double runtime[2] = {0,0};
 	integral_f.init(loopN, 1, 1.0, 10.0);
 	integral_f.run(runtime);
-	double runtime_reduce[2] = {0,0};
-	MPI_Reduce(runtime, runtime_reduce, 2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
-	if(myproc==0){
-		runtime[0] = runtime_reduce[0]/__numProcesses;
-		runtime[1] = runtime_reduce[1]/__numProcesses;
-		std::cout<<"N: "<<loopN<<std::endl;
-		std::cout<<"total run time: "<<runtime[0]*1000<<std::endl;
-		std::cout<<"compute time: "<<runtime[1]*1000<<std::endl;
-		for(int i=0; i<2; i++)
-			runtime[i] *= 1000;
-		print_time(2, runtime);
-	}
-
+	std::cout<<"N: "<<loopN<<std::endl;
+	std::cout<<"total run time: "<<runtime[0]*1000<<std::endl;
+	std::cout<<"compute time: "<<runtime[1]*1000<<std::endl;
+	for(int i=0; i<2; i++)
+		runtime[i] *= 1000;
+	print_time(2, runtime);
 	MPI_Finalize();
 
 	return 0;

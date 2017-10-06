@@ -53,6 +53,11 @@ class UtcContext{
         //
         static int HARDCORES_TOTAL_CURRENT_NODE;
         static int HARDCORES_ID_FOR_USING;
+
+        //
+        int getNumGPUs();
+
+
     protected:
 
     private:
@@ -87,6 +92,10 @@ class UtcContext{
         //std::mutex m_ctxMutex;
         FastMutex m_ctxMutex;
         SpinLock m_ctxSpinMutex;
+
+        //
+        static int m_numGPUs;
+
         //
         UtcContext(const UtcContext& other);
         UtcContext& operator=(const UtcContext& other);

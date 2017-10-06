@@ -13,10 +13,12 @@
 
 #include "UtcBasics.h"
 
+/*
+ * defined in the above file
 //#define ERROR_LINE " line:"<<__LINE__<<", file:"<<__FILE__<<" "
 
 //#define ENABLE_GPU_TASK		1
-
+*/
 #define ENABLE_CONCURRENT_CUDA_KERNEL	1
 
 #if ENABLE_CONCURRENT_CUDA_KERNEL
