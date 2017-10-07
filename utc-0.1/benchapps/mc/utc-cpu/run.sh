@@ -1,10 +1,16 @@
 #!/bin/bash
 
 # mpi command
-MPI_RUN='mpirun --mca mpi_cuda_support 0' #socket:overload-allowed  -bind-to none  -report-bindings
+# --bind-to none 
+# --map-by node 
+# --hostfile myhosts
+# --mca mpi_cuda_support 0
+# socket:overload-allowed
+# -report-bindings
+
+MPI_RUN='mpirun '   
 MPI_PROCS=1   #set to the number of socket for better performance with mpirun
-#MPI_OPTION="-host node2,node3,node4,node5 -N ${MPI_PROCS}"
-MPI_OPTION="-N ${MPI_PROCS}  -hostfile myhosts1"
+MPI_OPTION="--bind-to non -N ${MPI_PROCS}  --hostfile myhosts1"
 
 
 # set exe file and args
