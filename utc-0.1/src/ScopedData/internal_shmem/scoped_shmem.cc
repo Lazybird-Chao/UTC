@@ -2,7 +2,7 @@
  * scoped_shmem.cc
  *
  */
-
+#include "UtcBasics.h"
 #include "scoped_shmem.h"
 #include "internal_win.h"
 #include "mpi_win_lock.h"
@@ -112,7 +112,8 @@ void *scoped_shmem_realloc(void* ptr, size_t size, internal_MPIWin &scoped_win){
 }
 
 void scoped_shmem_free(void* ptr, internal_MPIWin &scoped_win){
-	return mspace_free(scoped_win.get_heap_mspace(), ptr);
+	mspace_free(scoped_win.get_heap_mspace(), ptr);
+	return;
 }
 
 /*

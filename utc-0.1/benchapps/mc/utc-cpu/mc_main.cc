@@ -79,6 +79,7 @@ int main(int argc, char*argv[])
 	integral_f.init(loopN, 1, 1.0, 10.0);
 	integral_f.run(runtime_m);
 	integral_f.wait();
+
 	if(myproc == 0 && printTime){
 		double runtime[2] = {0,0};
 		for(int i =0; i<nthreads; i++)

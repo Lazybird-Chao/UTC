@@ -5688,6 +5688,7 @@ void mspace_free(mspace msp, void* mem) {
           else
             set_free_with_pinuse(p, psize, next);
 
+
           if (is_small(psize)) {
             insert_small_chunk(fm, p, psize);
             check_free_chunk(fm, p);

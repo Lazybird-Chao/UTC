@@ -63,7 +63,7 @@ BOOST_LIB = $(BOOST_DIR)/lib/libboost_thread.a \
 #####################
 				
 LIB = $(PROJECT_LIBDIR)/libutc.a
-LIB += -lrt
+LIB += -lrt -lm
 LIB += $(MPI_LIB) $(BOOST_LIB)
 				
 ###################		
