@@ -1,14 +1,15 @@
 /*
- * rotate_main.cc
+ * yuvconvert_main.cc
  *
- *  Created on: Oct 6, 2017
- *      Author: chaoliu
+ *  Created on: Oct 9, 2017
+ *      Author: Chao
  */
 
+#include <cstring>
 #include <iostream>
+#include <cstdlib>
 #include <iomanip>
-#include <fstream>
-#include <cerrno>
+#include <cuda_runtime.h>
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_printtime.h"
@@ -26,9 +27,9 @@ int main(int argc, char** argv){
 	int nthreads=1;
 	int nprocess=1;
 
-	char *infile_path=NULL;
-	char *outfile_path=NULL;
-	int angle=0;
+	char *infile_path = NULL;
+	char *outfile_path = NULL;
+	int iterations=1;
 
 	/* initialize UTC context */
 	UtcContext &ctx = UtcContext::getContext(argc, argv);
@@ -37,7 +38,7 @@ int main(int argc, char** argv){
 	int     opt;
 	extern char   *optarg;
 	extern int     optind;
-	while ( (opt=getopt(argc,argv,"a:i:o:vt:p:"))!= EOF) {
+	while ( (opt=getopt(argc,argv,"l:i:o:vt:p:"))!= EOF) {
 		switch (opt) {
 			case 'v': printTime = true;
 					  break;
@@ -49,7 +50,7 @@ int main(int argc, char** argv){
 					  break;
 			case 'o': outfile_path = optarg;
 					  break;
-			case 'a': angle = atoi(optarg);
+			case 'l': iterations = atoi(optarg);
 					  break;
 			case ':':
 				std::cerr<<"Option -"<<(char)optopt<<" requires an operand\n"<<std::endl;
@@ -63,18 +64,20 @@ int main(int argc, char** argv){
 	}
 	int procs = ctx.numProcs();
 	int myproc = ctx.getProcRank();
-	if(nprocess != 1){
-		std::cerr<<"This test only run with one node !!!\n";
+	if(nprocess != procs){
+		std::cerr<<"process number not match with arguments '-p' !!!\n";
 		return 1;
 	}
+	/*if(nthreads != 1){
+		std::cerr<<"require one thread !!!\n";
+		return 1;
+	}*/
+
 	if(infile_path == NULL){
 		std::cerr<<"Error, need the input image file."<<std::endl;
 		return 1;
 	}
-	if(angle ==0 || angle ==360){
-		std::cout<<"No need to rotate, same as original image."<<std::endl;
-		return 0;
-	}
+
 
 	/*
 	 * create image object from the file
@@ -84,46 +87,51 @@ int main(int argc, char** argv){
 	readImg.run(&srcImg, infile_path);
 	readImg.wait();
 
-	/*
-	 * do rotation
-	 */
-	Image dstImg;
-	double runtime_m[MAX_THREADS][1];
-	Task<RotateWorker> rotate(ProcList(0), TaskType::gpu_task);
-	rotate.init(&srcImg, &dstImg, angle);
-	rotate.run(runtime_m);
-	rotate.wait();
+	//
+	srcImg.increaseHeightBy(1);
 
+
+	/*
+	 * do converter
+	 */
+	yuv_color_t dstImg;
+	double runtime_m[MAX_THREADS][1];
+	Task<YUVconvertWorker> yuvconvert(ProcList(nthreads, 0), TaskType::gpu_task);
+	yuvconvert.init(&srcImg, &dstImg);
+	yuvconvert.run(runtime_m, iterations);
+	yuvconvert.wait();
 
 	/*
 	 * out put the image
 	 */
 	if(outfile_path != NULL){
 		Task<ImageOut> writeImg(ProcList(0));
-		writeImg.run(&dstImg, outfile_path);
+		writeImg.run(&dstImg, srcImg.getWidth(), srcImg.getHeight(), outfile_path);
 		writeImg.wait();
 	}
-
 	srcImg.clean();
-	dstImg.clean();
+	free(dstImg.y);
+	free(dstImg.u);
+	free(dstImg.v);
 
 	if(myproc == 0){
 		std::cout<<"Test complete !!!"<<std::endl;
 		double runtime = 0;
-		for(int i = 0; i<nthreads; i++)
+		for(int i=0; i<nthreads; i++)
 			runtime += runtime_m[i][0];
-		runtime /= nthreads;
+		for(int j=0; j<1; j++)
+			runtime /= nthreads;
+
 		if(printTime){
 			std::cout<<"\tInput image size: "<<srcImg.getWidth()<<" X "<<srcImg.getHeight()<<std::endl;
-			std::cout<<"\tOutput image size: "<<dstImg.getWidth()<<" X "<<dstImg.getHeight()<<std::endl;
 			std::cout<<"\tTime info: "<<std::endl;
-			std::cout<<"\t\ttotal run time: "<<std::fixed<<std::setprecision(4)<<1000*runtime<<"(ms)"<<std::endl;
+			std::cout<<"\t\ttotal time: "<<std::fixed<<std::setprecision(4)<<1000*runtime<<"(ms)"<<std::endl;
 		}
+
 		runtime *= 1000;
-		print_time(4, &runtime);
+		print_time(1, &runtime);
 	}
 
 	return 0;
 
 }
-

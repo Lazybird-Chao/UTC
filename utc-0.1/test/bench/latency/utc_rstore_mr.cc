@@ -170,7 +170,7 @@ int main(int argc, char* argv[]){
 	double msgrate_m[32][23];
 	std::vector<Task<RstoreWorker>*> msgRateTaskList;
 	for(int i = 0; i < ntasks; i++){
-		msgRateTaskList.push_back(new Task<RstoreWorker>(plist, TaskType::cpu_task, 512*1024*1024));
+		msgRateTaskList.push_back(new Task<RstoreWorker>(plist, TaskType::cpu_task));
 	}
 
 	std::cout<<"call task::init\n";
