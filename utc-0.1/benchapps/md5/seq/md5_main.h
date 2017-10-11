@@ -8,6 +8,9 @@
 #define BENCHAPPS_MD5_SEQ_MD5_MAIN_H_
 
 #include <cstdint>
+#include <cstdio>
+#include <iostream>
+#include <fstream>
 
 #define DIGEST_SIZE 16
 
@@ -58,12 +61,54 @@ dataSet_t datasets[] ={
 	{1024, 1024*4096, 4},
 };
 
-int initialize(config_t *configArgs);
+int initialize(config_t *configArgs, char *infile);
 int finalize(config_t *configArgs);
 void run(config_t *configArgs);
 void process(uint8_t *in, uint8_t *out, long bufsize);
 
+void toFile(char* data, long numBuffs, long buffSize, const char* filename, bool isBinary){
+	std::ofstream outfile;
+	if(isBinary){
+		outfile.open(filename, std::ofstream::binary);
+		outfile.write((char*)&numBuffs, sizeof(long));
+		outfile.write((char*)&buffSize, sizeof(long));
+		outfile.write(data, numBuffs*buffSize);
+	}
+	else{
+		outfile.open(filename);
+		outfile<<numBuffs<<" "<<buffSize<<std::endl;
+		for(long i=0; i<numBuffs; i++){
+			for(long j=0; j<buffSize; j++)
+				outfile<<data[i*buffSize+j];
+			outfile<<std::endl;
+		}
+	}
+	return;
+}
 
+void fromFile(char* &data, long& numBuffs, long& buffSize, const char* filename, bool isBinary){
+	std::cout<<"read input from file ...\n";
+	std::ifstream infile;
+	if(isBinary){
+		infile.open(filename, std::ios::binary);
+		infile.read((char*)&numBuffs, sizeof(long));
+		infile.read((char*)&buffSize, sizeof(long));
+		//std::cout<<numBuffs<<" "<<buffSize<<std::endl;
+		data = new char[numBuffs*buffSize];
+		infile.read(data, numBuffs*buffSize);
+	}
+	else{
+		infile.open(filename);
+		infile>>numBuffs;
+		infile>>buffSize;
+		data = new char[numBuffs*buffSize];
+		for(long i=0; i<numBuffs; i++){
+			for(long j=0; j<buffSize; j++)
+				infile>>data[i*buffSize+j];
+		}
+	}
+	return;
+}
 
 
 #endif /* BENCHAPPS_MD5_SEQ_MD5_MAIN_H_ */

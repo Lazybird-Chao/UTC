@@ -34,6 +34,7 @@ int main(int argc, char* argv[]){
 	configArgs.input_set = 0;
 	configArgs.iterations = 1;
 	configArgs.outflag = 0;
+	char *inputFilename = nullptr;
 
 	/*
 	 * parse arguments
@@ -41,7 +42,7 @@ int main(int argc, char* argv[]){
 	int opt;
 	extern char* optarg;
 	extern int optind;
-	opt=getopt(argc, argv, "vi:c:o");
+	opt=getopt(argc, argv, "vi:c:f:o");
 	while(opt!=EOF){
 		switch(opt){
 		case 'v':
@@ -49,6 +50,9 @@ int main(int argc, char* argv[]){
 			break;
 		case 'i':
 			configArgs.input_set = atoi(optarg);
+			break;
+		case 'f':
+			inputFilename = optarg;
 			break;
 		case 'c':
 			configArgs.iterations = atoi(optarg);
@@ -61,12 +65,12 @@ int main(int argc, char* argv[]){
 		default:
 			break;
 		}
-		opt=getopt(argc, argv, "vi:c:o");
+		opt=getopt(argc, argv, "vi:c:f:o");
 	}
 
 	// parameter initalization
 	std::cout<<"Generating random input data set ..."<<std::endl;
-	if(initialize(&configArgs)){
+	if(initialize(&configArgs, inputFilename)){
 		std::cerr<<"Initialization Error !!!"<<std::endl;
 		return 1;
 	}
@@ -88,8 +92,8 @@ int main(int argc, char* argv[]){
 	std::cout<<"Test complete !!!"<<std::endl;
 	if(printTime){
 		std::cout<<"\tprocess data info:"<<std::endl;
-		std::cout<<"\t\tnumber buffs:"<<datasets[configArgs.input_set].numbufs<<std::endl;
-		std::cout<<"\t\tbuff size(Bytes):"<<datasets[configArgs.input_set].bufsize<<std::endl;
+		std::cout<<"\t\tnumber buffs:"<<configArgs.numinputs<<std::endl;
+		std::cout<<"\t\tbuff size(Bytes):"<<configArgs.size<<std::endl;
 		std::cout<<"\ttime info:"<<std::fixed<<std::setprecision(4)<<1000*runtime<<"(ms)"<<std::endl;
 	}
 
@@ -101,26 +105,36 @@ int main(int argc, char* argv[]){
 
 }
 
-int initialize(config_t *configArgs){
-	int index = configArgs->input_set;
-	if(index < 0 || index >= sizeof(datasets)/sizeof(datasets[0])) {
-		std::cout<<"Invalid input set choice, set to default 0"<<std::endl;
-		index = 0;
-	}
+int initialize(config_t *configArgs, char* infile){
+	if(infile == nullptr){
+		int index = configArgs->input_set;
+		if(index < 0 || index >= sizeof(datasets)/sizeof(datasets[0])) {
+			std::cout<<"Invalid input set choice, set to default 0"<<std::endl;
+			index = 0;
+		}
 
-	configArgs->numinputs = datasets[index].numbufs;
-	configArgs->size = datasets[index].bufsize;
-	configArgs->inputs = (uint8_t*)calloc(configArgs->numinputs*configArgs->size, sizeof(uint8_t));
-	configArgs->out = (uint8_t*)calloc(configArgs->numinputs, DIGEST_SIZE);
-	if(configArgs->inputs ==NULL || configArgs->out==NULL)
-		return 1;
-	// generate random data
-	srand(datasets[index].rseed);
-	for(long i=0; i<configArgs->numinputs; i++){
-		uint8_t *p = &(configArgs->inputs[i*configArgs->size]);
-		int key = rand();
-		for(long j = 0; j<configArgs->size; j++)
-			*p++ = (key+j) % 255;
+		configArgs->numinputs = datasets[index].numbufs;
+		configArgs->size = datasets[index].bufsize;
+		configArgs->inputs = (uint8_t*)calloc(configArgs->numinputs*configArgs->size, sizeof(uint8_t));
+		configArgs->out = (uint8_t*)calloc(configArgs->numinputs, DIGEST_SIZE);
+		if(configArgs->inputs ==NULL || configArgs->out==NULL)
+			return 1;
+		// generate random data
+		srand(datasets[index].rseed);
+		for(long i=0; i<configArgs->numinputs; i++){
+			uint8_t *p = &(configArgs->inputs[i*configArgs->size]);
+			int key = rand();
+			for(long j = 0; j<configArgs->size; j++)
+				*p++ = (key+j) % 255;
+		}
+	}else{
+		long numBuffs, buffSize;
+		char *data;
+		fromFile(data, numBuffs, buffSize, infile, true);
+		configArgs->numinputs = numBuffs;
+		configArgs->size = buffSize;
+		configArgs->inputs = (uint8_t*)data;
+		configArgs->out = (uint8_t*)calloc(configArgs->numinputs, DIGEST_SIZE);
 	}
 	return 0;
 }
@@ -161,6 +175,8 @@ void run(config_t * args) {
 
 		long j=0;
 		while(j< buffers_to_process) {
+			//if(j%1000 == 0)
+			//	std::cout<<j/1000<<std::endl;
 			process(&in[j*args->size], out+j*DIGEST_SIZE, args->size);
 			j++;
 		}
