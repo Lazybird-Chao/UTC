@@ -65,6 +65,10 @@ BOOST_LIB = $(BOOST_DIR)/lib/libboost_thread.a \
 LIB = $(PROJECT_LIBDIR)/libutc.a
 LIB += -lrt -lm
 LIB += $(MPI_LIB) $(BOOST_LIB)
+
+CPU_LIB = $(PROJECT_LIBDIR)/libutc.a
+CPU_LIB += -lrt -lm
+CPU_LIB += $(MPI_LIB) $(BOOST_LIB)
 				
 ###################		
 INCLUDE = -I$(MPI_DIR)/include
@@ -72,16 +76,27 @@ INCLUDE += -I$(BOOST_DIR)/include
 INCLUDE += -I$(PROJECT_HOMEDIR)/include	
 INCLUDE += -I$(PROJECT_HOMEDIR)/include/thread_util	
 
+CPU_INCLUDE = -I$(MPI_DIR)/include
+CPU_INCLUDE += -I$(BOOST_DIR)/include
+CPU_INCLUDE += -I$(PROJECT_HOMEDIR)/include	
+CPU_INCLUDE += -I$(PROJECT_HOMEDIR)/include/thread_util
+
 #####################
 
 ifeq ($(ENABLE_SCOPED_DATA), 1)
 	INCLUDE += -I$(PROJECT_HOMEDIR)/include/ScopedData
 	LIB += $(PROJECT_LIBDIR)/libutc-scopeddata.a
+	
+	CPU_INCLUDE += -I$(PROJECT_HOMEDIR)/include/ScopedData
+	CPU_LIB += $(PROJECT_LIBDIR)/libutc-scopeddata.a
 endif
 
 ifeq ($(ENABLE_INTERNAL_SHMEM), 1)
 	INCLUDE += -I$(PROJECT_HOMEDIR)/include/ScopedData/internal_shmem
 	LIB += $(PROJECT_LIBDIR)/libutc-scopedshmem.a
+	
+	CPU_INCLUDE += -I$(PROJECT_HOMEDIR)/include/ScopedData/internal_shmem
+	CPU_LIB += $(PROJECT_LIBDIR)/libutc-scopedshmem.a
 endif
 
 

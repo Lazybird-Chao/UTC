@@ -29,6 +29,7 @@ public:
 	GlobalScopedData(long size=1);
 
 	int init();
+	int init(long new_size);
 	int destroy();
 
 	~GlobalScopedData();
@@ -174,6 +175,13 @@ int GlobalScopedData<T>::init(){
 #endif
 	}
 	m_objMutex.unlock();
+	return 0;
+}
+
+template<typename T>
+int GlobalScopedData<T>::init(long new_size){
+	m_size = new_size;
+	init();
 	return 0;
 }
 

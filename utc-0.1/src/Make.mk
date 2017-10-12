@@ -100,7 +100,6 @@ SpinLock.o: SpinLock.cc
 	$(C++)	-o $@ -c $< $(CCFLAG) $(INCLUDE)
 
 
-
 clean:
 	rm -rf *.o *.a
 

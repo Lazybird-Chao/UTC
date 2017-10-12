@@ -69,8 +69,11 @@ int main(int argc, char*argv[])
 		std::cerr<<"process number not match with arguments '-p' !!!\n";
 		return 1;
 	}
-	if(nthreads > ctx.getNumGPUs()){
+	/*if(nthreads > ctx.getNumGPUs()){
 		std::cerr<<"Launch task threads more than GPUs on the node !!!"<<std::endl;
+	}*/
+	if(nthreads != 1){
+		std::cerr<<"Only use one thread for a task on each node !!!"<<std::endl;
 	}
 
 	std::vector<int> rank;
