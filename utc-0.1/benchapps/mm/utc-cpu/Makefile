@@ -46,7 +46,7 @@ mm_task.o: mm_task.cc task.h
 	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
     
 $(bin): $(mainobj) $(taskobj) $(helperobj)
-	$(C++) -o $@ $(CCFLAGS) $^  $(CPU_LIB)
+	$(C++) -o $@ $(CCFLAGS) $^  $(LIB)
 
 .PHONY: clean
 clean:

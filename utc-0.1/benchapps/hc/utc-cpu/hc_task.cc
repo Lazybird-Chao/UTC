@@ -127,6 +127,8 @@ void HeatConductionWorker::runImpl(double runtime[][MAX_TIMER], int *iteration){
 	FTYPE *next = localNext;
 	timer0.start();
 	while(1){
+		if(iters % 1000 ==0 && __globalThreadId == 0)
+			std::cout<<"iter "<<iters<<"...\n";
 		timer.start();
 		for(int j = thread_startRowIndex; j<thread_startRowIndex + thread_numRows; j++){
 			for(int i = 0; i<w; i++){

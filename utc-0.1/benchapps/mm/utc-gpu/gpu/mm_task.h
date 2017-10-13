@@ -8,6 +8,8 @@
 #ifndef BENCHAPPS_MM_UTC_GPU_GPU_MM_TASK_H_
 #define BENCHAPPS_MM_UTC_GPU_GPU_MM_TASK_H_
 
+#define MAX_TIMER 9
+
 template<typename T>
 class MatrixMulWorker : public UserTaskBase{
 private:
@@ -28,13 +30,13 @@ private:
 	//GlobalScopedData<T> sharedA;
 	//GlobalScopedData<T> sharedC;
 
-	static thread_local int start_row;
-	static thread_local int local_numRows;
+	//static thread_local int start_row;
+	//static thread_local int local_numRows;
 
 public:
 	void initImpl(T *mA, T *mB, T *mC, int M, int N, int P, int blockSize);
 
-	void runImpl(double runtime[][4]);
+	void runImpl(double runtime[][MAX_TIMER]);
 };
 
 

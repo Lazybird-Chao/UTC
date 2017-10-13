@@ -7,16 +7,12 @@
 
 #include "Utc.h"
 #include "UtcGpu.h"
+#include "../../../common/helper_err.h"
 #include "mm_task.h"
+#include "mm_kernel.h"
 #include <iostream>
 
 using namespace iUtc;
-
-template<typename T>
-thread_local int MatrixMulWorker<T>::start_row;
-
-template<typename T>
-thread_local int MatrixMulWorker<T>::local_numRows;
 
 template<typename T>
 void MatrixMulWorker<T>::initImpl(T *mA, T *mB, T *mC, int M, int N, int P, int blockSize){
@@ -42,16 +38,6 @@ void MatrixMulWorker<T>::initImpl(T *mA, T *mB, T *mC, int M, int N, int P, int 
 		sharedC.init(sizeM*sizeP);*/
 
 	}
-	__fastIntraSync.wait();
-	int rowsPerThread = blockRows/__numLocalThreads;
-	if(__localThreadId<blockRows%__numLocalThreads){
-		local_numRows = rowsPerThread+1;
-		start_row = __localThreadId*(rowsPerThread+1);
-	}
-	else{
-		local_numRows = rowsPerThread;
-		start_row = __localThreadId*rowsPerThread + blockRows%__numLocalThreads;
-	}
 	inter_Barrier();
 	if(__globalThreadId ==0){
 		std::cout<<"task: "<<getCurrentTask()->getName()<<" finish initImpl.\n";
@@ -60,7 +46,7 @@ void MatrixMulWorker<T>::initImpl(T *mA, T *mB, T *mC, int M, int N, int P, int 
 }
 
 template<typename T>
-void MatrixMulWorker<T>::runImpl(double runtime[][4]){
+void MatrixMulWorker<T>::runImpl(double runtime[][MAX_TIMER]){
 	//__fastIntraSync.wait();
 	if(__globalThreadId == 0){
 		std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
@@ -113,17 +99,17 @@ void MatrixMulWorker<T>::runImpl(double runtime[][4]){
 		 * do local compute
 		 */
 		timer.start();
-		int gridSizeX = (sizeP+gpuBlockSize-1) / gpuBlockSize;
-		int gridSizeY = (sizeM+gpuBlockSize-1) / gpuBlockSize;
+		int gridSizeX = (blockRows+gpuBlockSize-1) / gpuBlockSize;
+		int gridSizeY = (blockRows+gpuBlockSize-1) / gpuBlockSize;
 		dim3 grid(gridSizeX, gridSizeY, 1);
 		dim3 block(gpuBlockSize, gpuBlockSize, 1);
 		gpuMatrixMulKernel<T><<<grid, block, 0, __streamId>>>(
 				gA.getD(),
 				gB.getD(),
 				gC.getD(true),
-				sizeM,
+				blockRows,
 				sizeN,
-				sizeP,
+				blockRows,
 				gpuBlockSize);
 		checkCudaErr(cudaStreamSynchronize(__streamId));
 		checkCudaErr(cudaGetLastError());
@@ -160,6 +146,7 @@ void MatrixMulWorker<T>::runImpl(double runtime[][4]){
 		runtime[__localThreadId][0] = totaltime;
 		runtime[__localThreadId][1] = comptime;
 		runtime[__localThreadId][2] = commtime;
+		runtime[__localThreadId][3] = copytime;
 		if(__localThreadId ==0){
 			/*memcpy(matrixC, sharedC.getPtr(), sizeM*sizeP*sizeof(T));
 			sharedC.destroy();

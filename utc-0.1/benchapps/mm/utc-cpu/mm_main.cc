@@ -78,8 +78,8 @@ int main(int argc, char** argv){
 	 */
 	char *infileA = nullptr;
 	char *infileB = nullptr;
-	infileA = "../input/4k_4k_A.txt";
-	infileB = "../input/4k_4k_B.txt";
+	infileA = "../input/16k_16k_A.txt";
+	infileB = "../input/16k_16k_B.txt";
 	FTYPE *matrixA = nullptr;
 	FTYPE *matrixB = nullptr;
 	Task<RandomMatrixGen<FTYPE>> matrixInit(ProcList(0));

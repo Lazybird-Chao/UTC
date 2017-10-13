@@ -9,10 +9,13 @@
 
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_printtime.h"
+#include "../../common/helper_err.h"
 #include "Utc.h"
+#include "UtcGpu.h"
 using namespace iUtc;
 
 #include "task.h"
+#include "./gpu/hc_task.h"
 #include "typeconfig.h"
 
 #define H 1.0
@@ -28,6 +31,7 @@ int main(int argc, char **argv){
 	bool printTime = false;
 	int nthreads=1;
 	int nprocess=1;
+	int blockSize = 16;
 
 	/* initialize UTC context */
 	UtcContext &ctx = UtcContext::getContext(argc, argv);
@@ -37,7 +41,7 @@ int main(int argc, char **argv){
 	int opt;
 	extern char* optarg;
 	extern int optind, optopt;
-	opt=getopt(argc, argv, "vt:p:h:w:e:o");
+	opt=getopt(argc, argv, "vt:p:h:w:e:b:o");
 	while(opt!=EOF){
 		switch(opt){
 		case 'v':
@@ -56,6 +60,9 @@ int main(int argc, char **argv){
 		case 'e':
 			EPSILON = atof(optarg);
 			break;
+		case 'b':
+			blockSize = atoi(optarg);
+			break;
 		case 'o':
 			output = true;
 			break;
@@ -68,12 +75,16 @@ int main(int argc, char **argv){
 		default:
 			break;
 		}
-		opt=getopt(argc, argv, "vt:p:h:w:e:o");
+		opt=getopt(argc, argv, "vt:p:h:w:e:b:o");
 	}
 	int procs = ctx.numProcs();
 	int myproc = ctx.getProcRank();
 	if(nprocess != procs){
 		std::cerr<<"process number not match with arguments '-p' !!!\n";
+		return 1;
+	}
+	if(nthreads != 1){
+		std::cerr<<"Only one thread for a task on each node !!!\n";
 		return 1;
 	}
 	if(WIDTH<=0 || HEIGHT<=0){
@@ -93,9 +104,9 @@ int main(int argc, char **argv){
 	for(int i = 0; i<nprocess; i++)
 		for(int j = 0; j<nthreads; j++)
 			plist.push_back(i);
-	Task<HeatConductionWorker> hc(plist, TaskType::cpu_task);
+	Task<HeatConductionWorker> hc(plist, TaskType::gpu_task);
 	hc.init(WIDTH, HEIGHT, EPSILON, domainMatrix);
-	hc.run(runtime_m, &iters);
+	hc.run(runtime_m, &iters, blockSize);
 	hc.wait();
 
 
@@ -108,7 +119,6 @@ int main(int argc, char **argv){
 		Task<Output<FTYPE>> fout(ProcList(0));
 		fout.run(domainMatrix, WIDTH, HEIGHT, filename);
 	}
-
 
 	if(myproc == 0){
 		double runtime[MAX_TIMER]={0,0,0,0,0,0,0,0,0};
@@ -126,14 +136,14 @@ int main(int argc, char **argv){
 			std::cout<<"\t\ttotal time: "<<runtime[0]<<"(s)"<<std::endl;
 			std::cout<<"\t\tcompute time: "<<runtime[1]<<"(s)"<<std::endl;
 			std::cout<<"\t\tcomm time: "<<runtime[2]<<"(s)"<<std::endl;
-			//std::cout<<"\t\thost compute time: "<<runtime[0]<<"(s)"<<std::endl;
+			std::cout<<"\t\tcopy time: "<<runtime[3]<<"(s)"<<std::endl;
 
 		}
 		for(int i=0; i<MAX_TIMER; i++)
 			runtime[i] *= 1000;
-		print_time(3, runtime);
+		print_time(4, runtime);
 	}
-
+	ctx.Barrier();
 	return 0;
 
 }

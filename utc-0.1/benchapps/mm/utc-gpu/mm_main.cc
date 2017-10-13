@@ -19,6 +19,7 @@
 
 #define FTYPE float
 #define MAX_THREADS 64
+#define MAX_TIMER 9
 
 int main(int argc, char** argv){
 	bool printTime = false;
@@ -85,8 +86,8 @@ int main(int argc, char** argv){
 	 */
 	char *infileA = nullptr;
 	char *infileB = nullptr;
-	infileA = "../input/4k_4k_A.txt";
-	infileB = "../input/4k_4k_B.txt";
+	infileA = "../input/16k_16k_A.txt";
+	infileB = "../input/16k_16k_B.txt";
 	FTYPE *matrixA = nullptr;
 	FTYPE *matrixB = nullptr;
 	Task<RandomMatrixGen<FTYPE>> matrixInit(ProcList(0));
@@ -105,7 +106,7 @@ int main(int argc, char** argv){
 	/*
 	 * do computation
 	 */
-	double runtime_m[MAX_THREADS][3];
+	double runtime_m[MAX_THREADS][MAX_TIMER];
 	ProcList plist;
 	for(int i = 0; i < procs; i++)
 			plist.push_back(i);
@@ -141,11 +142,11 @@ int main(int argc, char** argv){
 		delete matrixB;
 		delete matrixC;
 
-		double runtime[3]={0,0,0};
+		double runtime[MAX_TIMER]={0,0,0,0,0,0,0,0,0};
 		for(int i=0; i<nthreads; i++)
-			for(int j=0; j<3; j++)
+			for(int j=0; j<MAX_TIMER; j++)
 				runtime[j]+= runtime_m[i][j];
-		for(int j=0; j<3; j++)
+		for(int j=0; j<MAX_TIMER; j++)
 			runtime[j] /= nthreads;
 		std::cout<<"Test complete !!!"<<std::endl;
 		if(printTime){
@@ -154,12 +155,13 @@ int main(int argc, char** argv){
 			std::cout<<"\t\ttotal run time: "<<std::fixed<<std::setprecision(4)<<runtime[0]<<"(s)"<<std::endl;
 			std::cout<<"\t\tcompute time: "<<std::fixed<<std::setprecision(4)<<runtime[1]<<"(s)"<<std::endl;
 			std::cout<<"\t\tcomm time: "<<std::fixed<<std::setprecision(4)<<runtime[2]<<"(s)"<<std::endl;
+			std::cout<<"\t\tcopy time: "<<std::fixed<<std::setprecision(4)<<runtime[3]<<"(s)"<<std::endl;
 
 		}
 		//std::cout<<ERROR_LINE<<std::endl;
-		for(int i=0; i<3; i++)
+		for(int i=0; i<MAX_TIMER; i++)
 			runtime[i] *= 1000;
-		print_time(3, runtime);
+		print_time(4, runtime);
 	}
 	ctx.Barrier();
 	return 0;

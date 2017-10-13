@@ -1,9 +1,8 @@
-mainobj = mm_main.o
-taskobj = task.o mm_task.o
-kernelobj = mm_kernel.o
+mainobj = hc_main.o
+taskobj = task.o hc_task.o
+kernelobj = hc_kernel.o
 
-
-bin = mm
+bin = hc
 default:$(bin)
 
 C++ = g++
@@ -39,13 +38,13 @@ helperObj = helperObj.o
 $(helperObj):$(COMMONDIR)/helper_getopt.c
 	$(C++) -o $@  -c $<
 
-mm_main.o: mm_main.cc task.h
+hc_main.o: hc_main.cc task.h ./gpu/hc_task.h
 	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
 task.o: task.cc task.h
 	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
-mm_task.o: ./gpu/mm_task.cu ./gpu/mm_task.h
+hc_task.o: ./gpu/hc_task.cu ./gpu/hc_task.h
 	$(NVCC) -o $@ $(NVCCFLAGS) $(NWARNING) $(INCLUDE) -c $<
-$(kernelobj): ./gpu/mm_kernel.cu ./gpu/mm_kernel.h
+$(kernelobj): ./gpu/hc_kernel.cu ./gpu/hc_kernel.h
 	$(NVCC) -o $@  $(NVCCFLAGS) $(NWARNING) $(INCLUDE) -c $<
 tmplink.o: $(taskobj) $(kernelobj)
 	$(NVCC) -o $@ $(NVLINKFLAGS) $^
