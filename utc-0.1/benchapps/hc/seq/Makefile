@@ -1,5 +1,5 @@
 obj = hc_main.o
-bin = hc_main
+bin = hc
 default: $(bin)
 
 C++ = g++

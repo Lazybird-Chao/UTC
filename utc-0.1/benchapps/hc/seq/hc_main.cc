@@ -35,7 +35,7 @@ void init_domain(FTYPE *domain_ptr, int h, int w){
 	}
 }
 
-FTYPE get_convergence_sqd(FTYPE *current_ptr, FTYPE *next_ptr, int h, int w){
+inline FTYPE get_convergence_sqd(FTYPE *current_ptr, FTYPE *next_ptr, int h, int w){
 	FTYPE sum = 0.0;
 	for(int i=0; i<(int)floor(h/H); i++){
 		for(int j=0; j<(int) floor (w / H); j++){
@@ -47,7 +47,7 @@ FTYPE get_convergence_sqd(FTYPE *current_ptr, FTYPE *next_ptr, int h, int w){
 	return sum;
 }
 
-void enforce_bc_par(FTYPE *domain_ptr, int i, int j, int h, int w){
+inline void enforce_bc_par(FTYPE *domain_ptr, int i, int j, int h, int w){
 	if(i==((int)floor(w/H/2)-1) && j==0){
 		domain_ptr[j*((int)floor(w/H)) + i] = T_SRC0;
 	}
@@ -71,11 +71,11 @@ inline FTYPE get_var_par(FTYPE *domain_ptr, int i, int j, int h, int w){
 	return ret_val;
 }
 
-FTYPE f(int i, int j){
+inline FTYPE f(int i, int j){
 	return 0.0;
 }
 
-void jacobi(FTYPE *current_ptr, FTYPE *next_ptr, int h, int w){
+inline void jacobi(FTYPE *current_ptr, FTYPE *next_ptr, int h, int w){
 	int i, j;
 	for(j = 0; j<(int)floor(h/H); j++){
 		for(i = 0; i<(int) floor (w / H); i++){
@@ -84,8 +84,8 @@ void jacobi(FTYPE *current_ptr, FTYPE *next_ptr, int h, int w){
 					(get_var_par(current_ptr, i-1, j, h, w)+
 							get_var_par(current_ptr, i+1, j, h, w) +
 							get_var_par(current_ptr, i, j-1, h, w) +
-							get_var_par(current_ptr, i, j+1, h, w) -
-							(pow(H, 2)*f(i, j)));
+							get_var_par(current_ptr, i, j+1, h, w));
+							//(pow(H, 2)*f(i, j)));
 			enforce_bc_par(next_ptr, i, j, h, w);
 		}
 	}
