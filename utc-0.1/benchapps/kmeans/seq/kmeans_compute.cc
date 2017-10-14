@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <math.h>
+#include <iostream>
 #include "kmeans.h"
 
 
@@ -101,6 +102,7 @@ FTYPE** kmeans(
                    int     numClusters,       	/* no. clusters */
                    FTYPE   threshold,         	/* % objects change membership */
                    int    *membership,			/* membership of each object */
+                   int    maxIterations,
 				   int	  *iters)        	/* out */
 {
     int      i, j, k, index, loop = 0;
@@ -147,8 +149,9 @@ FTYPE** kmeans(
 			}
 			newClusterSize[i] = 0;   /* set back to 0 */
 		}
+		//std::cout<<delta<<std::endl;
 		delta /= numObjs;
-    } while (loop++ < PREC && delta > threshold);
+    } while (loop++ < maxIterations && delta > threshold);
     *iters = loop;
 
     free(newClusters[0]);

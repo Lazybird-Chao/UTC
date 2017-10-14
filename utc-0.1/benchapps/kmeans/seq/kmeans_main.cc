@@ -62,12 +62,13 @@ int main(int argc, char **argv) {
     filename          = NULL;	/* Name of the input file */
     outfile           = NULL;
     bool printTime 	  = false;
+    int maxIterations = 20;
 
 	/* Parse command line options */
     int     opt;
 	extern char   *optarg;
 	extern int     optind;
-    while ( (opt=getopt(argc,argv,"a:o:i:n:bv"))!= EOF) {
+    while ( (opt=getopt(argc,argv,"l:a:o:i:n:bv"))!= EOF) {
         switch (opt) {
         	case 'v': printTime = true;
         			  break;
@@ -80,6 +81,8 @@ int main(int argc, char **argv) {
             case 'o': outfile = optarg;
                       break;
             case 'a': threshold = (FTYPE)atof(optarg);
+            		  break;
+            case 'l': maxIterations = atoi(optarg);
             		  break;
             case 'h': usage(argv[0]);
 					  break;
@@ -110,7 +113,7 @@ int main(int argc, char **argv) {
 	int iters = 0;
 	t1 = getTime();
     clusters = kmeans(objects, numCoords, numObjs,
-                          numClusters, threshold, membership, &iters);
+                          numClusters, threshold, membership, maxIterations, &iters);
     t2 = getTime();
     clustering_timing = t2 - t1;
 

@@ -1,5 +1,5 @@
 obj = kmeans_main.o kmeans_compute.o file_io.o
-bin = kmeans_main
+bin = kmeans
 default: $(bin)
 
 C++ = g++

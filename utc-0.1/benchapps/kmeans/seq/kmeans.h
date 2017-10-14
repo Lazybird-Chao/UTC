@@ -10,7 +10,7 @@
 
 #define FTYPE float
 
-FTYPE** kmeans(FTYPE**, int, int, int, FTYPE, int*, int*);
+FTYPE** kmeans(FTYPE**, int, int, int, FTYPE, int*, int , int*);
 
 FTYPE** file_read(int, char*, int*, int*);
 
