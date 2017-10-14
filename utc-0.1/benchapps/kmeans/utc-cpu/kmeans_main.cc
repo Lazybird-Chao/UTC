@@ -81,7 +81,7 @@ int main(int argc, char **argv){
 	/*
 	 * init cluster objests
 	 */
-	FTYPE *objects;
+	FTYPE *objects = nullptr;
 	int numObjs;
 	int numCoords;
 	Task<ClusterDataInit<FTYPE>> clusterInit(ProcList(0));
@@ -91,7 +91,7 @@ int main(int argc, char **argv){
 	/*
 	 * do cluster
 	 */
-	FTYPE *clusters;
+	FTYPE *clusters = nullptr;
 	if(myproc == 0){
 		clusters = new FTYPE[numClusters*numCoords];
 		/* Pick first numClusters elements of objects[] as initial cluster centers */

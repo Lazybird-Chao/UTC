@@ -49,36 +49,38 @@ void kmeansWorker<T>::initImpl(T*objects, T*clusters, int numObjs, int numCoords
 		std::cout<<"task: "<<getCurrentTask()->getName()<<"begin init ...\n";
 	}
 	if(__localThreadId == 0){
-		if(objects == nullptr)
-			this->objects = new T[numObjs*numCoords];
-		else
+		if(__processIdInGroup ==0){
 			this->objects = objects;
-		if(clusters == nullptr)
-			this->clusters = new T[numClusters*numCoords];
-		else
 			this->clusters = clusters;
-		this->clusters_size = new int[numClusters];
-		this->numClusters = numClusters;
-		this->numObjs = numObjs;
-		this->numCoords = numCoords;
+			this->numClusters = numClusters;
+			this->numObjs = numObjs;
+			this->numCoords = numCoords;
+		}
+		TaskBcastBy<int>(this, &(this->numClusters), 1, 0);
+		TaskBcastBy<int>(this, &(this->numObjs), 1, 0);
+		TaskBcastBy<int>(this, &(this->numCoords), 1, 0);
+		if(objects == nullptr)
+			this->objects = new T[this->numObjs*this->numCoords];
+		if(clusters == nullptr)
+			this->clusters = new T[this->numClusters*this->numCoords];
+		this->clusters_size = new int[this->numClusters];
 
-
-		this->proc_clusters_array = new T[numClusters*numCoords*__numLocalThreads];
-		this->proc_clusters_size_array = new int[numClusters*__numLocalThreads];
+		this->proc_clusters_array = new T[this->numClusters*this->numCoords*__numLocalThreads];
+		this->proc_clusters_size_array = new int[this->numClusters*__numLocalThreads];
 		this->proc_changedObjs_array = new int[__numLocalThreads];
-		this->proc_clusters = new T[numClusters*numCoords];
-		this->proc_clusters_size  = new int[numClusters];
+		this->proc_clusters = new T[this->numClusters*this->numCoords];
+		this->proc_clusters_size  = new int[this->numClusters];
 
 	}
 	__fastIntraSync.wait();
-	int objsPerThread = numObjs/__numGlobalThreads;
-	if(__globalThreadId < numObjs % __numGlobalThreads){
+	int objsPerThread = this->numObjs/__numGlobalThreads;
+	if(__globalThreadId < this->numObjs % __numGlobalThreads){
 		thread_numObjs = objsPerThread +1;
 		thread_startObjIndex = __globalThreadId*(objsPerThread+1);
 	}
 	else{
 		thread_numObjs = objsPerThread;
-		thread_startObjIndex = __globalThreadId*objsPerThread + numObjs % __numGlobalThreads;
+		thread_startObjIndex = __globalThreadId*objsPerThread + this->numObjs % __numGlobalThreads;
 	}
 
 	inter_Barrier();

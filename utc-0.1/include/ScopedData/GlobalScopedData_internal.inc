@@ -58,6 +58,9 @@ public:
 	int rloadblock(int remotePE, T* dst, int startIdx, int blocks);
 	int rstoreblock(int remotePE, T* src, int startIdx, int blocks);
 
+	int rsyncFrom(int remotePE, int startIdx=0, int blocks=1);
+	int rsyncTo(int remotePE, int startIdx=0, int blocks=1);
+
 	/*
 	 * fence and quiet are not collective calls, so only the one who call rload, rstore
 	 * need call them to ensure the rload/rstore complete
@@ -384,6 +387,82 @@ int GlobalScopedData<T>::rstoreblock(int remotePE, T* src, int startIdx, int blo
 		return 0;
 	}
 	//remotePE = m_worldToGroup->at(remotePE);
+	m_objMutex.lock();
+	switch(m_datatype){
+	case metaDataType::_char:
+		scoped_shmem_char_put((char*)&(m_dataPtr[startIdx]), (char*)src, blocks, remotePE, *m_taskMpiWindow);
+		break;
+	case metaDataType::_short:
+		scoped_shmem_short_put((short*)&(m_dataPtr[startIdx]), (short*)src, blocks, remotePE, *m_taskMpiWindow);
+		break;
+	case metaDataType::_int:
+		scoped_shmem_int_put((int*)&(m_dataPtr[startIdx]), (int*)src, blocks, remotePE, *m_taskMpiWindow);
+		break;
+	case metaDataType::_long:
+		scoped_shmem_long_put((long*)&(m_dataPtr[startIdx]), (long*)src, blocks, remotePE, *m_taskMpiWindow);
+		break;
+	case metaDataType::_float:
+		scoped_shmem_float_put((float*)&(m_dataPtr[startIdx]), (float*)src, blocks, remotePE, *m_taskMpiWindow);
+		break;
+	case metaDataType::_double:
+		scoped_shmem_double_put((double*)&(m_dataPtr[startIdx]), (double*)src, blocks, remotePE, *m_taskMpiWindow);
+		break;
+	default:
+		std::cout<<"Error, unsupported datatype in rstore()!!!"<<std::endl;
+		break;
+	}
+	//scoped_shmem_putmem((void*)&(m_dataPtr[startIdx]), (void*)src, blocks*m_typesize, remotePE, *m_taskMpiWindow);
+	m_objMutex.unlock();
+	return 0;
+}
+
+template<typename T>
+int GlobalScopedData<T>::rsyncFrom(int remotePE, int startIdx, int blocks){
+	if( !initialized  || destroied){
+		std::cerr<<"Error: global data not initialized or destroied."<<std::endl;
+		return 0;
+	}
+	//remotePE = m_worldToGroup->at(remotePE);
+	char *dst = (char*)&m_dataPtr[startIdx];
+	m_objMutex.lock();
+	switch(m_datatype){
+	case metaDataType::_char:
+		scoped_shmem_char_get((char*)dst, (char*)&(m_dataPtr[startIdx]), blocks, remotePE, *m_taskMpiWindow);
+		break;
+	case metaDataType::_short:
+		scoped_shmem_short_get((short*)dst, (short*)&(m_dataPtr[startIdx]), blocks, remotePE, *m_taskMpiWindow);
+		break;
+	case metaDataType::_int:
+		scoped_shmem_int_get((int*)dst, (int*)&(m_dataPtr[startIdx]), blocks, remotePE, *m_taskMpiWindow);
+		break;
+	case metaDataType::_long:
+		scoped_shmem_long_get((long*)dst, (long*)&(m_dataPtr[startIdx]), blocks, remotePE, *m_taskMpiWindow);
+		break;
+	case metaDataType::_float:
+		scoped_shmem_float_get((float*)dst, (float*)&(m_dataPtr[startIdx]), blocks, remotePE, *m_taskMpiWindow);
+		break;
+	case metaDataType::_double:
+		scoped_shmem_double_get((double*)dst, (double*)&(m_dataPtr[startIdx]), blocks, remotePE, *m_taskMpiWindow);
+		break;
+	default:
+		std::cout<<"Error, unsupported datatype in rstore()!!!"<<std::endl;
+		break;
+	}
+
+	//scoped_shmem_getmem((void*)dst, (void*)&(m_dataPtr[startIdx]), blocks*m_typesize, remotePE, *m_taskMpiWindow);
+
+	m_objMutex.unlock();
+	return 0;
+}
+
+template<typename T>
+int GlobalScopedData<T>::rsyncTo(int remotePE, int startIdx, int blocks){
+	if( !initialized  || destroied){
+		std::cerr<<"Error: global data not initialized or destroied."<<std::endl;
+		return 0;
+	}
+	//remotePE = m_worldToGroup->at(remotePE);
+	char* src = (char*)&m_dataPtr[startIdx];
 	m_objMutex.lock();
 	switch(m_datatype){
 	case metaDataType::_char:
