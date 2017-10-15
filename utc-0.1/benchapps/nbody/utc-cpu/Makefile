@@ -1,8 +1,8 @@
-mainobj = kmeans_main.o
-taskobj = task.o kmeans_task.o
+mainobj = nbody_main.o
+taskobj = task.o nbody_task.o
 
 
-bin = kmeans
+bin = nbody
 default:$(bin)
 
 C++ = g++
@@ -38,11 +38,11 @@ helperObj = helperObj.o
 $(helperObj):$(COMMONDIR)/helper_getopt.c
 	$(C++) -o $@  -c $<
 
-kmeans_main.o: kmeans_main.cc task.h kmeans_task.h
+nbody_main.o: nbody_main.cc task.h nbody_task.h
 	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
 task.o: task.cc task.h
 	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
-kmeans_task.o: kmeans_task.cc kmeans_task.h
+nbody_task.o: nbody_task.cc nbody_task.h
 	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
     
 $(bin): $(mainobj) $(taskobj) $(helperobj)

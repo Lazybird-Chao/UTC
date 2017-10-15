@@ -1,5 +1,6 @@
 mainobj = kmeans_main.o
 taskobj = task.o kmeans_task.o
+kernelobj = kmeans_kernel.o
 
 
 bin = kmeans
@@ -15,8 +16,8 @@ GENCODE_SM35 = -gencode arch=compute_35,code=sm_35
 
 NVCC = nvcc
 NVCCFLAGS = -O2  -std=c++11
-NVCCFLAGS +=  $(GENCODE_SM35) --device-c
-NVLINKFLAGS = $(GENCODE_SM35) --device-link
+NVCCFLAGS +=  $(GENCODE_SM30) --device-c
+NVLINKFLAGS = $(GENCODE_SM30) --device-link
 
 DEBUG = 0
 ifeq ($(DEBUG), 1)
@@ -38,16 +39,20 @@ helperObj = helperObj.o
 $(helperObj):$(COMMONDIR)/helper_getopt.c
 	$(C++) -o $@  -c $<
 
-kmeans_main.o: kmeans_main.cc task.h kmeans_task.h
+kmeans_main.o: kmeans_main.cc task.h ./gpu/kmeans_task.h
 	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
 task.o: task.cc task.h
 	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
-kmeans_task.o: kmeans_task.cc kmeans_task.h
-	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
+kmeans_task.o: ./gpu/kmeans_task.cu ./gpu/kmeans_task.h
+	$(NVCC) -o $@  $(NVCCFLAGS) $(NWARNING) $(INCLUDE) -c $<
+kmeans_kernel.o: ./gpu/kmeans_kernel.cu ./gpu/kmeans_kernel.h
+	$(NVCC) -o $@  $(NVCCFLAGS) $(NWARNING) $(INCLUDE) -c $<
+tmplink.o: kmeans_task.o kmeans_kernel.o
+	$(NVCC) -o $@ $(NVLINKFLAGS) $^
     
-$(bin): $(mainobj) $(taskobj) $(helperobj)
+$(bin): $(mainobj) $(taskobj) $(kernelobj) tmplink.o $(helperobj)
 	$(C++) -o $@ $(CCFLAGS) $^  $(LIB)
 
 .PHONY: clean
 clean:
-	rm -f $(mainobj) $(taskobj) $(helperObj) $(bin)
+	rm -f $(mainobj) $(taskobj) $(helperObj) $(bin) $(kernelobj) tmplink.o

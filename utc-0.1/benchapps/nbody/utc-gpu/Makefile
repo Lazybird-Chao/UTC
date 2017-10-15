@@ -1,8 +1,9 @@
-mainobj = kmeans_main.o
-taskobj = task.o kmeans_task.o
+mainobj = nbody_main.o
+taskobj = task.o nbody_task.o
+kernelobj = nbody_kernel.o
 
 
-bin = kmeans
+bin = nbody
 default:$(bin)
 
 C++ = g++
@@ -38,16 +39,20 @@ helperObj = helperObj.o
 $(helperObj):$(COMMONDIR)/helper_getopt.c
 	$(C++) -o $@  -c $<
 
-kmeans_main.o: kmeans_main.cc task.h kmeans_task.h
+nbody_main.o: nbody_main.cc task.h ./gpu/nbody_task.h
 	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
 task.o: task.cc task.h
 	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
-kmeans_task.o: kmeans_task.cc kmeans_task.h
-	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
+nbody_task.o: ./gpu/nbody_task.cu ./gpu/nbody_task.h
+	$(NVCC) -o $@ $(NVCCFLAGS) $(NWARNING) $(INCLUDE) -c $<
+$(kernelobj): ./gpu/nbody_kernel.cu ./gpu/nbody_kernel.h
+	$(NVCC) -o $@  $(NVCCFLAGS) $(NWARNING) $(INCLUDE) -c $<
+tmplink.o: nbody_task.o nbody_kernel.o
+	$(NVCC) -o $@ $(NVLINKFLAGS) $^
     
-$(bin): $(mainobj) $(taskobj) $(helperobj)
+$(bin): $(mainobj) $(taskobj) $(helperobj) $(kernelobj) tmplink.o
 	$(C++) -o $@ $(CCFLAGS) $^  $(LIB)
 
 .PHONY: clean
 clean:
-	rm -f $(mainobj) $(taskobj) $(helperObj) $(bin)
+	rm -f $(mainobj) $(taskobj) $(helperObj) $(bin) $(kernelobj) tmplink.o

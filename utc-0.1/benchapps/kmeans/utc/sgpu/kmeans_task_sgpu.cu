@@ -9,7 +9,7 @@
 #include "kmeans_kernel.h"
 #include "../../../common/helper_err.h"
 
-#define MAX_ITERATION 20
+#define MAX_ITERATION 100
 
 
 template<typename T>

@@ -18,7 +18,7 @@ using namespace iUtc;
 #include "task.h"
 #include "sgpu/kmeans_task_sgpu.h"
 
-#define FTYPE float
+#define FTYPE double
 
 int main(int argc, char**argv){
 	bool printTime = false;
