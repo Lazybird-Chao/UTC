@@ -1,5 +1,5 @@
 obj = md5_main.o md5_compute.o
-bin = md5_main
+bin = md5
 default: $(bin)
 
 C++ = g++

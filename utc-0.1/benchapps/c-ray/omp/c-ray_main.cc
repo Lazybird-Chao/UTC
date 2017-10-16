@@ -33,6 +33,7 @@
 #include <iomanip>
 #include <cmath>
 #include <cerrno>
+#include "omp.h"
 
 
 #include "../../common/helper_getopt.h"
@@ -156,12 +157,13 @@ int main(int argc, char **argv){
 	bool printTime = false;
 	char* infile_path = NULL;
 	char* outfile_path = NULL;
+	int nthreads = 1;
 
 	/* Parse command line options */
 	int     opt;
 	extern char   *optarg;
 	extern int     optind;
-	while ( (opt=getopt(argc,argv,"w:h:r:i:o:v"))!= EOF) {
+	while ( (opt=getopt(argc,argv,"w:h:r:i:o:vt:"))!= EOF) {
 		switch (opt) {
 			case 'v': printTime = true;
 					  break;
@@ -174,6 +176,8 @@ int main(int argc, char **argv){
 			case 'h': yres = atoi(optarg);
 					  break;
 			case 'r': rays_per_pixel = atoi(optarg);
+					  break;
+			case 't': nthreads = atoi(optarg);
 					  break;
 			case ':':
 				std::cerr<<"Option -"<<(char)optopt<<" requires an operand\n"<<std::endl;
@@ -213,11 +217,17 @@ int main(int argc, char **argv){
 	for(int i=0; i<NRAN; i++) urand[i].y = (double)rand() / RAND_MAX - 0.5;
 	for(int i=0; i<NRAN; i++) irand[i] = (int)(NRAN * ((double)rand() / RAND_MAX));
 
+	std::cout<<"start tracing...\n";
 	/*
 	 * ray tracing routine
 	 */
+	omp_set_num_threads(nthreads);
 	double t1, t2;
 	t1 = getTime();
+#pragma omp parallel shared(xres, yres, pixels, rays_per_pixel, \
+							aspect, lnum, obj_array, obj_count, cam, lights, urand, irand)
+	{
+#pragma omp for schedule(static)
 	for(int i=0; i<yres; i++){
 		render_scanline(xres,
 						yres,
@@ -225,6 +235,7 @@ int main(int argc, char **argv){
 						(uint32_t*)(pixels + i*xres),
 						rays_per_pixel);
 
+	}
 	}
 	t2 = getTime();
 	double runtime = t2-t1;

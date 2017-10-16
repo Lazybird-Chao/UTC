@@ -1,9 +1,10 @@
-obj = yuvconvert_main.o image.o
-bin = yuvconvert
+obj = md5_main.o md5_compute.o
+bin = md5
 default: $(bin)
 
 C++ = g++
 CCFLAGS = -O2 -std=c++11
+CCFLAGS += -fopenmp
 LIB = -lm -lrt
 
 DEBUG = 0
@@ -19,9 +20,9 @@ $(helperObj):$(COMMONDIR)/helper_getopt.c
 %.o:%.cc
 	$(C++) -o $@ $(CCFLAGS) -c $<
 
-yuvconvert_main.o:yuvconvert_main.cc image.h
+md5_main.o: md5_main.cc md5_main.h md5_compute.h
 
-image.o:image.cc image.h
+md5_compute.o: md5_compute.cc md5_compute.h
 
 
 $(bin): $(obj) $(helperObj)

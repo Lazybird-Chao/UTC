@@ -96,7 +96,7 @@ int main(int argc, char** argv){
 	 */
 	yuv_color_t dstImg;
 	double runtime_m[MAX_THREADS][1];
-	Task<YUVconvertWorker> yuvconvert(ProcList(nthreads, 0), TaskType::gpu_task);
+	Task<YUVconvertWorker> yuvconvert(ProcList(nthreads, 0), TaskType::cpu_task);
 	yuvconvert.init(&srcImg, &dstImg);
 	yuvconvert.run(runtime_m, iterations);
 	yuvconvert.wait();

@@ -1,5 +1,5 @@
 obj = c-ray_main.o
-bin = c-ray_main
+bin = c-ray
 default: $(bin)
 
 C++ = g++

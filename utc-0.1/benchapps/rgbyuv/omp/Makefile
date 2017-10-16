@@ -4,6 +4,7 @@ default: $(bin)
 
 C++ = g++
 CCFLAGS = -O2 -std=c++11
+CCFLAGS += -fopenmp
 LIB = -lm -lrt
 
 DEBUG = 0

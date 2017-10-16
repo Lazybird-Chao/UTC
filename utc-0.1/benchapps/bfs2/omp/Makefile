@@ -1,10 +1,11 @@
-obj = yuvconvert_main.o image.o
-bin = yuvconvert
+obj = bfs2_main.o
+bin = bfs2
 default: $(bin)
 
 C++ = g++
 CCFLAGS = -O2 -std=c++11
-LIB = -lm -lrt
+CCFLAGS += -fopenmp
+LIB = -lrt -lm
 
 DEBUG = 0
 ifeq ($(DEBUG), 1)
@@ -19,9 +20,8 @@ $(helperObj):$(COMMONDIR)/helper_getopt.c
 %.o:%.cc
 	$(C++) -o $@ $(CCFLAGS) -c $<
 
-yuvconvert_main.o:yuvconvert_main.cc image.h
+bfs2_main.o: bfs2_main.cc bfs2_main.h
 
-image.o:image.cc image.h
 
 
 $(bin): $(obj) $(helperObj)
@@ -30,3 +30,4 @@ $(bin): $(obj) $(helperObj)
 .PHONY: clean
 clean:
 	rm -f $(obj) $(bin) $(helperObj)
+	

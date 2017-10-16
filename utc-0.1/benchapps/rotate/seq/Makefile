@@ -1,5 +1,5 @@
 obj = rotate_main.o image.o rotation.o
-bin = rotate_main
+bin = rotate
 default: $(bin)
 
 C++ = g++

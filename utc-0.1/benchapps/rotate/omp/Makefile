@@ -1,9 +1,10 @@
-obj = yuvconvert_main.o image.o
-bin = yuvconvert
+obj = rotate_main.o image.o rotation.o
+bin = rotate
 default: $(bin)
 
 C++ = g++
 CCFLAGS = -O2 -std=c++11
+CCFLAGS += -fopenmp
 LIB = -lm -lrt
 
 DEBUG = 0
@@ -19,10 +20,11 @@ $(helperObj):$(COMMONDIR)/helper_getopt.c
 %.o:%.cc
 	$(C++) -o $@ $(CCFLAGS) -c $<
 
-yuvconvert_main.o:yuvconvert_main.cc image.h
+rotate_main.o:rotate_main.cc image.h rotation.h
 
 image.o:image.cc image.h
 
+rotation.o:rotation.cc rotation.h
 
 $(bin): $(obj) $(helperObj)
 	$(C++) -o $@ $(CCFLAGS) $(LIB) $(obj) $(helperObj)
