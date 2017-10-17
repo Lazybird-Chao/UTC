@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "mpi.h"
+#include "../../common/helper_getopt.h"
 #include "../../common/helper_printtime.h"
 
 
@@ -68,14 +69,15 @@ public:
 		}
 		m_res[0]=tmp_sum*(m_range_upper-m_range_lower)/m_loopN;
 		t2 = MPI_Wtime();
-		MPI_Barrier(MPI_COMM_WORLD);
+		//MPI_Barrier(MPI_COMM_WORLD);
 		runtime[1] = t2-t1;
 
 		double *res_gather;
 
 		res_gather = (double*)malloc(__numProcesses*sizeof(double));
-
+		t2 = MPI_Wime();
 		MPI_Gather(m_res,sizeof(double), MPI_CHAR, res_gather,sizeof(double), MPI_CHAR,  0, MPI_COMM_WORLD);
+		runtime[2] = MPI_Wtime() - t2;
 		double result = 0.0;
 		if(myproc==0){
 			for(int i=0; i<__numProcesses; i++){
@@ -116,34 +118,64 @@ private:
 
 int main(int argc, char*argv[])
 {
+	bool	printTime = false;
+	long loopN = std::atol(argv[1]);
+	int nprocess = 1;
+
+
+	int     opt;
+	extern char   *optarg;
+	extern int     optind;
+	while ( (opt=getopt(argc,argv,"n:vp:"))!= EOF) {
+		switch (opt) {
+			case 'v': printTime = true;
+					  break;
+			case 'p': nprocess = atoi(optarg);
+				  break;
+			case 'n': loopN = atol(optarg);
+					  break;
+			case '?':
+				break;
+			default:
+				break;
+		}
+	}
+	if(nprocess != procs){
+		std::cerr<<"process number not match with arguments '-p' !!!\n";
+		return 1;
+	}
+
+
 	MPI_Init(&argc, &argv);
 	/*
 	 *  run like ./a.out  nthread   nloops
 	 */
-	long loopN = std::atol(argv[1]);
-	int __numProcesses;
 	int myproc;
+	int procs;
 	MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
-	MPI_Comm_size(MPI_COMM_WORLD, &__numProcesses);
-	loopN /= __numProcesses;
+	MPI_Comm_size(MPI_COMM_WORLD, &procs);
+	loopN /= nprocess;
 
 
 	IntegralCaculator integral_f;
-	double runtime[2] = {0,0};
+	double runtime[3] = {0,0,0};
 	integral_f.init(loopN, 1, 1.0, 10.0);
 	integral_f.run(runtime);
-	double runtime_reduce[2] = {0,0};
-	MPI_Reduce(runtime, runtime_reduce, 2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	double runtime_reduce[3] = {0,0,0};
+	MPI_Reduce(runtime, runtime_reduce, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
-	if(myproc==0){
-		runtime[0] = runtime_reduce[0]/__numProcesses;
-		runtime[1] = runtime_reduce[1]/__numProcesses;
+	if(myproc==0 && printTime){
+		runtime[0] = runtime_reduce[0]/nprocess;
+		runtime[1] = runtime_reduce[1]/nprocess;
+		runtime[2] = runtime_reduce[2]/nprocess;
 		std::cout<<"N: "<<loopN<<std::endl;
 		std::cout<<"total run time: "<<runtime[0]*1000<<std::endl;
 		std::cout<<"compute time: "<<runtime[1]*1000<<std::endl;
-		for(int i=0; i<2; i++)
+		std::cout<<"comm time: "<<runtime[2]*1000<<std::endl;
+
+		for(int i=0; i<3; i++)
 			runtime[i] *= 1000;
-		print_time(2, runtime);
+		print_time(3, runtime);
 	}
 
 	MPI_Finalize();

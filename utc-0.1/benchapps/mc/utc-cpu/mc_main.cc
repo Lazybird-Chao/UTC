@@ -43,7 +43,7 @@ int main(int argc, char*argv[])
 	int     opt;
 	extern char   *optarg;
 	extern int     optind;
-	 while ( (opt=getopt(argc,argv,"a:o:i:n:bvt:p:m:"))!= EOF) {
+	 while ( (opt=getopt(argc,argv,"n:vt:p:"))!= EOF) {
 		switch (opt) {
 			case 'v': printTime = true;
 					  break;

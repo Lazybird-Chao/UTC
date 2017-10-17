@@ -8,7 +8,7 @@
 #ifndef BENCHAPPS_HC_UTC_TYPECONFIG_H_
 #define BENCHAPPS_HC_UTC_TYPECONFIG_H_
 
-#define FTYPE double
+#define FTYPE float
 
 
 

@@ -21,7 +21,7 @@
 #include "../../common/helper_timer.h"
 #include "../../common/helper_printtime.h"
 
-#define FTYPE double
+#define FTYPE float
 
 #define H 1.0
 #define T_SRC0 550.0
@@ -150,12 +150,13 @@ int main(int argc, char**argv){
 	/*
 	 * main iterate computing
 	 */
+	std::cout<<"start computing...\n";
 	double t1, t2;
 	t1 = getTime();
 	int iters = 1;
 	while(1){
-		//if(iters % 1000 ==0)
-		//	std::cout<<"iteration: "<<iters<<" ..."<<std::endl;
+		if(iters % 1000 ==0)
+			std::cout<<"iteration: "<<iters<<" ..."<<std::endl;
 		/* jacobi iterate */
 		jacobi(U_Curr, U_Next, HEIGHT, WIDTH);
 		/*check if convergence */
