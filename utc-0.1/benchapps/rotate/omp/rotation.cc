@@ -6,13 +6,14 @@
 
 #include "image.h"
 #include "rotation.h"
+#include "omp.h"
 #include <cfloat>
 
 /*
  * take a image object as in, rotate angle degree, and write the result
  * in out image object
  */
-void rotation(Image &In, Image &Out, int angle){
+void rotation(Image &In, Image &Out, int angle, int nthreads){
 
 	int height = In.getHeight();
 	int width = In.getWidth();
@@ -68,7 +69,9 @@ void rotation(Image &In, Image &Out, int angle){
 	int rev_angle = 360 - angle;
 	float x_offset_target = (float)outW/2.0;
 	float y_offset_target = (float)outH/2.0;
-#pragma omp parallel
+#pragma omp parallel //num_threads(nthreads)
+	{
+		//std::cout<<omp_get_num_threads()<<" "<<omp_get_thread_num()<<std::endl;
 #pragma omp for
 	for(int i = 0; i < outH; i++) {
 		for(int j = 0; j < outW; j++) {
@@ -110,6 +113,7 @@ void rotation(Image &In, Image &Out, int angle){
 				Out.setPixelAt(j, i, &final);
 			}
 		}
+	}
 	}
 	return;
 

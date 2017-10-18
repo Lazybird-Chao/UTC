@@ -73,6 +73,8 @@ int main(int argc, char* argv[]){
 	srcImg.createImageFromFile(infile_path);
 	Image dstImg;
 
+	//srcImg.increaseHeightBy(2);
+
 	/*
 	 * do image rotation
 	 */

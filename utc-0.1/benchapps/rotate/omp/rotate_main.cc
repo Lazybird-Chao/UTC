@@ -80,10 +80,11 @@ int main(int argc, char* argv[]){
 	/*
 	 * do image rotation
 	 */
-	omp_set_num_threads(nthreads);
+	//omp_set_dynamic(0);
+	//omp_set_num_threads(nthreads);
 	double t1, t2;
 	t1 = getTime();
-	rotation(srcImg, dstImg, angle);
+	rotation(srcImg, dstImg, angle, nthreads);
 	t2 = getTime();
 	double runtime = t2-t1;
 

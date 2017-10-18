@@ -100,6 +100,7 @@ void RotateWorker::initImpl(Image* srcImg, Image* dstImg, int angle){
 		int outW = (int)maxW-minW;
 		dstImg->createImageFromTemplate(outW, outH, srcImg->getDepth());
 	}
+	__fastIntraSync.wait();
 	int rowsPerThread = dstImg->getHeight()/__numLocalThreads;
 	int residue = dstImg->getHeight() % __numLocalThreads;
 	if(__localThreadId < residue){
@@ -133,6 +134,9 @@ void RotateWorker::runImpl(double runtime[][1]){
 	int rev_angle = 360 - angle;
 	float x_offset_target = (float)outW/2.0;
 	float y_offset_target = (float)outH/2.0;
+	//std::cout<<local_startRow.load()<<" "<<local_endRow.load()<<std::endl;
+	//sleep(__localThreadId);
+	//__fastIntraSync.wait();
 	for(int i = local_startRow; i <= local_endRow; i++){
 		for(int j = 0; j<outW; j++){
 			/* Find origin pixel for current destination pixel */
@@ -174,6 +178,7 @@ void RotateWorker::runImpl(double runtime[][1]){
 			}
 		}
 	}
+	//std::cout<<ERROR_LINE<<std::endl;
 	__fastIntraSync.wait();
 	double totaltime = timer.stop();
 

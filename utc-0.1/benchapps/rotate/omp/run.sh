@@ -9,7 +9,7 @@
 
 # set exe file and args
 EXE_FILE='./rotate'
-EXE_ARGS="-i ../../image-input/8k_8k.ppm  -a 66"
+EXE_ARGS="-i ../../image-input/8k_8k.ppm  -a 66 -t 1"
 
 # set iterations and run
 iter=10

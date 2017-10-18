@@ -14,7 +14,7 @@
 #define PRECISION 3
 
 
-void rotation(Image &In, Image &Out, int angle);
+void rotation(Image &In, Image &Out, int angle, int nthreads);
 
 void filter(Pixel* colors, Pixel* dest, Coord* sample_pos);
 

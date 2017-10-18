@@ -225,6 +225,7 @@ void TaskCPU::threadImpl(ThreadRank_t trank,
 							m_commonTaskInfo->worldRankToGrouprRank,
 							m_commonTaskInfo->groupRankToWorldRank,
 							nullptr);
+	m_threadSync->count_down_and_wait();
 #ifdef SHOW_DEBUG
 	std::cout<<ERROR_LINE<<"task thread launched, wait for command"<<std::endl;
 #endif

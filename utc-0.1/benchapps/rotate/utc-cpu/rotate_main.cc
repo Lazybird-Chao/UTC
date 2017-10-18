@@ -89,7 +89,7 @@ int main(int argc, char** argv){
 	 */
 	Image dstImg;
 	double runtime_m[MAX_THREADS][1];
-	Task<RotateWorker> rotate(ProcList(0), TaskType::gpu_task);
+	Task<RotateWorker> rotate(ProcList(nthreads, 0), TaskType::cpu_task);
 	rotate.init(&srcImg, &dstImg, angle);
 	rotate.run(runtime_m);
 	rotate.wait();
@@ -120,7 +120,7 @@ int main(int argc, char** argv){
 			std::cout<<"\t\ttotal run time: "<<std::fixed<<std::setprecision(4)<<1000*runtime<<"(ms)"<<std::endl;
 		}
 		runtime *= 1000;
-		print_time(4, &runtime);
+		print_time(1, &runtime);
 	}
 
 	return 0;

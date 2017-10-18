@@ -1,5 +1,5 @@
 obj = nbody_main.o bodysystem.o
-bin = nbody_main
+bin = nbody
 default: $(bin)
 
 C++ = g++

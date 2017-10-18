@@ -55,6 +55,8 @@ class Image {
         int getMaxcolor();
 		void clean();
 		Pixel *getPixelBuffer();
+
+		void increaseHeightBy(int times);
 	private:
 		Pixel* pixels;
 		int width, height;

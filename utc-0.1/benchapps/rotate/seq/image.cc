@@ -5,6 +5,7 @@
  */
 
 #include "image.h"
+#include <cstring>
 
 /*
 *   Function: createImageFromFile
@@ -190,4 +191,17 @@ char Image::ppmGetChar(std::fstream &src) {
    return ch;
 }
 
+void Image::increaseHeightBy(int times){
+	if(times ==1)
+		return;
+	int h = height*times;
+	Pixel *new_image = new Pixel[width*h];
+	for(int i=0; i<times; i++)
+		memcpy(new_image+i*width*height, pixels, sizeof(Pixel)*width*height);
+	delete[] pixels;
+	pixels = new_image;
+	height = h;
+	y_off = (float)height / 2.0;
+	return;
+}
 

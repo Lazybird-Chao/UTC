@@ -282,6 +282,7 @@ void TaskGPU::threadImpl(ThreadRank_t trank,
 							m_commonTaskInfo->worldRankToGrouprRank,
 							m_commonTaskInfo->groupRankToWorldRank,
 							(void*)myUtcGpuContext);
+	m_threadSync->count_down_and_wait();
 
 	while(1){
 		std::unique_lock<std::mutex> LCK1(m_jobExecMutex);
