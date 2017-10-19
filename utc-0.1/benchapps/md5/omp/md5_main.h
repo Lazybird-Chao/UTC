@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <iostream>
 #include <fstream>
 
@@ -109,6 +110,22 @@ void fromFile(char* &data, long& numBuffs, long& buffSize, const char* filename,
 	}
 	return;
 }
+
+void increaseBy(int times, config_t *configArgs){
+	if(times == 1)
+		return;
+	long numBuffs = configArgs->numinputs * times;
+	char* data = new char[numBuffs * configArgs->size];
+	for(long i=0; i<times; i++)
+		memcpy(data+i*configArgs->numinputs * configArgs->size, configArgs->inputs, configArgs->numinputs * configArgs->size);
+	configArgs->numinputs = numBuffs;
+	free(configArgs->inputs);
+	configArgs->inputs = (uint8_t*)data;
+	free(configArgs->out);
+	configArgs->out = (uint8_t*)calloc(configArgs->numinputs, DIGEST_SIZE);
+	return;
+}
+
 
 
 #endif /* BENCHAPPS_MD5_SEQ_MD5_MAIN_H_ */

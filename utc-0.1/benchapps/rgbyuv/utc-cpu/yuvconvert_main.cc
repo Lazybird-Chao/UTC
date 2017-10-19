@@ -88,7 +88,7 @@ int main(int argc, char** argv){
 	readImg.wait();
 
 	//
-	srcImg.increaseHeightBy(1);
+	//srcImg.increaseHeightBy(1);
 
 
 	/*

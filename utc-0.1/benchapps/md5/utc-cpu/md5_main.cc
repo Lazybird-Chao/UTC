@@ -93,7 +93,7 @@ int main(int argc, char* argv[]){
 	//
 	//toFile((char*)configArgs.inputs, configArgs.numinputs, configArgs.size, inputFile, true);
 	//std::cout<<configArgs.numinputs<<" "<<configArgs.size<<std::endl;
-	//increaseBy(8, &configArgs);
+	increaseBy(4, &configArgs);
 
 
 	/*

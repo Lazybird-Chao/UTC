@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <iostream>
 #include <fstream>
 
@@ -31,7 +32,7 @@ typedef struct {
 } dataSet_t;
 
 dataSet_t datasets[] ={
-		{1024*2, 4094, 0},
+		{1024*512, 4094*4, 0},
 		{1024*32, 4096*2, 1},
 		{1024*256, 4096*4, 2},
 
@@ -107,6 +108,21 @@ void fromFile(char* &data, long& numBuffs, long& buffSize, const char* filename,
 				infile>>data[i*buffSize+j];
 		}
 	}
+	return;
+}
+
+void increaseBy(int times, config_t *configArgs){
+	if(times == 1)
+		return;
+	long numBuffs = configArgs->numinputs * times;
+	char* data = new char[numBuffs * configArgs->size];
+	for(long i=0; i<times; i++)
+		memcpy(data+i*configArgs->numinputs * configArgs->size, configArgs->inputs, configArgs->numinputs * configArgs->size);
+	configArgs->numinputs = numBuffs;
+	free(configArgs->inputs);
+	configArgs->inputs = (uint8_t*)data;
+	free(configArgs->out);
+	configArgs->out = (uint8_t*)calloc(configArgs->numinputs, DIGEST_SIZE);
 	return;
 }
 

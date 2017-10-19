@@ -106,8 +106,8 @@ int main(int argc, char **argv){
 	 */
 	char *infileA = nullptr;
 	char *infileB = nullptr;
-	//infileA = "../input/2k_2k_A.txt";
-	//infileB = "../input/2k_2k_B.txt";
+	infileA = "../input/8k_8k_A.txt";
+	infileB = "../input/8k_8k_B.txt";
 
 	FTYPE *matrixA;
 	FTYPE *matrixB;
@@ -131,9 +131,9 @@ int main(int argc, char **argv){
 		matrixC = (FTYPE*)malloc(sizeof(FTYPE)*matrixSize*matrixSize);
 	}
 
-	toFile(matrixA, matrixSize, matrixSize, "16k_16k_A.txt", true);
-	toFile(matrixB, matrixSize, matrixSize, "16k_16k_B.txt", true);
-	return 0;
+	//toFile(matrixA, matrixSize, matrixSize, "8k_8k_A.txt", true);
+	//toFile(matrixB, matrixSize, matrixSize, "8k_8k_B.txt", true);
+	//return 0;
 
 
 	/*

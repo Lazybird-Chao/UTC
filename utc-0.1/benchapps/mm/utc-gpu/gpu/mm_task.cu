@@ -31,6 +31,8 @@ void MatrixMulWorker<T>::initImpl(T *mA, T *mB, T *mC, int M, int N, int P, int 
 		localBlockA = new T[blockRows*sizeN]; // block*N
 		localBlockB = new T[sizeN*blockRows]; // N*block
 		localBlockC = new T[sizeM*blockRows];
+		if(matrixA == nullptr)
+			matrixA = new T[sizeM*sizeN];
 		//std::cout<<ERROR_LINE<<" "<<sizeM<<" "<<sizeN<<" "<<sizeP<<std::endl;
 		/*sharedA.init(sizeM*sizeN);
 		if(__processIdInGroup == 0)
@@ -63,6 +65,7 @@ void MatrixMulWorker<T>::runImpl(double runtime[][MAX_TIMER]){
 	timer.start();
 	timer0.start();
 	TaskScatterBy<T, 0>(this, matrixB, sizeN * blockRows, localBlockB, sizeN*blockRows, 0);
+	TaskBcastBy<T>(this, matrixA, sizeM*sizeN, 0);
 	__fastIntraSync.wait();
 	double commtime = timer.stop();
 
@@ -85,13 +88,16 @@ void MatrixMulWorker<T>::runImpl(double runtime[][MAX_TIMER]){
 		}
 		__fastIntraSync.wait();
 		*/
+		/*
 		if(__globalThreadId ==0)
 			memcpy(localBlockA, matrixA+i*blockRows*sizeN, blockRows*sizeN*sizeof(T));
 		timer.start();
 		TaskBcastBy<T, 0>(this, localBlockA, blockRows*sizeN, 0);
 		__fastIntraSync.wait();
 		commtime += timer.stop();
-
+		*/
+		memcpy(localBlockA, matrixA+i*blockRows*sizeN, blockRows*sizeN*sizeof(T));
+		__fastIntraSync.wait();
 		timer.start();
 		gA.putD(localBlockA);
 		copytime += timer.stop();
@@ -133,12 +139,14 @@ void MatrixMulWorker<T>::runImpl(double runtime[][MAX_TIMER]){
 						blockRows*blockRows);
 		}
 		*/
-		timer.start();
-		TaskGatherBy<T, 0>(this, localBlockC+i*blockRows*blockRows, blockRows*blockRows,
-								matrixC + i*blockRows*sizeN, blockRows*blockRows, 0);
-		__fastIntraSync.wait();
-		commtime += timer.stop();
+
 	}
+	__fastIntraSync.wait();
+	timer.start();
+	TaskGatherBy<T, 0>(this, localBlockC, blockRows*sizeN,
+							matrixC, blockRows*sizeN, 0);
+	__fastIntraSync.wait();
+	commtime += timer.stop();
 	inter_Barrier();
 	double totaltime = timer0.stop();
 

@@ -75,6 +75,8 @@ int main(int argc, char* argv[]){
 		return 1;
 	}
 
+	increaseBy(4, &configArgs);
+
 	// do md5 processing
 	std::cout<<"Start MD5 processing ..."<<std::endl;
 	double t1, t2;

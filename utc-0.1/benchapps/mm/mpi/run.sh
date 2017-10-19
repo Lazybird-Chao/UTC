@@ -1,18 +1,18 @@
 #!/bin/bash
 
 # mpi command
-#MPI_RUN='mpirun -report-bindings -bind-to none' #socket:overload-allowed'
+MPI_RUN='mpirun -bind-to none --mca mpi_cuda_support 0'
 #MPI_PROCS=1
 #MPI_OPTION="-host node2,node3,node4,node5 -N ${MPI_PROCS}"
 #MPI_OPTION="-N ${MPI_PROCS}  -hostfile myhosts -host node2,node3,node4,node5"
 
 
 # set exe file and args
-EXE_FILE='./yuvconvert_main'
-EXE_ARGS="-i ../../image-input/imgl.ppm"
+EXE_FILE='./mm'
+EXE_ARGS="-p 32"
 
 # set iterations and run
-iter=30
+iter=5
 i=1
 while [ $i -le $iter ]
 do

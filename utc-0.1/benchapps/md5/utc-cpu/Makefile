@@ -15,8 +15,8 @@ GENCODE_SM35 = -gencode arch=compute_35,code=sm_35
 
 NVCC = nvcc
 NVCCFLAGS = -O2  -std=c++11
-NVCCFLAGS =  $(GENCODE_SM35) --device-c
-NVLINKFLAGS = $(GENCODE_SM35) --device-link
+NVCCFLAGS =  $(GENCODE_SM30) --device-c
+NVLINKFLAGS = $(GENCODE_SM30) --device-link
 
 DEBUG = 0
 ifeq ($(DEBUG), 1)

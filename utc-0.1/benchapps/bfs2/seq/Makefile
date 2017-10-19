@@ -1,5 +1,5 @@
 obj = bfs2_main.o
-bin = bfs2_main
+bin = bfs2
 default: $(bin)
 
 C++ = g++

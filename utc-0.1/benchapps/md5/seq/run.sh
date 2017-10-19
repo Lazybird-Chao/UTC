@@ -8,8 +8,8 @@
 
 
 # set exe file and args
-EXE_FILE='./md5_main'
-EXE_ARGS="-i 2"
+EXE_FILE='./md5'
+EXE_ARGS="-f ../input/128k_16k.txt -c 1"
 
 # set iterations and run
 iter=10
@@ -17,6 +17,7 @@ i=1
 while [ $i -le $iter ]
 do
 	${EXE_FILE} ${EXE_ARGS}
+	echo "round " ${i} " finish ..."
 	((i++))
 	sleep 1
 done
@@ -25,6 +26,7 @@ done
 if [ -f time_record.txt ]
 then
 	echo "-----------------------------------------" >> total_time_record.txt
+	echo ${EXE_FILE} ${EXE_ARGS} >> total_time_record.txt
 	cat time_record.txt >> total_time_record.txt
 	echo "-----------------------------------------" >> total_time_record.txt
 	rm  -f time_record.txt

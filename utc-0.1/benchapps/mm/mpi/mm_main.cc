@@ -118,6 +118,11 @@ int main(int argc, char **argv){
 	MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
 	MPI_Comm_size(MPI_COMM_WORLD, &procs);
 
+//	char nodename[1024];
+//	int nodenamelen;
+//	MPI_Get_processor_name(nodename, &nodenamelen);
+//	std::cout<<nodename<<": "<<myproc<<": "<<procs<<std::endl;
+
 	if(nprocess != procs){
 		std::cerr<<"process number not match with arguments '-p' !!!\n";
 		return 1;
@@ -128,12 +133,12 @@ int main(int argc, char **argv){
 	 */
 	//char *infileA = nullptr;
 	//char *infileB = nullptr;
-	char* infileA = "../input/4k_4k_A.txt";
-	char* infileB = "../input/4k_4k_B.txt";
+	char* infileA = "../input/8k_8k_A.txt";
+	char* infileB = "../input/8k_8k_B.txt";
 
-	FTYPE *matrixA;
-	FTYPE *matrixB;
-	FTYPE *matrixC;
+	FTYPE *matrixA = nullptr;
+	FTYPE *matrixB = nullptr;
+	FTYPE *matrixC = nullptr;
 
 	FTYPE *localBlockA;
 	FTYPE *localBlockB;
@@ -167,11 +172,15 @@ int main(int argc, char **argv){
 	localBlockA = new FTYPE[blockRows*matrixSize];
 	localBlockB = new FTYPE[blockRows*matrixSize];
 	localBlockC = new FTYPE[blockRows*matrixSize];
+	if(matrixA == nullptr){
+		matrixA = (FTYPE*)malloc(sizeof(FTYPE)*matrixSize*matrixSize);
+	}
 	double totaltime = 0;
 	double computetime = 0;
 	double commtime = 0;
 	double t0;
 	double t1;
+	MPI_Barrier(MPI_COMM_WORLD);
 	if(myproc == 0)
 		std::cout<<"start computing...\n";
 	/*
@@ -182,6 +191,9 @@ int main(int argc, char **argv){
 	MPI_Scatter(matrixB, blockRows*matrixSize, MPI_FTYPE,
 				localBlockB, blockRows*matrixSize, MPI_FTYPE,
 				0, MPI_COMM_WORLD);
+
+	MPI_Bcast(matrixA, matrixSize*matrixSize, MPI_FTYPE, 0, MPI_COMM_WORLD);
+
 	commtime += MPI_Wtime() - t1;
 
 	/*
@@ -191,11 +203,14 @@ int main(int argc, char **argv){
 		/*
 		 * bcast block of matrixA
 		 */
+		/*
 		if(myproc == 0)
 			memcpy(localBlockA, matrixA + p*blockRows*matrixSize, blockRows*matrixSize*sizeof(FTYPE));
 		t1 = MPI_Wtime();
 		MPI_Bcast(localBlockA, blockRows*matrixSize, MPI_FTYPE, 0, MPI_COMM_WORLD);
 		commtime += MPI_Wtime() - t1;
+		*/
+		memcpy(localBlockA, matrixA + p*blockRows*matrixSize, blockRows*matrixSize*sizeof(FTYPE));
 		/*
 		 * local compute
 		 */
@@ -210,17 +225,16 @@ int main(int argc, char **argv){
 			}
 		}
 		computetime += MPI_Wtime() - t1;
-		/*
-		 * gather block of matrixC
-		 */
-		t1 = MPI_Wtime();
-		MPI_Gather(c_start, blockRows*blockRows, MPI_FTYPE,
-				   matrixC+p*blockRows*matrixSize, blockRows*blockRows, MPI_FTYPE,
-				   0, MPI_COMM_WORLD);
-		commtime += MPI_Wtime() - t1;
-
 	}
-	MPI_Barrier(MPI_COMM_WORLD);
+	/*
+	 * gather block of matrixC
+	 */
+	t1 = MPI_Wtime();
+	MPI_Gather(localBlockC, blockRows*matrixSize, MPI_FTYPE,
+			   matrixC, blockRows*matrixSize, MPI_FTYPE,
+			   0, MPI_COMM_WORLD);
+	commtime += MPI_Wtime() - t1;
+	//MPI_Barrier(MPI_COMM_WORLD);
 	totaltime = MPI_Wtime() - t0;
 
 	if(myproc == 0){
