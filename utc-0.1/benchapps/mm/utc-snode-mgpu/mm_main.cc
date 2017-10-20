@@ -111,8 +111,8 @@ int main(int argc, char**argv){
 	Task<RandomMatrix<FTYPE>> matrixInit(ProcList(0));
 	//matrixInit.run(matrixA, matrixSize, matrixSize, nullptr, false);
 	//matrixInit.run(matrixB, matrixSize, matrixSize, nullptr, false);
-	matrixInit.run(matrixA, matrixSize, matrixSize, "../input/4k_4k_A.txt", true);
-	matrixInit.run(matrixB, matrixSize, matrixSize, "../input/4k_4k_B.txt", true);
+	matrixInit.run(matrixA, matrixSize, matrixSize, "../input/16k_16k_A.txt", true);
+	matrixInit.run(matrixB, matrixSize, matrixSize, "../input/16k_16k_B.txt", true);
 	matrixInit.wait();
 
 	//RandomMatrix<FTYPE>::toFile(matrixA, matrixSize, matrixSize, "4k_4k_A.txt", true);

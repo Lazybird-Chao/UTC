@@ -11,7 +11,8 @@
 #include <iostream>
 
 #define H 1.0
-#define T_SRC0 550.0
+#define T_SRC0 1550.0
+#define ITERMAX 100
 
 void init_domain(FTYPE *domain_ptr, int h, int w){
 	for (int j = 0; j < (int)floor(h/H); j++) {
@@ -89,7 +90,7 @@ void HeatConductionWorker::runImpl(double runtime[][MAX_TIMER], int *iteration, 
 	gtop_row.sync();
 	gbottom_row.sync();
 	copytime += timer.stop();
-	while(1){
+	while(iters <= ITERMAX){
 		if(iters % 1000 ==0 && __globalThreadId == 0)
 			std::cout<<"iter "<<iters<<"...\n";
 		timer.start();

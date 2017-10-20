@@ -24,7 +24,7 @@
 #define FTYPE float
 
 #define H 1.0
-#define T_SRC0 550.0
+#define T_SRC0 1550.0
 #define ITERMAX 100		// not used
 
 void init_domain(FTYPE *domain_ptr, int h, int w){
@@ -154,7 +154,7 @@ int main(int argc, char**argv){
 	double t1, t2;
 	t1 = getTime();
 	int iters = 1;
-	while(1){
+	while(iters <= ITERMAX){
 		if(iters % 1000 ==0)
 			std::cout<<"iteration: "<<iters<<" ..."<<std::endl;
 		/* jacobi iterate */

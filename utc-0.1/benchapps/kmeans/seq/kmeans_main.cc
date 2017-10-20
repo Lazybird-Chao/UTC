@@ -57,12 +57,12 @@ int main(int argc, char **argv) {
 
     /* some default values */
     numClusters       = 1;		/* Amount of cluster centers */
-    threshold         = 0.01; 	/* Percentage of objects that need to change membership for the clusting to continue */
+    threshold         = 0.001; 	/* Percentage of objects that need to change membership for the clusting to continue */
     isBinaryFile      = 0;		/* 0 if the input file is in ASCII format, 1 for binary format */
     filename          = NULL;	/* Name of the input file */
     outfile           = NULL;
     bool printTime 	  = false;
-    int maxIterations = 20;
+    int maxIterations = 100;
 
 	/* Parse command line options */
     int     opt;

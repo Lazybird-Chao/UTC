@@ -27,7 +27,7 @@
 #define MPI_FTYPE MPI_FLOAT
 
 #define H 1.0
-#define T_SRC0 550.0
+#define T_SRC0 1550.0
 #define ITERMAX 100		// not used
 
 void init_domain(FTYPE *domain_ptr, int h, int w){
@@ -203,9 +203,10 @@ int main(int argc, char**argv){
 	t1 = MPI_Wtime();
 	int iters = 1;
 	//std::cout<<blockH<<" "<<start_rows<<std::endl;
-	while(1){
-		if(iters % 1000 ==0 && myproc == 0)
+	while(iters <= ITERMAX){
+		if(iters % 1000 ==0 && myproc == 0){
 			std::cout<<"iteration: "<<iters<<" ..."<<std::endl;
+		}
 		/* jacobi iterate */
 		t2 = MPI_Wtime();
 		jacobi(U_Curr, U_Next, blockH, WIDTH, top_row, bot_row, start_rows, HEIGHT);
@@ -250,7 +251,7 @@ int main(int argc, char**argv){
 			   domain_matrix, blockH*WIDTH, MPI_FTYPE,
 			   0, MPI_COMM_WORLD);
 	commtime += MPI_Wtime() - t2;
-	//MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(MPI_COMM_WORLD);
 	t2 = MPI_Wtime();
 	totaltime = t2 -t1;
 
@@ -271,7 +272,7 @@ int main(int argc, char**argv){
 	delete top_row;
 	delete bot_row;
 
-	double runtime[3];
+	double runtime[3] = {0,0,0};
 	MPI_Reduce(&totaltime, runtime+0, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	MPI_Reduce(&computetime, runtime+1, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	MPI_Reduce(&commtime, runtime+2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);

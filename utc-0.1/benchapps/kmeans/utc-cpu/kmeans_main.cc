@@ -26,8 +26,8 @@ int main(int argc, char **argv){
 	int     isBinaryFile = 0;
 	char    *filename = NULL;
 	char    *outfile = NULL;
-	FTYPE 	threshold = 0.01;
-	int		maxIterations = 20;
+	FTYPE 	threshold = 0.001;
+	int		maxIterations = 100;
 	int 	numClusters = 1;
 
 	int	nthreads = 1;

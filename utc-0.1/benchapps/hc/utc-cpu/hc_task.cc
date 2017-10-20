@@ -9,7 +9,8 @@
 #include <iostream>
 
 #define H 1.0
-#define T_SRC0 550.0
+#define T_SRC0 1550.0
+#define ITERMAX 100
 
 thread_local int HeatConductionWorker::thread_numRows;
 thread_local int HeatConductionWorker::thread_startRowIndex;
@@ -126,7 +127,7 @@ void HeatConductionWorker::runImpl(double runtime[][MAX_TIMER], int *iteration){
 	FTYPE *curr = localCurr;
 	FTYPE *next = localNext;
 	timer0.start();
-	while(1){
+	while(iters <= ITERMAX){
 		if(iters % 1000 ==0 && __globalThreadId == 0)
 			std::cout<<"iter "<<iters<<"...\n";
 		timer.start();
@@ -139,10 +140,11 @@ void HeatConductionWorker::runImpl(double runtime[][MAX_TIMER], int *iteration){
 					+ get_var_par ( curr, i, j - 1,w, process_numRows, top_ptr, bot_ptr, process_startRowIndex, h)
 					+ get_var_par ( curr,i, j + 1,w, process_numRows, top_ptr, bot_ptr, process_startRowIndex, h));
 				enforce_bc_par(next, i, j, w, process_numRows, process_startRowIndex, h);
-				if(j==0)
+				/*if(j==0)
 					top_row.store(next[j*w + i], i);
 				if(j == process_numRows -1)
 					bottom_row.store(next[j*w + i], i);
+					*/
 			}
 
 		}
@@ -157,6 +159,8 @@ void HeatConductionWorker::runImpl(double runtime[][MAX_TIMER], int *iteration){
 		converge_sqd[__localThreadId] = sum;
 		__fastIntraSync.wait();
 		if(__localThreadId == 0){
+			top_row.storeblock(next, 0, w);
+			bottom_row.storeblock(next+(process_numRows-1)*w, 0, w);
 			for(int i = 1; i<__numLocalThreads; i++)
 				converge_sqd[0] += converge_sqd[i];
 		}

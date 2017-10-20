@@ -175,6 +175,7 @@ FTYPE** kmeans(
 						MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce(&delta, &totalDelta, 1,
 								MPI_FTYPE, MPI_SUM, 0, MPI_COMM_WORLD);
+		commtime += MPI_Wtime() - t1;
 
 		if(myproc == 0){
 			/* Average the sum and replace old cluster centers with newClusters */
@@ -191,6 +192,7 @@ FTYPE** kmeans(
 		/*
 		 * bcast new clusters and delta
 		 */
+		t1 = MPI_Wtime();
 		MPI_Bcast(&delta, 1, MPI_FTYPE, 0, MPI_COMM_WORLD);
 		MPI_Bcast(clusters[0], numClusters*numCoords, MPI_FTYPE, 0, MPI_COMM_WORLD);
 		commtime += MPI_Wtime() - t1;

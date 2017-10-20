@@ -147,8 +147,8 @@ void kmeansWorker<T>::runImpl(double runtime[][MAX_TIMER], T threashold, int max
 				proc_changedObjs += proc_changedObjs_array[k];
 			}
 		}
-		//computetime += timer.stop();
-		//__fastIntraSync.wait();
+		__fastIntraSync.wait();
+		computetime += timer.stop();
 		timer.start();
 		TaskReduceSumBy<T>(this, proc_clusters, clusters, numClusters*numCoords, 0);
 		TaskReduceSumBy<int>(this, proc_clusters_size, clusters_size, numClusters, 0);

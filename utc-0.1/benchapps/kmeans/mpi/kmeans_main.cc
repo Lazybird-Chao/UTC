@@ -58,12 +58,12 @@ int main(int argc, char **argv) {
 
     /* some default values */
     numClusters       = 1;		/* Amount of cluster centers */
-    threshold         = 0.01; 	/* Percentage of objects that need to change membership for the clusting to continue */
+    threshold         = 0.001; 	/* Percentage of objects that need to change membership for the clusting to continue */
     isBinaryFile      = 0;		/* 0 if the input file is in ASCII format, 1 for binary format */
     filename          = NULL;	/* Name of the input file */
     outfile           = NULL;
     bool printTime 	  = false;
-    int maxIterations = 20;
+    int maxIterations = 100;
     int nprocess = 1;
 
 	/* Parse command line options */
@@ -129,8 +129,16 @@ int main(int argc, char **argv) {
 		objects = create_array_2d<FTYPE>(numObjs, numCoords);
 	}
 
-	int numLocalObjs = numObjs / nprocess;
-	int localObjStartIndex = numLocalObjs * myproc;
+	int numLocalObjs;
+	int localObjStartIndex;
+	int objPerProc = numObjs / nprocess;
+	if(myproc < numObjs % nprocess ){
+		numLocalObjs = objPerProc + 1;
+		localObjStartIndex = myproc * (objPerProc +1);
+	}else{
+		numLocalObjs = objPerProc;
+		localObjStartIndex = myproc * objPerProc + numObjs % nprocess;
+	}
 
 	int *localMembership = new int[numLocalObjs];
 
@@ -171,7 +179,7 @@ int main(int argc, char **argv) {
     free(clusters[0]);
     free(clusters);
 
-    double avg_runtime[3];
+    double avg_runtime[3] = {0,0,0};
 	MPI_Reduce(runtime, avg_runtime, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     /* Print performance numbers on stdout */
     if(myproc == 0){
