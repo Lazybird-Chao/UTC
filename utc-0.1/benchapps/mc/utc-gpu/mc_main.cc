@@ -30,9 +30,10 @@ using namespace iUtc;
 int main(int argc, char*argv[])
 {
 	bool printTime = false;
-	long loopN = 10000;
-	int blocksize = 150;
-	int gridsize = 100;
+	long loopN = 1024*1024;
+	loopN *= 1024*32;
+	int blocksize = 256;
+	int gridsize = 512;
 
 	int nthreads=1;
 	int nprocess=1;
@@ -89,21 +90,22 @@ int main(int argc, char*argv[])
 	integral_f.init(loopN, 1, 1.0, 10.0);
 	integral_f.run(runtime_m, blocksize, gridsize);
 	integral_f.wait();
-	if(myproc == 0 && printTime){
+	if(myproc == 0){
 		double runtime[5] = {0,0,0,0};
 		for(int i =0; i<nthreads; i++)
 			for(int j = 0; j<5; j++)
 				runtime[j] += runtime_m[i][j];
 		for(int j = 0; j<5; j++)
 			runtime[j] /= nthreads;
+		if(printTime){
+			std::cout<<"Test complete !!!"<<std::endl;
 
-		std::cout<<"Test complete !!!"<<std::endl;
-
-		std::cout<<"\tN: "<<loopN<<std::endl;
-		std::cout<<"\ttotal run time: "<<runtime[0]*1000<<std::endl;
-		std::cout<<"\tcompute kernel time: "<<runtime[1]*1000<<std::endl;
-		std::cout<<"\tmemcpy time: "<<(runtime[2]+runtime[3])*1000<<std::endl;
-		std::cout<<"\thost time: "<<runtime[4]*1000<<std::endl;
+			std::cout<<"\tN: "<<loopN<<std::endl;
+			std::cout<<"\ttotal run time: "<<runtime[0]*1000<<std::endl;
+			std::cout<<"\tcompute time: "<<runtime[1]*1000<<std::endl;
+			std::cout<<"\tmemcpy time: "<<(runtime[3])*1000<<std::endl;
+			std::cout<<"\tcomm time: "<<runtime[4]*1000<<std::endl;
+		}
 		for(int i=0; i<5; i++)
 			runtime[i] *= 1000;
 		print_time(5, runtime);

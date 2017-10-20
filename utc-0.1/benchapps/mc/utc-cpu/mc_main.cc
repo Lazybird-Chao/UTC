@@ -32,7 +32,8 @@ using namespace iUtc;
 int main(int argc, char*argv[])
 {
 	bool printTime = false;
-	long loopN = 1;
+	long loopN = 1024*1024;
+	loopN *= 1024*32;
 
 	int nthreads=1;
 	int nprocess=1;
@@ -81,20 +82,21 @@ int main(int argc, char*argv[])
 	integral_f.wait();
 
 	if(myproc == 0 && printTime){
-		double runtime[2] = {0,0};
+		double runtime[3] = {0,0,0};
 		for(int i =0; i<nthreads; i++)
-			for(int j = 0; j<2; j++)
+			for(int j = 0; j<3; j++)
 				runtime[j] += runtime_m[i][j];
-		for(int j = 0; j<2; j++)
+		for(int j = 0; j<3; j++)
 			runtime[j] /= nthreads;
 
 		std::cout<<"Test complete !!!"<<std::endl;
 
 		std::cout<<"\ttotal run time: "<<runtime[0]*1000<<std::endl;
 		std::cout<<"\tcompute time: "<<runtime[1]*1000<<std::endl;
-		for(int i=0; i<2; i++)
+		std::cout<<"\tcomm time: "<<runtime[2]*1000<<std::endl;
+		for(int i=0; i<3; i++)
 			runtime[i] *= 1000;
-		print_time(2, runtime);
+		print_time(3, runtime);
 	}
 	return 0;
 }

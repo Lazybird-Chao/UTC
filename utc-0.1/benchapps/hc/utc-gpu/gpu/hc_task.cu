@@ -134,9 +134,11 @@ void HeatConductionWorker::runImpl(double runtime[][MAX_TIMER], int *iteration, 
 		 * bcast result back to each node
 		 */
 		timer.start();
+
 		TaskReduceSumBy<FTYPE, 0>(this, &converge_sqd, &total_converge, 1, 0);
 		total_converge = sqrt(total_converge);
 		TaskBcastBy<FTYPE, 0>(this, &total_converge, 1, 0);
+
 		commtime += timer.stop();
 		if(total_converge <= epsilon)
 			break;
@@ -147,14 +149,18 @@ void HeatConductionWorker::runImpl(double runtime[][MAX_TIMER], int *iteration, 
 		 */
 		if(__localThreadId == 0 && __processIdInGroup > 0){
 			bottom_row.rloadblock(__processIdInGroup-1,gtop_row.getH(true),0, w);
-			gtop_row.sync();
+			//gtop_row.sync();
 		}
 		if(__localThreadId == __numLocalThreads-1 &&
 				__processIdInGroup < __numGroupProcesses-1){
 			top_row.rloadblock(__processIdInGroup+1, gbottom_row.getH(true), 0, w);
-			gbottom_row.sync();
+			//gbottom_row.sync();
 		}
 		commtime += timer.stop();
+		timer.start();
+		gtop_row.sync();
+		gbottom_row.sync();
+		copytime += timer.stop();
 
 	}
 	/*
@@ -163,11 +169,18 @@ void HeatConductionWorker::runImpl(double runtime[][MAX_TIMER], int *iteration, 
 	timer.start();
 	if(iters % 2 == 1){
 		glocal_U_Next.sync();
+	}else{
+		glocal_U_Curr.sync();
+	}
+	copytime += timer.stop();
+	timer.start();
+	if(iters % 2 == 1){
+		//glocal_U_Next.sync();
 		TaskGatherBy<FTYPE, 0>(this, glocal_U_Next.getH(), process_numRows*w,
 								domainMatrix, process_numRows*w,
 								0);
 	}else{
-		glocal_U_Curr.sync();
+		//glocal_U_Curr.sync();
 		TaskGatherBy<FTYPE, 0>(this, glocal_U_Curr.getH(), process_numRows*w,
 								domainMatrix, process_numRows*w,
 								0);

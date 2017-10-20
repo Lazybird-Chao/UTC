@@ -21,6 +21,7 @@ void IntegralCaculator::initImpl(long loopN, unsigned int seed, double range_low
 		m_loopN = loopN/__numGlobalThreads;
 		m_res = 0;
 	}
+	inter_Barrier();
 	if(__globalThreadId ==0){
 		std::cout<<"task: "<<getCurrentTask()->getName()<<" finish initImpl.\n";
 	}
@@ -37,9 +38,10 @@ void IntegralCaculator::runImpl(double runtime[][5], int bsize, int gsize){
 	dim3 grid(gridsize, 1, 1);
 	GpuData<double> res_d(gridsize);
 
+	inter_Barrier();
 	timer0.start();
 	timer.start();
-	double copyinTime = 0;
+	double copytime = 0;
 
 	/*
 	 * call kernel
@@ -60,7 +62,7 @@ void IntegralCaculator::runImpl(double runtime[][5], int bsize, int gsize){
 	 */
 	timer.start();
 	res_d.sync();
-	double copyoutTime = timer.stop();
+	copytime = timer.stop();
 
 	/*
 	 * reduce local results and to compute final
@@ -70,18 +72,26 @@ void IntegralCaculator::runImpl(double runtime[][5], int bsize, int gsize){
 	for(int i =0; i<res_d.getSize(); i++){
 		local_res += res_d.at(i);
 	}
-	__fastSpinLock.lock();
-	m_res += local_res*(m_range_upper - m_range_lower)/m_loopN;
-	__fastSpinLock.unlock();
+	//__fastSpinLock.lock();
+	m_res = local_res*(m_range_upper - m_range_lower)/m_loopN;
+	//__fastSpinLock.unlock();
 	double hostCompTime = timer.stop();
 
-	__fastIntraSync.wait();
+	/*__fastIntraSync.wait();
 	double *res_gather;
 	if(__localThreadId==0){
 		res_gather = (double*)malloc(__numGroupProcesses*sizeof(double));
 	}
-	TaskGatherBy<double>(this, &m_res, 1, res_gather, 1, 0);
+	*/
+	double res_reduce;
+	timer.start();
+	//TaskGatherBy<double>(this, &m_res, 1, res_gather, 1, 0);
+	TaskReduceSumBy<double>(this, &m_res,&res_reduce, 1, 0);
+	__fastIntraSync.wait();
+	double commtime = timer.stop();
 	double result = 0.0;
+	result = res_reduce / __numGroupProcesses;
+	/*
 	if(__globalThreadId==0){
 		for(int i=0; i<__numGroupProcesses; i++){
 			result += res_gather[i];
@@ -89,14 +99,17 @@ void IntegralCaculator::runImpl(double runtime[][5], int bsize, int gsize){
 		result /= __numGlobalThreads;
 		std::cout<<result<<std::endl;
 	}
+	*/
 	inter_Barrier();
 	double totalTime = timer0.stop();
+	if(__globalThreadId == 0)
+		std::cout<<result<<std::endl;
 
 	runtime[__localThreadId][0] = totalTime;
-	runtime[__localThreadId][1] = kernelTime;
-	runtime[__localThreadId][2] = copyinTime;
-	runtime[__localThreadId][3] = copyoutTime;
-	runtime[__localThreadId][4] = hostCompTime;
+	runtime[__localThreadId][1] = kernelTime + hostCompTime;
+	runtime[__localThreadId][2] = kernelTime;
+	runtime[__localThreadId][3] = copytime;
+	runtime[__localThreadId][4] = commtime;
 
 	if(__globalThreadId ==0){
 		std::cout<<"task: "<<getCurrentTask()->getName()<<" finish runImpl.\n";

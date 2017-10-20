@@ -14,7 +14,7 @@ class IntegralCaculator: public UserTaskBase
 public:
 	void initImpl(long loopN, unsigned seed, double range_lower, double range_upper);
 
-	void runImpl(double runtime[][2]);
+	void runImpl(double runtime[][3]);
 
 
 private:
@@ -24,6 +24,8 @@ private:
 	double m_range_upper;
 
 	double m_res;
+
+	double *m_local_res;
 
 };
 
