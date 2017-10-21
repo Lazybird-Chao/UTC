@@ -28,7 +28,7 @@
 
 #define H 1.0
 #define T_SRC0 1550.0
-#define ITERMAX 100		// not used
+#define ITERMAX 100		//
 
 void init_domain(FTYPE *domain_ptr, int h, int w){
 	for (int j = 0; j < (int)floor(h/H); j++) {

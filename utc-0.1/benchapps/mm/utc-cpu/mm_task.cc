@@ -100,8 +100,9 @@ void MatrixMulWorker<T>::runImpl(double runtime[][3]){
 		__fastIntraSync.wait();
 		commtime += timer.stop();
 		*/
-		memcpy(localBlockA, matrixA+i*blockRows*sizeN, blockRows*sizeN*sizeof(T));
-		__fastIntraSync.wait();
+		memcpy(localBlockA+start_row*sizeN,
+				matrixA+i*blockRows*sizeN + start_row*sizeN, local_numRows*sizeN*sizeof(T));
+		//__fastIntraSync.wait();
 		/*
 		 * do local compute
 		 */

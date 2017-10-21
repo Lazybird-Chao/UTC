@@ -246,7 +246,7 @@ int main(int argc, char **argv){
 	delete(localBlockB);
 	delete(localBlockC);
 
-	double runtime[3];
+	double runtime[3]={0,0,0};
 	MPI_Reduce(&totaltime, runtime+0, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	MPI_Reduce(&computetime, runtime+1, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	MPI_Reduce(&commtime, runtime+2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
