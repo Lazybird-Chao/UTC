@@ -9,6 +9,7 @@
 #include "FastMutex.h"
 #include "FastCond.h"
 #include "FastBarrier.h"
+//#include "AffinityConfig.h"
 
 #include <vector>
 #include <map>
@@ -34,7 +35,9 @@ public:
 				 TaskInfo *commonThreadInfo,
 				 ThreadPrivateData *commonThreadPrivateData,
 				 boost::thread_specific_ptr<ThreadPrivateData>* threadPrivateData,
-				 UserTaskBase* realUserTaskObj);
+				 UserTaskBase* realUserTaskObj,
+				 Machine_CPU_info_t *machine_cpu_info,
+				 int bind_mode);
 
 	~TaskCPU();
 
@@ -51,7 +54,8 @@ public:
 	int finishImpl();
 
 	void threadImpl(ThreadRank_t trank, ThreadRank_t lrank,
-				std::ofstream* output, int hardcoreId = -1);
+				std::ofstream* output, int hardcoreId,
+				std::vector<int> cpuset);
 
 	void threadSync();
 	void threadSync(ThreadRank_t lrank);
@@ -132,6 +136,10 @@ private:
 
 	// user task template base obj
 	UserTaskBase* m_realUserTaskObj;
+
+	// cpu bind
+	Machine_CPU_info_t *m_machine_cpu_info;
+	int m_bind_mode;
 
 };
 

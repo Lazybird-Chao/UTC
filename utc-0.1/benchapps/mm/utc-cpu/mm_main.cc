@@ -78,14 +78,15 @@ int main(int argc, char** argv){
 	 */
 	char *infileA = nullptr;
 	char *infileB = nullptr;
-	infileA = "../input/8k_8k_A.txt";
-	infileB = "../input/8k_8k_B.txt";
+	infileA = "../input/1536_8k_A.txt";
+	infileB = "../input/8k_1536_B.txt";
 	FTYPE *matrixA = nullptr;
 	FTYPE *matrixB = nullptr;
 	Task<RandomMatrixGen<FTYPE>> matrixInit(ProcList(0));
-	matrixInit.run(&matrixA, &matrixSize, &matrixSize, infileA, true);
+	int sizeM, sizeN, sizeP;
+	matrixInit.run(&matrixA, &sizeM, &sizeN, infileA, true);
 	matrixInit.wait();
-	matrixInit.run(&matrixB, &matrixSize, &matrixSize, infileB, true);
+	matrixInit.run(&matrixB, &sizeN, &sizeP, infileB, true);
 	matrixInit.wait();
 
 	//toFile(matrixA, matrixSize, matrixSize, "4k_4k_A.txt", true);
@@ -93,7 +94,7 @@ int main(int argc, char** argv){
 
 	FTYPE *matrixC = nullptr;
 	if(ctx.getProcRank() == 0)
-		matrixC = new FTYPE[matrixSize*matrixSize];
+		matrixC = new FTYPE[sizeM*sizeP];
 
 	/*
 	 * do computation
@@ -103,8 +104,8 @@ int main(int argc, char** argv){
 	for(int i = 0; i < procs; i++)
 		for(int j = 0; j<nthreads; j++)
 			plist.push_back(i);
-	Task<MatrixMulWorker<FTYPE>> mm(plist, TaskType::cpu_task);
-	mm.init(matrixA, matrixB, matrixC, matrixSize, matrixSize, matrixSize);
+	Task<MatrixMulWorker<FTYPE>> mm(plist, TaskType::cpu_task, int(1));
+	mm.init(matrixA, matrixB, matrixC, sizeM, sizeN, sizeP);
 	mm.run(runtime_m);
 	mm.wait();
 	/*
@@ -129,10 +130,10 @@ int main(int argc, char** argv){
 	mm.finish();
 	if(ctx.getProcRank() == 0){
 		if(fileout){
-			toFile(matrixC, matrixSize, matrixSize, fileout, true);
+			toFile(matrixC, sizeM, sizeP, fileout, true);
 		}
-		delete matrixA;
-		delete matrixB;
+		//delete matrixA;
+		//delete matrixB;
 		delete matrixC;
 
 		double runtime[3]={0,0,0};
@@ -143,7 +144,7 @@ int main(int argc, char** argv){
 			runtime[j] /= nthreads;
 		std::cout<<"Test complete !!!"<<std::endl;
 		if(printTime){
-			std::cout<<"\tMatrix size: "<<matrixSize<<" X "<<matrixSize<<std::endl;
+			std::cout<<"\tMatrix size: "<<sizeM<<" X "<<sizeN<<" X "<<sizeP<<std::endl;
 			std::cout<<"\tTime info: "<<std::endl;
 			std::cout<<"\t\ttotal run time: "<<std::fixed<<std::setprecision(4)<<runtime[0]<<"(s)"<<std::endl;
 			std::cout<<"\t\tcompute time: "<<std::fixed<<std::setprecision(4)<<runtime[1]<<"(s)"<<std::endl;

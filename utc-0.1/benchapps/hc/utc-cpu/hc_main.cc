@@ -93,7 +93,7 @@ int main(int argc, char **argv){
 	for(int i = 0; i<nprocess; i++)
 		for(int j = 0; j<nthreads; j++)
 			plist.push_back(i);
-	Task<HeatConductionWorker> hc(plist, TaskType::cpu_task);
+	Task<HeatConductionWorker> hc(plist, TaskType::cpu_task, (int)1);
 	hc.init(WIDTH, HEIGHT, EPSILON, domainMatrix);
 	hc.run(runtime_m, &iters);
 	hc.wait();

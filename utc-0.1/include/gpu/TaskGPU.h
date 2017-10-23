@@ -40,7 +40,9 @@ namespace iUtc{
 				 TaskInfo *commonThreadInfo,
 				 ThreadPrivateData *commonThreadPrivateData,
 				 boost::thread_specific_ptr<ThreadPrivateData>* threadPrivateData,
-				 UserTaskBase* realUserTaskObj);
+				 UserTaskBase* realUserTaskObj,
+				 Machine_CPU_info_t *machine_cpu_info,
+				 int bind_mode);
 
 		~TaskGPU();
 
@@ -59,7 +61,8 @@ namespace iUtc{
 		void threadImpl(ThreadRank_t trank, ThreadRank_t lrank,
 					std::ofstream* output,
 					int hardcoreId,
-					int gpuToBind
+					int gpuToBind,
+					std::vector<int> cpuset
 					);
 
 		void threadSync();
@@ -155,6 +158,10 @@ namespace iUtc{
 		UtcGpuContext	**m_allLocalThreadUtcGpuContexPtr;
 
 		cudaCtxMapMode m_cudaCtxMode;
+
+		// cpu bind
+		Machine_CPU_info_t *m_machine_cpu_info;
+		int m_bind_mode;
 
 
 	}; // end class TaskGPUå

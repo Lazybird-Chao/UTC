@@ -39,12 +39,14 @@ inline void enforce_bc_par(
 	}
 }
 
+//inline FTYPE get_var_par()  __attribute__((always_inline));
 inline FTYPE get_var_par(
 		FTYPE *domain_ptr,
 		int i, //column
 		int j, //row
 		int w,
-		int h,
+		int h_s,
+		int h_e,
 		FTYPE *top_row,
 		FTYPE *bottom_row,
 		int startRowIndex,
@@ -57,9 +59,9 @@ inline FTYPE get_var_par(
 	else if(i<=0 || j+startRowIndex<=0 || i>=w-1 || j+startRowIndex>=total_rows-1){
 		ret_val = 0.0;
 	}
-	else if(j<0 )
+	else if(j+startRowIndex<h_s )
 		ret_val = top_row[i];
-	else if(j>h-1)
+	else if(j+startRowIndex>h_e-1)
 		ret_val = bottom_row[i];
 	else
 		ret_val = domain_ptr[j*w + i];
@@ -85,8 +87,8 @@ void HeatConductionWorker::initImpl(int w, int h, FTYPE e, FTYPE *dmatrix){
 		converge_sqd = new FTYPE[__numLocalThreads];
 		top_ptr = new FTYPE[w];
 		bot_ptr = new FTYPE[w];
-		localCurr = new FTYPE[h / __numGroupProcesses * w];
-		localNext = new FTYPE[h / __numGroupProcesses * w];
+		localCurr = (FTYPE*)malloc((h/__numGroupProcesses)*w*sizeof(FTYPE));
+		localNext = (FTYPE*)malloc((h/__numGroupProcesses)*w*sizeof(FTYPE));
 		process_numRows = h / __numGroupProcesses;
 		process_startRowIndex = __processIdInGroup * process_numRows;
 
@@ -101,6 +103,14 @@ void HeatConductionWorker::initImpl(int w, int h, FTYPE e, FTYPE *dmatrix){
 		thread_numRows = rowsPerThread;
 		thread_startRowIndex = __localThreadId*rowsPerThread + process_numRows%__numLocalThreads;
 	}
+	/*
+	std::vector<int> cpus = getAffinity();
+	msleep_for(__localThreadId*100);
+	std::cout<<"thread: "<<__localThreadId<<": ";
+	for(int i = 0; i < cpus.size(); i++)
+		std::cout<<cpus[i]<<" ";
+	std::cout<<std::endl;
+	 */
 	inter_Barrier();
 	if(__globalThreadId ==0){
 		std::cout<<"task: "<<getCurrentTask()->getName()<<" finish initImpl.\n";
@@ -122,34 +132,100 @@ void HeatConductionWorker::runImpl(double runtime[][MAX_TIMER], int *iteration){
 		init_domain(top_ptr, 1, w);
 		init_domain(bot_ptr, 1, w);
 	}
+
 	int iters = 1;
 	inter_Barrier();
-	FTYPE *curr = localCurr;
-	FTYPE *next = localNext;
+	FTYPE *curr = localCurr + thread_startRowIndex*w;
+	FTYPE *next = localNext + thread_startRowIndex*w;
 	timer0.start();
+	int h_s = process_startRowIndex;
+	int h_e = process_startRowIndex+process_numRows;
+	int s_s = process_startRowIndex+thread_startRowIndex;
+	FTYPE up, down, left, right;
 	while(iters <= ITERMAX){
 		if(iters % 1000 ==0 && __globalThreadId == 0)
 			std::cout<<"iter "<<iters<<"...\n";
 		timer.start();
-		for(int j = thread_startRowIndex; j<thread_startRowIndex + thread_numRows; j++){
+		for(int j = 0; j<thread_numRows; j++){
 			for(int i = 0; i<w; i++){
-				next[j*w + i] =
+				next[j*w+i] =
 						0.25 * (
-						get_var_par( curr, i - 1,j, w, process_numRows, top_ptr, bot_ptr, process_startRowIndex, h)
-					+ get_var_par ( curr, i + 1, j,w,process_numRows, top_ptr, bot_ptr, process_startRowIndex, h)
-					+ get_var_par ( curr, i, j - 1,w, process_numRows, top_ptr, bot_ptr, process_startRowIndex, h)
-					+ get_var_par ( curr,i, j + 1,w, process_numRows, top_ptr, bot_ptr, process_startRowIndex, h));
-				enforce_bc_par(next, i, j, w, process_numRows, process_startRowIndex, h);
-				/*if(j==0)
-					top_row.store(next[j*w + i], i);
-				if(j == process_numRows -1)
-					bottom_row.store(next[j*w + i], i);
-					*/
+						get_var_par( curr, i - 1,j, w, h_s, h_e, top_ptr, bot_ptr, s_s, h)
+					+ get_var_par ( curr, i + 1, j,w,h_s, h_e, top_ptr, bot_ptr, s_s, h)
+					+ get_var_par ( curr, i, j-1 ,w, h_s, h_e, top_ptr, bot_ptr, s_s, h)
+					+ get_var_par ( curr,i, j+1 ,w, h_s, h_e, top_ptr, bot_ptr, s_s, h));
+
+				/*
+				int ii, jj;
+				ii = i-1;
+				jj = j;
+				if(ii == w/2-1 && jj+s_s==0){
+					up = T_SRC0;
+				}
+				else if(ii<=0 || jj+s_s<=0 || ii>=w-1 || jj+s_s>=h-1){
+					up = 0.0;
+				}
+				else if(jj+s_s<h_s )
+					up = top_ptr[ii];
+				else if(jj+s_s>h_e-1)
+					up = bot_ptr[ii];
+				else
+					up = curr[jj*w + ii];
+				//
+				ii = i+1;
+				jj = j;
+				if(ii == w/2-1 && jj+s_s==0){
+					down = T_SRC0;
+				}
+				else if(ii<=0 || jj+s_s<=0 || ii>=w-1 || jj+s_s>=h-1){
+					down = 0.0;
+				}
+				else if(jj+s_s<h_s )
+					down = top_ptr[ii];
+				else if(jj+s_s>h_e-1)
+					down = bot_ptr[ii];
+				else
+					down = curr[jj*w + ii];
+				//
+				ii = i;
+				jj = j-1;
+				if(ii == w/2-1 && jj+s_s==0){
+					left = T_SRC0;
+				}
+				else if(ii<=0 || jj+s_s<=0 || ii>=w-1 || jj+s_s>=h-1){
+					left = 0.0;
+				}
+				else if(jj+s_s<h_s )
+					left = top_ptr[ii];
+				else if(jj+s_s>h_e-1)
+					left = bot_ptr[ii];
+				else
+					left = curr[jj*w + ii];
+				//
+				ii = i;
+				jj = j+1;
+				if(ii == w/2-1 && jj+s_s==0){
+					right = T_SRC0;
+				}
+				else if(ii<=0 || jj+s_s<=0 || ii>=w-1 || jj+s_s>=h-1){
+					right = 0.0;
+				}
+				else if(jj+s_s<h_s )
+					right = top_ptr[ii];
+				else if(jj+s_s>h_e-1)
+					right = bot_ptr[ii];
+				else
+					right = curr[jj*w + ii];
+
+				next[j*w + i] = 0.25*(up+down+left+right);
+				*/
+
+				enforce_bc_par(next, i, j, w, process_numRows, s_s, h);
 			}
 
 		}
 		FTYPE sum = 0.0;
-		for(int j = thread_startRowIndex; j<thread_startRowIndex + thread_numRows; j++){
+		for(int j = 0; j<thread_numRows; j++){
 			for(int i = 0; i<w; i++){
 				sum += (curr[j*w + i] - next[j*w + i])*
 						(curr[j*w + i] - next[j*w + i]);
@@ -161,6 +237,7 @@ void HeatConductionWorker::runImpl(double runtime[][MAX_TIMER], int *iteration){
 		if(__localThreadId == 0){
 			top_row.storeblock(next, 0, w);
 			bottom_row.storeblock(next+(process_numRows-1)*w, 0, w);
+			total_converge = 0;
 			for(int i = 1; i<__numLocalThreads; i++)
 				converge_sqd[0] += converge_sqd[i];
 		}

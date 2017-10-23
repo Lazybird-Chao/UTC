@@ -19,6 +19,11 @@
 #include <cstdlib>
 #include "mpi.h"
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/syscall.h>
+#include <vector>
+
 #include "../../common/helper_getopt.h"
 #include "../../common/helper_timer.h"
 #include "../../common/helper_printtime.h"
@@ -38,7 +43,7 @@ void init_domain(FTYPE *domain_ptr, int h, int w){
 	}
 }
 
-inline FTYPE get_convergence_sqd(FTYPE *current_ptr, FTYPE *next_ptr, int h, int w){
+ FTYPE get_convergence_sqd(FTYPE *current_ptr, FTYPE *next_ptr, int h, int w){
 	FTYPE sum = 0.0;
 	for(int i=0; i<(int)floor(h/H); i++){
 		for(int j=0; j<(int) floor (w / H); j++){
@@ -93,7 +98,7 @@ inline FTYPE f(int i, int j){
 	return 0.0;
 }
 
-inline void jacobi(FTYPE *current_ptr, FTYPE *next_ptr, int h, int w,
+ void jacobi(FTYPE *current_ptr, FTYPE *next_ptr, int h, int w,
 		FTYPE* top, FTYPE* bot, int start_rows, int totalrows){
 	int i, j;
 	for(j = 0; j<h; j++){
@@ -104,7 +109,7 @@ inline void jacobi(FTYPE *current_ptr, FTYPE *next_ptr, int h, int w,
 							get_var_par(current_ptr, i+1, j, h, w, top, bot, start_rows, totalrows) +
 							get_var_par(current_ptr, i, j-1, h, w, top, bot, start_rows, totalrows) +
 							get_var_par(current_ptr, i, j+1, h, w, top, bot, start_rows, totalrows));
-							//(pow(H, 2)*f(i, j)));
+
 			enforce_bc_par(next_ptr, i, j, h, w, start_rows, totalrows);
 		}
 	}
@@ -189,6 +194,31 @@ int main(int argc, char**argv){
 	init_domain(top_row, 1, WIDTH);
 	init_domain(bot_row, 1, WIDTH);
 	MPI_Barrier(MPI_COMM_WORLD);
+
+	/*
+	cpu_set_t cpuset;
+	pthread_t thread;
+	std::vector<int> ret;
+	CPU_ZERO(&cpuset);
+	thread = pthread_self();
+	int s;
+	s= pthread_getaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+	if(s)
+	{
+		std::cerr<<"ERROR, Affinity get error!"<<std::endl;
+	}
+	usleep(100000*myproc);
+	std::cout<<"rank: "<<myproc<<": ";
+	for(int i=0; i<CPU_SETSIZE; i++){
+		if(CPU_ISSET(i, &cpuset)){
+			ret.push_back(i);
+			std::cout<<i<<" ";
+		}
+	}
+	std::cout<<std::endl;
+	MPI_Barrier(MPI_COMM_WORLD);
+	*/
+
 	if(myproc == 0)
 		std::cout<<"start computing...\n";
 
@@ -220,7 +250,7 @@ int main(int argc, char**argv){
 				MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&total_converge, 1, MPI_FTYPE, 0, MPI_COMM_WORLD);
 		commtime += MPI_Wtime() - t2;
-
+		//MPI_Barrier(MPI_COMM_WORLD);
 		if(sqrt(total_converge) <= EPSILON)
 			break;
 		FTYPE *tmp = U_Curr;
@@ -243,7 +273,7 @@ int main(int argc, char**argv){
 		if(myproc > 0){
 			MPI_Recv(top_row, WIDTH, MPI_FTYPE, myproc-1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		}
-		//MPI_Barrier(MPI_COMM_WORLD);
+		MPI_Barrier(MPI_COMM_WORLD);
 		commtime += MPI_Wtime() - t2;
 	}
 	t2 = MPI_Wtime();

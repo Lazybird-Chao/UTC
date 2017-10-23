@@ -106,34 +106,39 @@ int main(int argc, char **argv){
 	 */
 	char *infileA = nullptr;
 	char *infileB = nullptr;
-	infileA = "../input/8k_8k_A.txt";
-	infileB = "../input/8k_8k_B.txt";
+	infileA = "../input/1536_8k_A.txt";
+	infileB = "../input/8k_1536_B.txt";
 
 	FTYPE *matrixA;
 	FTYPE *matrixB;
 	FTYPE *matrixC;
 
+	int sizeM, sizeN, sizeP;
+	sizeM = 1536*5;
+	sizeN = 8192;
+	sizeP = 1536*5;
+
 	if(infileA == nullptr){
-		matrixA = (FTYPE*)malloc(sizeof(FTYPE)*matrixSize*matrixSize);
-		matrixB = (FTYPE*)malloc(sizeof(FTYPE)*matrixSize*matrixSize);
-		matrixC = (FTYPE*)malloc(sizeof(FTYPE)*matrixSize*matrixSize);
+		matrixA = (FTYPE*)malloc(sizeof(FTYPE)*sizeM*sizeN);
+		matrixB = (FTYPE*)malloc(sizeof(FTYPE)*sizeN*sizeP);
+		matrixC = (FTYPE*)malloc(sizeof(FTYPE)*sizeM*sizeP);
 
 		FTYPE rnumber = (FTYPE)(rand()%100)/(rand()%10);
-		for(int i=0; i<matrixSize; i++){
-			for(int j=0; j<matrixSize; j++){
-				matrixA[i*matrixSize + j] = (j + rnumber)/matrixSize + i;
-				matrixB[i*matrixSize + j] = (j - rnumber)/matrixSize + i;
+		for(int i=0; i<sizeM; i++){
+			for(int j=0; j<sizeN; j++){
+				matrixA[i*sizeN + j] = (j + rnumber)/matrixSize + i;
+				matrixB[i*sizeN + j] = (j - rnumber)/matrixSize + i;
 			}
 		}
 	} else{
-		fromFile(matrixA, matrixSize, matrixSize, infileA, true);
-		fromFile(matrixB, matrixSize, matrixSize, infileB, true);
-		matrixC = (FTYPE*)malloc(sizeof(FTYPE)*matrixSize*matrixSize);
+		fromFile(matrixA, sizeM, sizeN, infileA, true);
+		fromFile(matrixB, sizeN, sizeP, infileB, true);
+		matrixC = (FTYPE*)malloc(sizeof(FTYPE)*sizeM*sizeP);
 	}
 
-	//toFile(matrixA, matrixSize, matrixSize, "8k_8k_A.txt", true);
-	//toFile(matrixB, matrixSize, matrixSize, "8k_8k_B.txt", true);
-	//return 0;
+	toFile(matrixA, sizeM, sizeN, "1536_8k_A.txt", true);
+	toFile(matrixB, sizeN, sizeP, "8k_1536_B.txt", true);
+	return 0;
 
 
 	/*
@@ -141,12 +146,12 @@ int main(int argc, char **argv){
 	 */
 	double t1, t2;
 	t1 = getTime();
-	for(int i=0; i<matrixSize; i++){
-		for(int j=0; j<matrixSize; j++){
+	for(int i=0; i<sizeM; i++){
+		for(int j=0; j<sizeP; j++){
 			FTYPE tmp = 0;
-			for(int k=0; k<matrixSize; k++)
-				tmp +=matrixA[i*matrixSize +k] * matrixB[j*matrixSize +k];
-			matrixC[i*matrixSize + j] = tmp;
+			for(int k=0; k<sizeN; k++)
+				tmp +=matrixA[i*sizeN +k] * matrixB[j*sizeN +k];
+			matrixC[i*sizeM + j] = tmp;
 		}
 	}
 	t2 = getTime();
@@ -159,7 +164,7 @@ int main(int argc, char **argv){
 
 	std::cout<<"Test complete !!!"<<std::endl;
 	if(printTime){
-		std::cout<<"\tMatrix info: "<<matrixSize<<" X "<<matrixSize<<std::endl;
+		std::cout<<"\tMatrix info: "<<sizeM<<" X "<<sizeN<<" X "<<sizeP<<std::endl;
 		std::cout<<"\tTime info: "<<std::fixed<<std::setprecision(4)<<runtime<<"(s)"<<std::endl;
 	}
 

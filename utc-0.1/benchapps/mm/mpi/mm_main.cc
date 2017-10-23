@@ -13,6 +13,7 @@
 #include <iostream>
 #include <iomanip>
 #include <cstring>
+#include <unistd.h>
 #include "mpi.h"
 
 #include "../../common/helper_getopt.h"
@@ -133,8 +134,8 @@ int main(int argc, char **argv){
 	 */
 	//char *infileA = nullptr;
 	//char *infileB = nullptr;
-	char* infileA = "../input/8k_8k_A.txt";
-	char* infileB = "../input/8k_8k_B.txt";
+	char* infileA = "../input/1536_8k_A.txt";
+	char* infileB = "../input/8k_1536_B.txt";
 
 	FTYPE *matrixA = nullptr;
 	FTYPE *matrixB = nullptr;
@@ -143,37 +144,41 @@ int main(int argc, char **argv){
 	FTYPE *localBlockA;
 	FTYPE *localBlockB;
 	FTYPE *localBlockC;
+	int sizeM, sizeN, sizeP;
 
 	if(myproc == 0){
 		if(infileA == nullptr){
-			matrixA = (FTYPE*)malloc(sizeof(FTYPE)*matrixSize*matrixSize);
-			matrixB = (FTYPE*)malloc(sizeof(FTYPE)*matrixSize*matrixSize);
-			matrixC = (FTYPE*)malloc(sizeof(FTYPE)*matrixSize*matrixSize);
+			sizeM = sizeN = sizeP = matrixSize;
+			matrixA = (FTYPE*)malloc(sizeof(FTYPE)*sizeM*sizeN);
+			matrixB = (FTYPE*)malloc(sizeof(FTYPE)*sizeN*sizeP);
+			matrixC = (FTYPE*)malloc(sizeof(FTYPE)*sizeM*sizeP);
 
 			FTYPE rnumber = (FTYPE)(rand()%100)/(rand()%10);
-			for(int i=0; i<matrixSize; i++){
-				for(int j=0; j<matrixSize; j++){
-					matrixA[i*matrixSize + j] = (j + rnumber)/matrixSize + i;
-					matrixB[i*matrixSize + j] = (j - rnumber)/matrixSize + i;
+			for(int i=0; i<sizeM; i++){
+				for(int j=0; j<sizeP; j++){
+					matrixA[i*sizeN + j] = (j + rnumber)/matrixSize + i;
+					matrixB[i*sizeN + j] = (j - rnumber)/matrixSize + i;
 				}
 			}
 		} else{
-			fromFile(matrixA, matrixSize, matrixSize, infileA, true);
-			fromFile(matrixB, matrixSize, matrixSize, infileB, true);
-			matrixC = (FTYPE*)malloc(sizeof(FTYPE)*matrixSize*matrixSize);
+			fromFile(matrixA, sizeM, sizeN, infileA, true);
+			fromFile(matrixB, sizeN, sizeP, infileB, true);
+			matrixC = (FTYPE*)malloc(sizeof(FTYPE)*sizeM*sizeP);
 		}
 
 		//toFile(matrixA, matrixSize, matrixSize, "16k_16k_A.txt", true);
 		//toFile(matrixB, matrixSize, matrixSize, "16k_16k_B.txt", true);
 		//return 0;
 	}
-	MPI_Bcast(&matrixSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
-	int blockRows = matrixSize / nprocess;
-	localBlockA = new FTYPE[blockRows*matrixSize];
-	localBlockB = new FTYPE[blockRows*matrixSize];
-	localBlockC = new FTYPE[blockRows*matrixSize];
+	MPI_Bcast(&sizeM, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&sizeN, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&sizeP, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	int blockRows = sizeM / nprocess;
+	localBlockA = new FTYPE[blockRows*sizeN];
+	localBlockB = new FTYPE[blockRows*sizeN];
+	localBlockC = new FTYPE[blockRows*sizeN];
 	if(matrixA == nullptr){
-		matrixA = (FTYPE*)malloc(sizeof(FTYPE)*matrixSize*matrixSize);
+		matrixA = (FTYPE*)malloc(sizeof(FTYPE)*sizeM*sizeN);
 	}
 	double totaltime = 0;
 	double computetime = 0;
@@ -182,17 +187,17 @@ int main(int argc, char **argv){
 	double t1;
 	MPI_Barrier(MPI_COMM_WORLD);
 	if(myproc == 0)
-		std::cout<<"start computing...\n";
+		std::cout<<"start computing...\n"<<sizeM<<" "<<sizeN<<" "<<sizeP<<std::endl;
 	/*
 	 * scatter matrixB to all processes
 	 */
 	t0 = MPI_Wtime();
 	t1 = t0;
-	MPI_Scatter(matrixB, blockRows*matrixSize, MPI_FTYPE,
-				localBlockB, blockRows*matrixSize, MPI_FTYPE,
+	MPI_Scatter(matrixB, blockRows*sizeN, MPI_FTYPE,
+				localBlockB, blockRows*sizeN, MPI_FTYPE,
 				0, MPI_COMM_WORLD);
 
-	MPI_Bcast(matrixA, matrixSize*matrixSize, MPI_FTYPE, 0, MPI_COMM_WORLD);
+	MPI_Bcast(matrixA, sizeM*sizeN, MPI_FTYPE, 0, MPI_COMM_WORLD);
 
 	commtime += MPI_Wtime() - t1;
 
@@ -210,7 +215,7 @@ int main(int argc, char **argv){
 		MPI_Bcast(localBlockA, blockRows*matrixSize, MPI_FTYPE, 0, MPI_COMM_WORLD);
 		commtime += MPI_Wtime() - t1;
 		*/
-		memcpy(localBlockA, matrixA + p*blockRows*matrixSize, blockRows*matrixSize*sizeof(FTYPE));
+		memcpy(localBlockA, matrixA + p*blockRows*sizeN, blockRows*sizeN*sizeof(FTYPE));
 		/*
 		 * local compute
 		 */
@@ -219,8 +224,8 @@ int main(int argc, char **argv){
 		for(int i=0; i<blockRows; i++){
 			for(int j=0; j<blockRows; j++){
 				FTYPE tmp = 0;
-				for(int k=0; k<matrixSize; k++)
-					tmp +=localBlockA[i*matrixSize +k] * localBlockB[j*matrixSize +k];
+				for(int k=0; k<sizeN; k++)
+					tmp +=localBlockA[i*sizeN +k] * localBlockB[j*sizeN +k];
 				c_start[i*blockRows + j] = tmp;
 			}
 		}
@@ -230,16 +235,16 @@ int main(int argc, char **argv){
 	 * gather block of matrixC
 	 */
 	t1 = MPI_Wtime();
-	MPI_Gather(localBlockC, blockRows*matrixSize, MPI_FTYPE,
-			   matrixC, blockRows*matrixSize, MPI_FTYPE,
+	MPI_Gather(localBlockC, blockRows*sizeM, MPI_FTYPE,
+			   matrixC, blockRows*sizeM, MPI_FTYPE,
 			   0, MPI_COMM_WORLD);
 	commtime += MPI_Wtime() - t1;
-	//MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(MPI_COMM_WORLD);
 	totaltime = MPI_Wtime() - t0;
 
 	if(myproc == 0){
-		free(matrixA);
-		free(matrixB);
+		//delete(matrixA);
+		//delete(matrixB);
 		free(matrixC);
 	}
 	delete(localBlockA);
@@ -256,7 +261,7 @@ int main(int argc, char **argv){
 			runtime[i] /= nprocess;
 		std::cout<<"Test complete !!!"<<std::endl;
 		if(printTime){
-			std::cout<<"\tMatrix info: "<<matrixSize<<" X "<<matrixSize<<std::endl;
+			std::cout<<"\tMatrix info: "<<sizeM<<" X "<<sizeN<<" X "<<sizeP<<std::endl;
 			std::cout<<"\tTime info: \n";
 			std::cout<<"\t\ttotaltime: "<<std::fixed<<std::setprecision(4)<<runtime[0]<<"(s)"<<std::endl;
 			std::cout<<"\t\tcomputetime: "<<std::fixed<<std::setprecision(4)<<runtime[1]<<"(s)"<<std::endl;

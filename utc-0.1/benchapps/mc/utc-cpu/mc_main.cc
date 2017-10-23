@@ -33,7 +33,7 @@ int main(int argc, char*argv[])
 {
 	bool printTime = false;
 	long loopN = 1024*1024;
-	loopN *= 1024*32;
+	loopN *= 15360*2;
 
 	int nthreads=1;
 	int nprocess=1;
@@ -75,25 +75,28 @@ int main(int argc, char*argv[])
 	}
 	ProcList rlist(rank);	//create nthreads runing on each proc
 
-	Task<IntegralCaculator> integral_f(rlist);
-	double runtime_m[MAX_THREADS][2];
+	Task<IntegralCaculator> integral_f(rlist, TaskType::cpu_task, (int)1);
+	double runtime_m[MAX_THREADS][3];
 	integral_f.init(loopN, 1, 1.0, 10.0);
 	integral_f.run(runtime_m);
 	integral_f.wait();
 
-	if(myproc == 0 && printTime){
+	if(myproc == 0){
 		double runtime[3] = {0,0,0};
-		for(int i =0; i<nthreads; i++)
+		for(int i =0; i<nthreads; i++){
 			for(int j = 0; j<3; j++)
 				runtime[j] += runtime_m[i][j];
+		}
 		for(int j = 0; j<3; j++)
 			runtime[j] /= nthreads;
 
-		std::cout<<"Test complete !!!"<<std::endl;
+		if(printTime){
+			std::cout<<"Test complete !!!"<<std::endl;
 
-		std::cout<<"\ttotal run time: "<<runtime[0]*1000<<std::endl;
-		std::cout<<"\tcompute time: "<<runtime[1]*1000<<std::endl;
-		std::cout<<"\tcomm time: "<<runtime[2]*1000<<std::endl;
+			std::cout<<"\ttotal run time: "<<runtime[0]*1000<<std::endl;
+			std::cout<<"\tcompute time: "<<runtime[1]*1000<<std::endl;
+			std::cout<<"\tcomm time: "<<runtime[2]*1000<<std::endl;
+		}
 		for(int i=0; i<3; i++)
 			runtime[i] *= 1000;
 		print_time(3, runtime);

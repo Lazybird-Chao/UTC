@@ -167,6 +167,9 @@ m_uniqueExeObjPtr(nullptr)
 
     m_worldRankToTaskGroupRank.clear();
     m_shmemSize = 0;
+
+    m_machine_cpu_info = nullptr;
+    m_bind_mode = 0;
 }
 
 TaskBase::~TaskBase()

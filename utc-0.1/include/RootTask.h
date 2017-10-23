@@ -3,6 +3,7 @@
 
 #include "TaskBase.h"
 #include "Barrier.h"
+#include "AffinityConfig.h"
 
 #include <vector>
 #include <fstream>
@@ -29,6 +30,8 @@ namespace iUtc{
         MPI_Group* getWorldGroup();
 #endif
 
+        Machine_CPU_info_t *getMachineCPUInfo();
+
     protected:
         Barrier * m_barrierObjPtr;
 
@@ -40,6 +43,7 @@ namespace iUtc{
         RootTask(); //default constructor is disabled
 
         //std::ofstream *m_procOstream;  //move to taskbase
+
 
     };//class RootTask
 

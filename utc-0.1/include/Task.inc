@@ -167,7 +167,7 @@ Task<T>::Task(std::string name, ProcList rList, TaskType tType, long shmemSize)
 #endif
 
 	CreateTask(name, rList, tType);
- }
+}
 
 template<class T>
 Task<T>::Task(ProcList rList, TaskType tType, long shmemSize)
@@ -192,7 +192,57 @@ Task<T>::Task(ProcList rList, TaskType tType, long shmemSize)
 	name.append(std::to_string(ntasks));
 
 	CreateTask(name, rList, tType);
- }
+}
+
+template<class T>
+Task<T>::Task(ProcList rList, TaskType tType, int bind_mode)
+:TaskBase()
+ {
+
+	m_userTaskObjPtr = nullptr;
+	m_userSupplyObj = false;
+	m_procOstream = nullptr;
+	m_taskBarrierObjPtr = nullptr;
+	m_taskSpinBarrierObjPtr = nullptr;
+	callTaskFinish = false;
+	m_realTaskInstance= nullptr;
+	m_TaskType = tType;
+
+	int ntasks = TaskManager::getNumTasks();
+	std::string name = "Task";
+	name.append(std::to_string(ntasks));
+
+	m_bind_mode = bind_mode;
+
+	CreateTask(name, rList, tType);
+}
+
+template<class T>
+Task<T>::Task(ProcList rList, TaskType tType, long shmemSize, int bind_mode)
+:TaskBase()
+ {
+
+	m_userTaskObjPtr = nullptr;
+	m_userSupplyObj = false;
+	m_procOstream = nullptr;
+	m_taskBarrierObjPtr = nullptr;
+	m_taskSpinBarrierObjPtr = nullptr;
+	callTaskFinish = false;
+	m_realTaskInstance= nullptr;
+	m_TaskType = tType;
+
+	int ntasks = TaskManager::getNumTasks();
+	std::string name = "Task";
+	name.append(std::to_string(ntasks));
+
+#if ENABLE_SCOPED_DATA
+	m_shmemSize = shmemSize;
+#endif
+
+	m_bind_mode = bind_mode;
+
+	CreateTask(name, rList, tType);
+}
 
 template<class T>
 Task<T>::~Task()
@@ -779,6 +829,9 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 #endif
 	if(m_numLocalThreads!=0)  // there are threads need to be created on current process
 	{
+		// cpu bind info
+		m_machine_cpu_info = root->getMachineCPUInfo();
+
 		if(tType==TaskType::cpu_task){
 			m_realTaskInstance = new TaskCPU(tType,
 											m_numLocalThreads,
@@ -793,12 +846,18 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 											&m_commonTaskInfo,
 											&m_commonThreadPrivateData,
 											&m_threadPrivateData,
-											m_userTaskObjPtr);
+											m_userTaskObjPtr,
+											m_machine_cpu_info,
+											m_bind_mode);
 #ifdef SHOW_DEBUG
 	std::cout<<ERROR_LINE<<"cpu task obj created."<<std::endl;
 #endif
 		}
 		else if(tType==TaskType::gpu_task){
+
+			// cpu bind info
+			m_machine_cpu_info = root->getMachineCPUInfo();
+
 #if ENABLE_GPU_TASK
 			m_realTaskInstance = new TaskGPU(tType,
 											m_numLocalThreads,
@@ -813,7 +872,9 @@ void Task<T>::CreateTask(const std::string name, const ProcList rList, TaskType 
 											&m_commonTaskInfo,
 											&m_commonThreadPrivateData,
 											&m_threadPrivateData,
-											m_userTaskObjPtr
+											m_userTaskObjPtr,
+											m_machine_cpu_info,
+											m_bind_mode
 											);
 #else
 			m_realTaskInstance = nullptr;

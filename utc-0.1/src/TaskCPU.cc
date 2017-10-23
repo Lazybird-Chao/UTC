@@ -1,6 +1,7 @@
 #include "TaskCPU.h"
 #include "UtcContext.h"
 #include "TaskManager.h"
+#include "AffinityUtilities.h"
 
 namespace iUtc{
 
@@ -17,7 +18,9 @@ TaskCPU::TaskCPU(TaskType taskType,
 				 TaskInfo *commonThreadInfo,
 				 ThreadPrivateData *commonThreadPrivateData,
 				 boost::thread_specific_ptr<ThreadPrivateData>* threadPrivateData,
-				 UserTaskBase* realUserTaskObj){
+				 UserTaskBase* realUserTaskObj,
+				 Machine_CPU_info_t *machine_cpu_info,
+				 int bind_mode){
 
 	m_taskType = taskType;
 	m_numLocalThreads = numLocalThreads;
@@ -43,6 +46,10 @@ TaskCPU::TaskCPU(TaskType taskType,
 	m_threadJobIdx = nullptr;
 
 	m_activeLocalThreadCount= m_numLocalThreads;
+
+	//cpu bind
+	m_machine_cpu_info = machine_cpu_info;
+	m_bind_mode = bind_mode;
 
 }
 
@@ -131,7 +138,14 @@ void TaskCPU::launchThreads(){
 		UtcContext::HARDCORES_ID_FOR_USING = (UtcContext::HARDCORES_ID_FOR_USING+1)%UtcContext::HARDCORES_TOTAL_CURRENT_NODE;
 		m_taskThreads.push_back(std::thread(&TaskCPU::threadImpl, this, trank, i, output, hardcoreId));
 #else
-		m_taskThreads.push_back(std::thread(&TaskCPU::threadImpl, this, trank, i, output, -1));
+		// get cpuset
+		std::vector<int> cpuset;
+		if(m_machine_cpu_info != nullptr)
+			cpuset = m_machine_cpu_info->getCPUSET(m_bind_mode);
+
+		m_taskThreads.push_back(std::thread(&TaskCPU::threadImpl,
+											this,
+											trank, i, output, -1, cpuset));
 #endif
 		//m_taskThreads[i].detach();
 		// record some info
@@ -153,7 +167,9 @@ void TaskCPU::launchThreads(){
 void TaskCPU::threadImpl(ThreadRank_t trank,
 						ThreadRank_t lrank,
 						std::ofstream *output,
-						int hardcoreId){
+						int hardcoreId,
+						std::vector<int> cpuset
+						){
 	//
 	std::ofstream *m_threadOstream = output;
 #ifdef USE_DEBUG_LOG
@@ -177,6 +193,10 @@ void TaskCPU::threadImpl(ThreadRank_t trank,
 		cpus.push_back(i);
 	setAffinity(cpus);
 #endif
+
+	// cpu bind
+	if(!cpuset.empty())
+		setAffinity(cpuset);
 
 	// create task info in this thread TSS
 	TaskInfo* taskInfoPtr = new TaskInfo();

@@ -142,6 +142,7 @@ int main(int argc, char **argv) {
 
 	int *localMembership = new int[numLocalObjs];
 
+	MPI_Barrier(MPI_COMM_WORLD);
 	if(myproc == 0)
 		std::cout<<"Start clustering..."<<std::endl;
 	/* Launch the core computation algorithm */

@@ -75,7 +75,7 @@ public:
 		double *res_gather;
 
 		res_gather = (double*)malloc(__numProcesses*sizeof(double));
-		t2 = MPI_Wime();
+		t2 = MPI_Wtime();
 		MPI_Gather(m_res,sizeof(double), MPI_CHAR, res_gather,sizeof(double), MPI_CHAR,  0, MPI_COMM_WORLD);
 		runtime[2] = MPI_Wtime() - t2;
 		double result = 0.0;
@@ -119,9 +119,10 @@ private:
 int main(int argc, char*argv[])
 {
 	bool	printTime = false;
-	long loopN = std::atol(argv[1]);
+	long loopN = 1024*1024;
 	int nprocess = 1;
 
+	loopN *= 15360*2;
 
 	int     opt;
 	extern char   *optarg;
@@ -140,21 +141,19 @@ int main(int argc, char*argv[])
 				break;
 		}
 	}
-	if(nprocess != procs){
-		std::cerr<<"process number not match with arguments '-p' !!!\n";
-		return 1;
-	}
-
 
 	MPI_Init(&argc, &argv);
-	/*
-	 *  run like ./a.out  nthread   nloops
-	 */
+
 	int myproc;
 	int procs;
 	MPI_Comm_rank(MPI_COMM_WORLD, &myproc);
 	MPI_Comm_size(MPI_COMM_WORLD, &procs);
 	loopN /= nprocess;
+
+	if(nprocess != procs){
+		std::cerr<<"process number not match with arguments '-p' !!!\n";
+		return 1;
+	}
 
 
 	IntegralCaculator integral_f;

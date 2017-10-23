@@ -80,6 +80,9 @@ RootTask::RootTask(int WorldSize, int currentProcess)
     TaskManager::setTaskInfo(taskInfoPtr);    // reside in main thread of current process, same as
                                               // TaskManager instance, only one instance in current
                                               // process.
+    //cpu bind info init
+    m_machine_cpu_info = new Machine_CPU_info_t();
+
     MPI_Barrier(m_worldComm);
 }
 
@@ -128,5 +131,9 @@ MPI_Group* RootTask::getWorldGroup()
 	return &m_worldGroup;
 }
 #endif
+
+Machine_CPU_info_t* RootTask::getMachineCPUInfo(){
+	return m_machine_cpu_info;
+}
 
 } //namespace iUtc

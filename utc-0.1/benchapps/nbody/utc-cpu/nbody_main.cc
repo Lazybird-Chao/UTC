@@ -180,7 +180,7 @@ int main(int argc, char** argv){
 	for(int i = 0; i<procs; i++)
 		for(int j = 0; j<nthreads; j++)
 			plist.push_back(i);
-	Task<BodySystem<FTYPE>> nbody(plist, TaskType::cpu_task);
+	Task<BodySystem<FTYPE>> nbody(plist, TaskType::cpu_task, (int)1);
 	nbody.init(numBodies,
 			(FTYPE)activeParams.m_softening*(FTYPE)activeParams.m_softening,
 			activeParams.m_damping,

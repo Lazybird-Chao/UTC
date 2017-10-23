@@ -105,7 +105,7 @@ int main(int argc, char **argv){
 	for(int i = 0; i < nprocess; i++)
 		for(int j = 0; j<nthreads; j++)
 			plist.push_back(i);
-	Task<kmeansWorker<FTYPE>> kmeans(plist, TaskType::cpu_task);
+	Task<kmeansWorker<FTYPE>> kmeans(plist, TaskType::cpu_task, (int)1);
 	kmeans.init(objects, clusters, numObjs, numCoords, numClusters);
 	kmeans.run(runtime_m, threshold, maxIterations,  &loopcounters);
 	kmeans.wait();

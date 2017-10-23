@@ -101,7 +101,7 @@ inline void setAffinityLinux(std::vector<int> cpus){
 	std::vector<int> ret;
 	CPU_ZERO(&cpuset);
 	thread = pthread_self();
-	for(int i=0; i<cpus.size(); i++)
+	for(int i=0; i<(int)cpus.size(); i++)
 		CPU_SET(cpus[i], &cpuset);
 	int s;
 	s = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);

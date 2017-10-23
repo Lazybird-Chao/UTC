@@ -52,16 +52,26 @@ int main( int argc, char * argv[] )
 	stringstream ss;
 	string f = floats ? "f" : "";
 	ss << nObj << "_" << nFeat << f << ".txt";
-	ofstream outf( ss.str().c_str(), ios::out | ios::trunc );
+	//ofstream outf( ss.str().c_str(), ios::out | ios::trunc );
+	ofstream outf( ss.str().c_str(), ios::out | ios::trunc | ios::binary);
 	srand( time( NULL ) );
 
-	if ( !floats )
+	if ( !floats ){
+		outf.write((const char*)&nObj, sizeof(int));
+		outf.write((const char*)&nFeat, sizeof(int));
 		for ( int i = 0; i < nObj; i++ )
 		{
+			/*
 			outf << i << " ";
 			for ( int j = 0; j < nFeat; j++ )
 				outf << ( rand() % 256 ) << " ";
 			outf << endl;
+			*/
+			for(int j = 0; j< nFeat; j++){
+				float tmp = rand() % 256;
+				outf.write((const char*)&tmp, sizeof(float));
+			}
+		}
 	}
 	else
 	{

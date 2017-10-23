@@ -42,6 +42,7 @@ void IntegralCaculator::runImpl(double runtime[][3])
 	double tmp_x=0;
 	std::srand(m_seed);
 	double *res_reduce = new double[__numLocalThreads];
+	memset(res_reduce, 0, sizeof(double)*__numLocalThreads);
 
 	Timer timer0, timer;
 
@@ -77,10 +78,10 @@ void IntegralCaculator::runImpl(double runtime[][3])
 	*/
 	double result = 0.0;
 	if(__globalThreadId==0){
-		for(int i=0; i<__numGlobalThreads; i++){
+		for(int i=0; i<__numLocalThreads; i++){
 			result += res_reduce[i];
 		}
-		result /= __numGlobalThreads;
+		result /= __numLocalThreads;
 		std::cout<<result<<std::endl;
 	}
 	inter_Barrier();

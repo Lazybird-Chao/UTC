@@ -52,6 +52,14 @@ void MatrixMulWorker<T>::initImpl(T *mA, T *mB, T *mC, int M, int N, int P){
 		local_numRows = rowsPerThread;
 		start_row = __localThreadId*rowsPerThread + blockRows%__numLocalThreads;
 	}
+
+	/*std::vector<int> cpus = getAffinity();
+	msleep_for(__localThreadId*100);
+	std::cout<<"thread: "<<__localThreadId<<": ";
+	for(int i = 0; i < cpus.size(); i++)
+		std::cout<<cpus[i]<<" ";
+	std::cout<<std::endl;*/
+
 	inter_Barrier();
 	if(__globalThreadId ==0){
 		std::cout<<"task: "<<getCurrentTask()->getName()<<" finish initImpl.\n";
@@ -141,9 +149,10 @@ void MatrixMulWorker<T>::runImpl(double runtime[][3]){
 	/*if(__localThreadId==0){
 		sharedC.quiet();
 	}*/
+	//std::cout<<blockRows<<std::endl;
 	timer.start();
-	TaskGatherBy<T, 0>(this, localBlockC, blockRows*sizeN,
-							matrixC, blockRows*sizeN, 0);
+	TaskGatherBy<T, 0>(this, localBlockC, blockRows*sizeM,
+							matrixC, blockRows*sizeM, 0);
 	__fastIntraSync.wait();
 	commtime += timer.stop();
 	inter_Barrier();

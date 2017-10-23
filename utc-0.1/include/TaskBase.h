@@ -5,6 +5,7 @@
 #include "TaskInfo.h"
 #include "UniqueExeTag.h"
 #include "ProcList.h"
+#include "AffinityConfig.h"
 
 #include <map>
 #include <vector>
@@ -142,6 +143,9 @@ protected:
 #endif
 	long m_shmemSize;
 
+	// cpu binding info
+	Machine_CPU_info_t *m_machine_cpu_info;
+	int m_bind_mode;
 
 
 };

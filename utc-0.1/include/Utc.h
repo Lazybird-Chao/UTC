@@ -6,6 +6,7 @@
 
 //A
 #include "AffinityUtilities.h"
+#include "AffinityConfig.h"
 
 //B
 #include "Barrier.h"
