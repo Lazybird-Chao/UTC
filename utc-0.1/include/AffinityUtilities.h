@@ -1,8 +1,6 @@
 /*
  * AffinityUtilities.h
  *
- *  Created on: Feb 6, 2016
- *      Author: chao
  */
 
 #ifndef UTC_AFFINITYUTILITIES_H_
