@@ -155,14 +155,6 @@ int main(int argc, char **argv){
 							rays_per_pixel);
 
 		}
-		uint8_t *r = r_array + xres*yres*iter;
-		uint8_t *g = g_array + xres*yres*iter;
-		uint8_t *b = b_array + xres*yres*iter;
-		for(int i =0; i < xres*yres; i++){
-			r[i] = (pixels[i]>>RSHIFT) & 0xff;
-			g[i] = (pixels[i]>>GSHIFT) & 0xff;
-			b[i] = (pixels[i]>>BSHIFT) & 0xff;
-		}
 		t2 = getTime();
 		runtime[1] += t2-t1;
 		//std::cout<<"finish ray trace...\n";
@@ -171,10 +163,18 @@ int main(int argc, char **argv){
 		 * do coloer convertion
 		 */
 		t1 = getTime();
+		uint8_t *r = r_array + xres*yres*iter;
+		uint8_t *g = g_array + xres*yres*iter;
+		uint8_t *b = b_array + xres*yres*iter;
+		for(int i =0; i < xres*yres; i++){
+			r[i] = (pixels[i]>>RSHIFT) & 0xff;
+			g[i] = (pixels[i]>>GSHIFT) & 0xff;
+			b[i] = (pixels[i]>>BSHIFT) & 0xff;
+		}
 		uint8_t *y = nullptr;
 		uint8_t *u = nullptr;
 		uint8_t *v = nullptr;
-		yuv(10, xres, yres, r, g, b, &y, &u, &v);
+		yuv(5, xres, yres, r, g, b, &y, &u, &v);
 		t2 = getTime();
 		runtime[2] += t2 - t1;
 		//std::cout<<"finish yuv...\n";

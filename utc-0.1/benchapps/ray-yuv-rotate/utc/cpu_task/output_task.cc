@@ -10,15 +10,30 @@
 #include <fstream>
 #include <cstring>
 
-void OutputWorker::runImpl(int w, int h, int loop, iUtc::Conduit cdtIn, double runtime[][1]){
-	Pixel *img = new Pixel[w*h];
-	timer timer;
+void OutputWorker::runImpl(int loop, iUtc::Conduit *cdtIn, double runtime[][3], int id){
+	if(__localThreadId == 0){
+			std::cout<<getCurrentTask()->getName()<<" begin run ..."<<std::endl;
+		}
+	Timer timer, timer0;
+	double commtime = 0;
+	double comptime = 0;
 	int iter = 0;
-	timer.start();
-	while(iter < 0){
+	timer0.start();
+	while(iter < loop){
+		timer.start();
+		int imgSize[2];
+		//std::cout<<"output read size"<<std::endl;
+		cdtIn->Read(imgSize, 2*sizeof(int), iter*2);
+		int w = imgSize[0];
+		int h = imgSize[1];
+		//std::cout<<"output:"<<w<<" "<<h<<std::endl;
+		Pixel *img = new Pixel[w*h];
+		cdtIn->Read(img, w*h*sizeof(Pixel), iter*2+1);
+		commtime += timer.stop();
 
+		timer.start();
 		std::string outfile_path = "./outfile/";
-		outfile_path += std::to_string(iter);
+		outfile_path += std::to_string(iter*3+id);
 		outfile_path += ".ppm";
 		std::fstream out;
 		out.open(outfile_path.c_str(), std::fstream::out);
@@ -33,8 +48,16 @@ void OutputWorker::runImpl(int w, int h, int loop, iUtc::Conduit cdtIn, double r
 			}
 		}
 		out.close();
+		comptime += timer.stop();
+		std::cout<<"iter "<<iter<<"finish..."<<std::endl;
+		iter++;
 	}
-	runtime[__localThreadId][0] = timer.stop();
+	runtime[__localThreadId][0] = timer0.stop();
+	runtime[__localThreadId][1] = comptime;
+	runtime[__localThreadId][2] = commtime;
+	if(__localThreadId == 0){
+		std::cout<<getCurrentTask()->getName()<<" finish run ..."<<std::endl;
+	}
 }
 
 

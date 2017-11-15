@@ -13,7 +13,7 @@
 
 class OutputWorker: public UserTaskBase{
 public:
-	void runImpl(int w, int h, int loop, iUtc::Conduit cdtIn, double runtime[][1]);
+	void runImpl(int loop, iUtc::Conduit *cdtIn, double runtime[][3], int id);
 };
 
 

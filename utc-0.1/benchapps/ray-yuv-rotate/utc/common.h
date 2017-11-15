@@ -83,6 +83,13 @@ public:
 	}
 };
 
+typedef struct sphere2 {
+	struct vec3 pos;
+	FTYPE rad;
+	struct material mat;
+} sphere2_t;
+
+
 
 /*
  * constant variables

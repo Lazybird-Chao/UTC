@@ -125,7 +125,7 @@ public:
 		if(__numGroupProcesses > 1){
 			TaskBcastBy<char, 0>(this, g_vars, sizeof(*g_vars), 0);
 			TaskBcastBy<char, 0>(this, obj_array->pos, sizeof(vec3_t)*obj_count, 0);
-			TaskBcastBy<char, 0>(this, obj_array->mat, size(material_t)*obj_count, 0);
+			TaskBcastBy<char, 0>(this, obj_array->mat, sizeof(material_t)*obj_count, 0);
 			TaskBcastBy<char, 0>(this, obj_array->rad, sizeof(FTYPE)*obj_count, 0);
 		}
 		inter_Barrier();

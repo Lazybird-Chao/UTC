@@ -45,6 +45,61 @@ void filter(Pixel* colors, Pixel* dest, Coord* sample_pos) {
 	interpolateLinear(&sample_v_upper, &sample_v_lower, dest, y_weight);
 }
 
+void RotateCPUWorker::computOutImgSize(){
+	if(__localThreadId == 0){
+			/*
+			 * compute the out image's size
+			 */
+			Coord ul, ur, ll, lr;
+			float xc = w / 2.0;
+			float yc = h / 2.0;
+			ul.x = -xc;
+			ul.y = yc;
+			ur.x = xc;
+			ur.y = yc;
+			ll.x = -xc;
+			ll.y = -yc;
+			lr.x = xc;
+			lr.y = -yc;
+			Coord outCorner[4];
+			rotatePoint(ul, outCorner[0], angle);
+			rotatePoint(ur, outCorner[1], angle);
+			rotatePoint(ll, outCorner[2], angle);
+			rotatePoint(lr, outCorner[3], angle);
+			//compute the out image's size
+			float maxW = outCorner[0].x;
+			float minW = outCorner[0].x;
+			float maxH = outCorner[0].y;
+			float minH = outCorner[0].y;
+			for(int i=1; i<4; i++){
+				if(outCorner[i].x > maxW)
+					maxW = outCorner[i].x;
+				if(outCorner[i].x< minW)
+					minW = outCorner[i].x;
+				if(outCorner[i].y > maxH)
+					maxH = outCorner[i].y;
+				if(outCorner[i].y< minH)
+					minH = outCorner[i].y;
+			}
+			outH = (int)maxH-minH;
+			outW = (int)maxW-minW;
+
+			dstImg.createImageFromTemplate(outW, outH, 1);
+
+		}
+		__fastIntraSync.wait();
+		int rowsPerThread = outH/__numLocalThreads;
+		int residue = outH % __numLocalThreads;
+		if(__localThreadId < residue){
+			local_startRow = (rowsPerThread+1)*__localThreadId;
+			local_endRow = local_startRow + rowsPerThread;
+		}else{
+			local_startRow = rowsPerThread*__localThreadId + residue;
+			local_endRow = local_startRow + rowsPerThread-1;
+		}
+		__fastIntraSync.wait();
+}
+
 void RotateCPUWorker::initImpl(int w, int h, iUtc::Conduit *cdtIn, iUtc::Conduit *cdtOut){
 	if(__localThreadId == 0){
 		this->w = w;
@@ -52,9 +107,11 @@ void RotateCPUWorker::initImpl(int w, int h, iUtc::Conduit *cdtIn, iUtc::Conduit
 		this->cdtIn = cdtIn;
 		this->cdtOut = cdtOut;
 
+		srcImg.createImageFromTemplate(w, h, 1);
+		yuv = new uint8_t[w*h];
+	}
+
 		/*
-		 * compute the out image's size
-		 */
 		Coord ul, ur, ll, lr;
 		float xc = w / 2.0;
 		float yc = h / 2.0;
@@ -89,7 +146,7 @@ void RotateCPUWorker::initImpl(int w, int h, iUtc::Conduit *cdtIn, iUtc::Conduit
 		outH = (int)maxH-minH;
 		outW = (int)maxW-minW;
 
-		srcImg.createImageFromTemplate(w, h, 3);
+		srcImg.createImageFromTemplate(w, h, 1);
 		dstImg.createImageFromTemplate(outW, outH, 1);
 		yuv = new uint8_t[w*h];
 	}
@@ -103,6 +160,7 @@ void RotateCPUWorker::initImpl(int w, int h, iUtc::Conduit *cdtIn, iUtc::Conduit
 		local_startRow = rowsPerThread*__localThreadId + residue;
 		local_endRow = local_startRow + rowsPerThread-1;
 	}
+	*/
 
 	intra_Barrier();
 	if(__localThreadId ==0){
@@ -135,6 +193,8 @@ void RotateCPUWorker::runImpl(double runtime[][3], int loop){
 		}
 		__fastIntraSync.wait();
 		commtime += timer.stop();
+
+		computOutImgSize();
 
 		int inW = w;
 		int inH = h;
@@ -189,12 +249,18 @@ void RotateCPUWorker::runImpl(double runtime[][3], int loop){
 		comptime += timer.stop();
 
 		timer.start();
-		cdtOut->WriteBy(0, dstImg.getPixelBuffer(), outW*outH*sizeof(Pixel), iter);
+		int dstImgSize[] = {outW, outH};
+		cdtOut->WriteBy(0, dstImgSize, 2*sizeof(int), iter*2);
+		//std::cout<<"rotate:"<<outW<<" "<<outH<<std::endl;
+		cdtOut->WriteBy(0, dstImg.getPixelBuffer(), outW*outH*sizeof(Pixel), iter*2+1);
+		//std::cout<<"rotate:"<<outW<<" "<<outH<<std::endl;
 		__fastIntraSync.wait();
 		commtime += timer.stop();
+
+		iter++;
 	}
 	__fastIntraSync.wait();
-	double totaltime = timer.stop();
+	double totaltime = timer0.stop();
 
 	runtime[__localThreadId][0] = totaltime;
 	runtime[__localThreadId][1] = comptime;

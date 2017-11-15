@@ -1,5 +1,6 @@
 mainobj = 	ryr_main.o image.o
-taskobj =	ray_task.o yuv_task.o rotate_task.o output_task.o
+taskobj =	ray_task.o yuv_task.o rotate_task.o output_task.o c-ray_task_sgpu.o
+kernelobj = c-ray_kernel.o
 
 
 bin = ryr
@@ -51,7 +52,14 @@ rotate_task.o: cpu_task/rotate_task.cc cpu_task/rotate_task.h cpu_task/image.h
 output_task.o: cpu_task/output_task.cc cpu_task/output_task.h cpu_task/image.h
 	$(C++) -o $@ $(CCFLAGS) $(INCLUDE) -c $<
 
-$(bin): $(mainobj) $(taskobj) $(helperobj)
+c-ray_task_sgpu.o: ./gpu_task/c-ray_task_sgpu.cu ./gpu_task/c-ray_task_sgpu.h ./gpu_task/c-ray_kernel_v2.h
+	$(NVCC) -o $@  $(NVCCFLAGS)  $(NWARNING) $(INCLUDE) -c $<
+$(kernelobj): ./gpu_task/c-ray_kernel_v2.cc ./gpu_task/c-ray_kernel_v2.h ./gpu_task/c-ray_kernel_device_v2.h
+	$(NVCC) -o $@  -x cu $(NVCCFLAGS)  $(NWARNING) $(INCLUDE) -c $<  
+tmplink.o: $(taskobj) $(kernelobj)
+	$(NVCC) -o $@ $(NVLINKFLAGS) $^
+
+$(bin): $(mainobj) $(taskobj) $(helperobj) $(kernelobj) tmplink.o
 	$(C++) -o $@ $(CCFLAGS) $^  $(LIB)
 
 .PHONY: clean
